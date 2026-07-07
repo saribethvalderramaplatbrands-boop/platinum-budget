@@ -24,7 +24,7 @@ export default function AmortizacionesUpload() {
       const worksheet = workbook.Sheets[workbook.SheetNames[0]]
       const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][]
 
-      const rows = jsonData.slice(2)
+      const rows = jsonData.slice(1)
 
       const amortizacionesData = rows
         .filter(row => row[0] && row[1])
