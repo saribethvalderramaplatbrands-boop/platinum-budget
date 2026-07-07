@@ -1,15 +1,14 @@
 import { useState, useRef } from 'react'
-import { Upload, FileSpreadsheet, Check, AlertCircle, Trash2 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { Upload, FileSpreadsheet, Check, AlertCircle } from 'lucide-react'
 import { useAmortizaciones } from '../hooks/useSupabase'
 
 // @ts-ignore
 import * as XLSX from 'xlsx'
 
 export default function AmortizacionesUpload() {
-  const { amortizaciones, refetch } = useAmortizaciones()
+  const { amortizaciones, uploadAmortizaciones, refetch } = useAmortizaciones()
   const [uploading, setUploading] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warning', text: string } | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,57 +33,19 @@ export default function AmortizacionesUpload() {
           tienda_nombre: String(row[1] || ''),
           descripcion: String(row[2] || ''),
           monto: parseFloat(row[3]) || 0,
-          periodo: String(row[4] || 'Junio').trim(),
+          periodo: String(row[4] || 'Junio'),
         }))
 
-      if (amortizacionesData.length === 0) {
-        setMessage({ type: 'warning', text: 'No se encontraron registros válidos en el archivo.' })
-        setUploading(false)
-        if (fileInputRef.current) fileInputRef.current.value = ''
-        return
+      const error = await uploadAmortizaciones(amortizacionesData)
+
+      if (error) {
+        setMessage({ type: 'error', text: 'Error al subir: ' + error.message })
+      } else {
+        setMessage({ type: 'success', text: `¡${amortizacionesData.length} amortizaciones subidas exitosamente!` })
+        refetch()
       }
-
-      // Detectar el periodo del archivo (toma el primero, asume que todos son del mismo mes)
-      const periodo = amortizacionesData[0].periodo
-
-      // 1. CONTAR cuántas amortizaciones existen de este periodo
-      const { data: existentes, error: countError } = await supabase
-        .from('amortizaciones')
-        .select('id')
-        .eq('periodo', periodo)
-
-      if (countError) throw countError
-
-      const cantidadExistentes = existentes?.length || 0
-
-      // 2. BORRAR todas las amortizaciones de ese periodo
-      if (cantidadExistentes > 0) {
-        const { error: deleteError } = await supabase
-          .from('amortizaciones')
-          .delete()
-          .eq('periodo', periodo)
-
-        if (deleteError) throw deleteError
-      }
-
-      // 3. INSERTAR las nuevas amortizaciones
-      const { error: insertError } = await supabase
-        .from('amortizaciones')
-        .insert(amortizacionesData)
-
-      if (insertError) throw insertError
-
-      // 4. Refrescar datos
-      await refetch()
-
-      setMessage({
-        type: 'success',
-        text: cantidadExistentes > 0
-          ? `¡${amortizacionesData.length} amortizaciones subidas! Se reemplazaron ${cantidadExistentes} registros anteriores de ${periodo}.`
-          : `¡${amortizacionesData.length} amortizaciones subidas exitosamente para ${periodo}!`
-      })
     } catch (err: any) {
-      setMessage({ type: 'error', text: 'Error: ' + err.message })
+      setMessage({ type: 'error', text: 'Error procesando archivo: ' + err.message })
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''
@@ -101,19 +62,6 @@ export default function AmortizacionesUpload() {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Amortizaciones</h2>
-
-      {message && (
-        <div className={`p-4 rounded-lg flex items-center gap-3 ${
-          message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' :
-          message.type === 'warning' ? 'bg-yellow-50 text-yellow-700 border border-yellow-200' :
-          'bg-red-50 text-red-700 border border-red-200'
-        }`}>
-          {message.type === 'success' ? <Check className="w-5 h-5" /> : 
-           message.type === 'warning' ? <AlertCircle className="w-5 h-5" /> :
-           <AlertCircle className="w-5 h-5" />}
-          {message.text}
-        </div>
-      )}
 
       <div className="card">
         <div className="flex items-center gap-3 mb-4">
@@ -142,6 +90,13 @@ export default function AmortizacionesUpload() {
 
         {uploading && (
           <p className="text-center mt-4 text-primary-600">Procesando...</p>
+        )}
+
+        {message && (
+          <div className={`mt-4 p-3 rounded-lg flex items-center gap-2 ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+            {message.type === 'success' ? <Check className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
+            {message.text}
+          </div>
         )}
       </div>
 
