@@ -136,6 +136,13 @@ export default function PresupuestoView() {
     setIsLoading(false)
   }
 
+  // Recargar cuando cambie el ordenamiento
+  useEffect(() => {
+    if (presupuestos.length > 0) {
+      fetchPresupuestos()
+    }
+  }, [sortBy, sortDesc])
+
   const fetchDetalleGastos = async (tiendaId: string, mesNum: number) => {
     setLoadingDetalle(true)
 
@@ -186,7 +193,12 @@ export default function PresupuestoView() {
     return ''
   }
 
-  // Calcular totales filtrados por unidad de negocio
+  // Determinar qué unidades de negocio están presentes en los resultados filtrados
+  const unidadesEnResultados = [...new Set(presupuestos.map(p => p.unidad_negocio))]
+  const hayDQ = unidadesEnResultados.some(u => u?.includes('Dairy'))
+  const hayKFC = unidadesEnResultados.some(u => u?.includes('Kentucky'))
+
+  // Calcular totales filtrados por unidad de negocio (solo de las unidades presentes en resultados)
   const dqTotal = presupuestos
     .filter(p => p.unidad_negocio?.includes('Dairy'))
     .reduce((sum, p) => sum + p.presupuesto_asignado, 0)
@@ -206,10 +218,6 @@ export default function PresupuestoView() {
   const kfcAmort = presupuestos
     .filter(p => p.unidad_negocio?.includes('Kentucky'))
     .reduce((sum, p) => sum + p.amortizado, 0)
-
-  // Determinar si mostrar cada card según el filtro de unidad de negocio
-  const showDQCard = !unidadNegocio || unidadNegocio.includes('Dairy')
-  const showKFCCard = !unidadNegocio || unidadNegocio.includes('Kentucky')
 
   return (
     <div className="space-y-6">
@@ -315,46 +323,46 @@ export default function PresupuestoView() {
         </div>
       </div>
 
-      {/* Totales - solo mostrar la card correspondiente al filtro */}
+      {/* Totales - mostrar solo las cards de las unidades presentes en los resultados filtrados */}
       {presupuestos.length > 0 && (
-        <div className={`grid grid-cols-1 gap-4 ${showDQCard && showKFCCard ? 'sm:grid-cols-2' : ''}`}>
-          {showDQCard && (
+        <div className={`grid grid-cols-1 gap-4 ${hayDQ && hayKFC ? 'sm:grid-cols-2' : ''}`}>
+          {hayDQ && (
             <div className="card bg-blue-50">
               <p className="text-sm text-blue-600 font-medium">Dairy Queen (DQ)</p>
               <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
                 <div>
                   <span className="text-gray-500">Presup:</span>
-                  <p className="font-medium">{formatMoney(dqTotal)}</p>
+                  <p className="font-bold">{formatMoney(dqTotal)}</p>
                 </div>
                 <div>
                   <span className="text-gray-500">Gasto:</span>
-                  <p className="font-medium text-red-600">{formatMoney(dqGasto)}</p>
+                  <p className="font-bold text-red-600">{formatMoney(dqGasto)}</p>
                 </div>
                 <div>
                   <span className="text-gray-500">Amort:</span>
-                  <p className="font-medium text-orange-600">{formatMoney(dqAmort)}</p>
+                  <p className="font-bold text-orange-600">{formatMoney(dqAmort)}</p>
                 </div>
               </div>
             </div>
           )}
-          {showKFCCard && (
+          {hayKFC && (
             <div className="card bg-red-50">
               <p className="text-sm text-red-600 font-medium">Kentucky Fried Chicken (KFC)</p>
               <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
                 <div>
                   <span className="text-gray-500">Presup:</span>
-                  <p className="font-medium">{formatMoney(kfcTotal)}</p>
+                  <p className="font-bold">{formatMoney(kfcTotal)}</p>
                 </div>
                 <div>
                   <span className="text-gray-500">Gasto:</span>
-                  <p className="font-medium text-red-600">{formatMoney(kfcGasto)}</p>
+                  <p className="font-bold text-red-600">{formatMoney(kfcGasto)}</p>
                 </div>
                 <div>
                   <span className="text-gray-500">Amort:</span>
-                  <p className="font-medium text-orange-600">{formatMoney(kfcAmort)}</p>
+                  <p className="font-bold text-orange-600">{formatMoney(kfcAmort)}</p>
                 </div>
               </div>
-            </div>
+              </div>
           )}
         </div>
       )}
@@ -393,12 +401,12 @@ export default function PresupuestoView() {
                     onDoubleClick={() => handleRowDoubleClick(p)}
                     title="Doble clic para ver detalle de gastos"
                   >
-                    <td className="px-3 py-2 font-medium">{p.tienda}</td>
+                    <td className="px-3 py-2 font-bold">{p.tienda}</td>
                     <td className="px-3 py-2 text-center">{MESES[p.mes - 1]}</td>
-                    <td className="px-3 py-2 text-right font-medium">{formatMoney(p.presupuesto_asignado)}</td>
-                    <td className="px-3 py-2 text-right text-orange-600">{formatMoney(p.amortizado)}</td>
-                    <td className="px-3 py-2 text-right text-red-600">{formatMoney(p.gasto_real)}</td>
-                    <td className={`px-3 py-2 text-right font-medium ${p.saldo < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    <td className="px-3 py-2 text-right font-bold">{formatMoney(p.presupuesto_asignado)}</td>
+                    <td className="px-3 py-2 text-right font-bold text-orange-600">{formatMoney(p.amortizado)}</td>
+                    <td className="px-3 py-2 text-right font-bold text-red-600">{formatMoney(p.gasto_real)}</td>
+                    <td className={`px-3 py-2 text-right font-bold ${p.saldo < 0 ? 'text-red-600' : 'text-green-600'}`}>
                       {formatMoney(p.saldo)}
                     </td>
                     <td className="px-3 py-2 text-center">
@@ -489,7 +497,7 @@ export default function PresupuestoView() {
                           <span className="px-2 py-1 rounded-full text-xs bg-gray-100">{g.clasificacion}</span>
                         </td>
                         <td className="px-3 py-2 text-xs">{g.proveedor}</td>
-                        <td className="px-3 py-2 text-right font-medium">{formatMoney(g.monto)}</td>
+                        <td className="px-3 py-2 text-right font-bold">{formatMoney(g.monto)}</td>
                       </tr>
                     ))}
                   </tbody>
