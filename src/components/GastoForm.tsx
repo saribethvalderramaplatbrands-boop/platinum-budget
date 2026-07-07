@@ -36,6 +36,23 @@ export default function GastoForm({ onSubmit, onCancel }: GastoFormProps) {
     gerente_regional: '',
   })
 
+  const [tiendaSearch, setTiendaSearch] = useState('')
+  const [provSearch, setProvSearch] = useState('')
+
+  const filteredTiendas = tiendaSearch 
+    ? tiendas.filter(t => 
+        t.nombre.toLowerCase().includes(tiendaSearch.toLowerCase()) ||
+        t.codigo.toString().includes(tiendaSearch)
+      )
+    : tiendas
+
+  const filteredProveedores = provSearch
+    ? proveedores.filter(p => 
+        p.nombre.toLowerCase().includes(provSearch.toLowerCase()) ||
+        p.codigo.toLowerCase().includes(provSearch.toLowerCase())
+      )
+    : proveedores
+
   const handleTiendaChange = (tiendaId: string) => {
     const tienda = tiendas.find(t => t.id === tiendaId)
     setFormData(prev => ({
@@ -44,6 +61,7 @@ export default function GastoForm({ onSubmit, onCancel }: GastoFormProps) {
       gerente_area: tienda?.gerente_area || '',
       gerente_regional: tienda?.gerente_regional || '',
     }))
+    setTiendaSearch('')
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -90,8 +108,30 @@ export default function GastoForm({ onSubmit, onCancel }: GastoFormProps) {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Tienda *</label>
-         {tiendas.length === 0 && <p className="text-red-500 text-sm">Cargando tiendas...</p>}
-{tiendas.length > 0 && <p className="text-green-500 text-sm">{tiendas.length} tiendas cargadas</p>}
+          <input
+            type="text"
+            placeholder="Buscar tienda por nombre o código..."
+            value={tiendaSearch}
+            onChange={e => setTiendaSearch(e.target.value)}
+            className="input-field mb-2"
+          />
+          {tiendaSearch && (
+            <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg mb-2">
+              {filteredTiendas.map(t => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => handleTiendaChange(t.id)}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm"
+                >
+                  {t.codigo} - {t.nombre}
+                </button>
+              ))}
+              {filteredTiendas.length === 0 && (
+                <p className="px-3 py-2 text-sm text-gray-500">No se encontraron tiendas</p>
+              )}
+            </div>
+          )}
           <select
             required
             value={formData.tienda_id}
@@ -131,6 +171,33 @@ export default function GastoForm({ onSubmit, onCancel }: GastoFormProps) {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Proveedor</label>
+          <input
+            type="text"
+            placeholder="Buscar proveedor por nombre o código..."
+            value={provSearch}
+            onChange={e => setProvSearch(e.target.value)}
+            className="input-field mb-2"
+          />
+          {provSearch && (
+            <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-lg mb-2">
+              {filteredProveedores.map(p => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    setFormData(prev => ({ ...prev, proveedor_id: p.id }))
+                    setProvSearch('')
+                  }}
+                  className="w-full text-left px-3 py-2 hover:bg-gray-50 text-sm"
+                >
+                  {p.codigo} - {p.nombre}
+                </button>
+              ))}
+              {filteredProveedores.length === 0 && (
+                <p className="px-3 py-2 text-sm text-gray-500">No se encontraron proveedores</p>
+              )}
+            </div>
+          )}
           <select
             value={formData.proveedor_id}
             onChange={e => setFormData(prev => ({ ...prev, proveedor_id: e.target.value }))}
