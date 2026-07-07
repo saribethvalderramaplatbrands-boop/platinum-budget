@@ -31,6 +31,7 @@ interface GastoPreview {
   orden_compra: string
   factura: string
   proveedor: string
+  proveedor_id: string | null
   descripcion: string
   clasificacion: string
   monto: number
@@ -153,17 +154,30 @@ export default function CierreMesView() {
     const excelClasif = (clasificacionExcel || '').trim()
     if (excelClasif && excelClasif !== '') return excelClasif
 
-    // Regla 2: Buscar en catálogo de proveedores
+    // Regla 2: Buscar en catálogo de proveedores (búsqueda parcial)
     const provUpper = (proveedorNombre || '').toUpperCase().trim()
     const proveedorMatch = proveedores.find(p => {
       const pUpper = p.nombre.toUpperCase().trim()
-      return pUpper === provUpper || provUpper.includes(pUpper) || pUpper.includes(provUpper)
+      // Buscar en ambas direcciones: Excel en catálogo O catálogo en Excel
+      return pUpper.includes(provUpper) || provUpper.includes(pUpper)
     })
 
     if (proveedorMatch) return proveedorMatch.clasificacion
 
     // Regla 3: N/A
     return 'N/A'
+  }
+
+  const getProveedorId = (proveedorNombre: string): string | null => {
+    if (!proveedorNombre) return null
+
+    const provUpper = proveedorNombre.toUpperCase().trim()
+    const proveedorMatch = proveedores.find(p => {
+      const pUpper = p.nombre.toUpperCase().trim()
+      return pUpper.includes(provUpper) || provUpper.includes(pUpper)
+    })
+
+    return proveedorMatch ? proveedorMatch.id : null
   }
 
   const getTiendaInfo = (codigo: number): { tienda_id: string | null, nombre: string, unidad: string, gerenteArea: string, gerenteRegional: string } => {
@@ -238,13 +252,15 @@ export default function CierreMesView() {
           const tiendaInfo = getTiendaInfo(codigoTienda)
           const proveedorNombre = String(row[4] || '')
           const clasificacion = getClasificacion(proveedorNombre, String(row[6] || ''))
+          const proveedorId = getProveedorId(proveedorNombre)
 
           return {
             fecha: parseFecha(row[0]),
-            periodo: String(row[1] || MESES[mes - 1]).trim(),
+            periodo: (String(row[1] || MESES[mes - 1]).trim()).toLowerCase().replace(/\b\w/g, l => l.toUpperCase()),
             orden_compra: String(row[2] || '').trim() || 'N/A',
             factura: String(row[3] || '').trim() || 'N/A',
             proveedor: proveedorNombre,
+            proveedor_id: proveedorId,
             descripcion: String(row[5] || '').trim(),
             clasificacion: clasificacion,
             monto: parseMonto(row[7]),
@@ -349,6 +365,7 @@ export default function CierreMesView() {
           clasificacion: p.clasificacion,
           monto: p.monto,
           tienda_id: p.tienda_id,
+          proveedor_id: p.proveedor_id,
           estatus: 'Completado',
           es_cierre: true,
         }))
