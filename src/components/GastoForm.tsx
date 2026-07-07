@@ -90,6 +90,8 @@ export default function GastoForm({ onSubmit, onCancel }: GastoFormProps) {
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Tienda *</label>
+         {tiendas.length === 0 && <p className="text-red-500 text-sm">Cargando tiendas...</p>}
+{tiendas.length > 0 && <p className="text-green-500 text-sm">{tiendas.length} tiendas cargadas</p>}
           <select
             required
             value={formData.tienda_id}
