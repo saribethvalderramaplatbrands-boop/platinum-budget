@@ -16,7 +16,7 @@ export function useTiendas() {
       .select('*')
       .eq('activa', true)
       .order('codigo')
-
+    
     if (error) console.error('Error fetching tiendas:', error)
     else setTiendas(data || [])
     setLoading(false)
@@ -39,7 +39,7 @@ export function useProveedores() {
       .select('*')
       .eq('activo', true)
       .order('codigo')
-
+    
     if (error) console.error('Error fetching proveedores:', error)
     else setProveedores(data || [])
     setLoading(false)
@@ -108,11 +108,11 @@ export function useGastos() {
   }
 
   const updateGasto = async (id: string, updates: any) => {
-    if (updates.orden_compra !== undefined || updates.factura !== undefined) {
+    if (updates.orden_compra !== undefined || updates.factura !== undefined || updates.periodo !== undefined) {
       const { data: current } = await supabase.from('gastos_diarios').select('orden_compra, factura').eq('id', id).single()
       const oc = updates.orden_compra !== undefined ? updates.orden_compra : current?.orden_compra
       const fac = updates.factura !== undefined ? updates.factura : current?.factura
-
+      
       if (!oc) updates.estatus = 'Pendiente OC'
       else if (!fac) updates.estatus = 'Pendiente Factura'
       else updates.estatus = 'Completado'
@@ -123,7 +123,13 @@ export function useGastos() {
     return error
   }
 
-  return { gastos, loading, addGasto, updateGasto, fetchGastos }
+  const deleteGasto = async (id: string) => {
+    const { error } = await supabase.from('gastos_diarios').delete().eq('id', id)
+    if (!error) fetchGastos()
+    return error
+  }
+
+  return { gastos, loading, addGasto, updateGasto, deleteGasto, fetchGastos }
 }
 
 export function useResumen(año?: number, mes?: number) {
