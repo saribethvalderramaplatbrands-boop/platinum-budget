@@ -349,9 +349,6 @@ export default function CierreMesView() {
           clasificacion: p.clasificacion,
           monto: p.monto,
           tienda_id: p.tienda_id,
-          unidad_negocio: p.unidad_negocio,
-          gerente_area: p.gerente_area,
-          gerente_regional: p.gerente_regional,
           estatus: 'Completado',
           es_cierre: true,
         }))
