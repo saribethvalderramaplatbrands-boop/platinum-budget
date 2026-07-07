@@ -114,6 +114,7 @@ export default function CierreMesView() {
 
   const fetchGastosActuales = async () => {
     const periodo = MESES[mes - 1]
+    const ultimoDia = new Date(año, mes, 0).getDate()
     const { data } = await supabase
       .from('gastos_diarios')
       .select(`
@@ -121,7 +122,8 @@ export default function CierreMesView() {
         tiendas:tienda_id(codigo, nombre)
       `)
       .eq('periodo', periodo)
-      .eq('fecha', `${año}-%`) // Filtrar por año en la fecha
+      .gte('fecha', `${año}-${String(mes).padStart(2, '0')}-01`)
+      .lte('fecha', `${año}-${String(mes).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`)
 
     if (data) {
       const gastos: GastoDiario[] = data.map((g: any) => ({
@@ -320,13 +322,18 @@ export default function CierreMesView() {
     try {
       const periodo = MESES[mes - 1]
 
-      // 1. Borrar gastos diarios del mes (todos, sean cierre o no)
+      // 1. Calcular último día del mes correctamente
+      const ultimoDia = new Date(año, mes, 0).getDate() // mes es 1-based, día 0 = último día del mes anterior
+      const fechaInicio = `${año}-${String(mes).padStart(2, '0')}-01`
+      const fechaFin = `${año}-${String(mes).padStart(2, '0')}-${String(ultimoDia).padStart(2, '0')}`
+
+      // 2. Borrar gastos diarios del mes (todos, sean cierre o no)
       const { error: deleteError } = await supabase
         .from('gastos_diarios')
         .delete()
         .eq('periodo', periodo)
-        .gte('fecha', `${año}-${String(mes).padStart(2, '0')}-01`)
-        .lte('fecha', `${año}-${String(mes).padStart(2, '0')}-31`)
+        .gte('fecha', fechaInicio)
+        .lte('fecha', fechaFin)
 
       if (deleteError) throw deleteError
 
