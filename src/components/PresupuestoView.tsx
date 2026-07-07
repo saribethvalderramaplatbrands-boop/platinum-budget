@@ -362,7 +362,7 @@ export default function PresupuestoView() {
                   <p className="font-bold text-orange-600">{formatMoney(kfcAmort)}</p>
                 </div>
               </div>
-              </div>
+            </div>
           )}
         </div>
       )}
@@ -389,14 +389,14 @@ export default function PresupuestoView() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {presupuestos.map(p => {
-                const pct = p.presupuesto_asignado > 0 
-                  ? ((p.gasto_real + p.amortizado) / p.presupuesto_asignado) * 100 
+                const pct = p.presupuesto_asignado > 0
+                  ? ((p.gasto_real + p.amortizado) / p.presupuesto_asignado) * 100
                   : 0
                 const alertClass = getAlertClass(p.saldo, p.presupuesto_asignado)
 
                 return (
-                  <tr 
-                    key={`${p.tienda_id}-${p.mes}`} 
+                  <tr
+                    key={`${p.tienda_id}-${p.mes}`}
                     className={`hover:bg-gray-50 transition-colors cursor-pointer ${alertClass}`}
                     onDoubleClick={() => handleRowDoubleClick(p)}
                     title="Doble clic para ver detalle de gastos"
@@ -412,7 +412,7 @@ export default function PresupuestoView() {
                     <td className="px-3 py-2 text-center">
                       <div className="flex items-center gap-2">
                         <div className="w-16 bg-gray-200 rounded-full h-1.5">
-                          <div 
+                          <div
                             className={`h-1.5 rounded-full ${pct > 100 ? 'bg-red-500' : pct > 90 ? 'bg-yellow-500' : 'bg-green-500'}`}
                             style={{ width: `${Math.min(pct, 100)}%` }}
                           />
@@ -433,87 +433,89 @@ export default function PresupuestoView() {
         <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
           <div className="min-h-screen flex items-start justify-center p-4 pt-8 pb-8">
             <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full">
-            <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-              <div>
-                <h3 className="text-lg font-bold">
-                  {selectedTienda.codigo} - {selectedTienda.tienda}
-                </h3>
-                <p className="text-sm text-gray-500">
-                  {MESES[selectedTienda.mes - 1]} {selectedTienda.año} | {selectedTienda.unidad_negocio}
-                </p>
-              </div>
-              <button 
-                onClick={() => setSelectedTienda(null)}
-                className="p-2 rounded-lg hover:bg-gray-100"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-6 grid grid-cols-4 gap-4 border-b border-gray-200 bg-gray-50">
-              <div>
-                <p className="text-xs text-gray-500">Presupuesto</p>
-                <p className="font-bold text-lg">{formatMoney(selectedTienda.presupuesto_asignado)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Amortizado</p>
-                <p className="font-bold text-lg text-orange-600">{formatMoney(selectedTienda.amortizado)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Gasto Real</p>
-                <p className="font-bold text-lg text-red-600">{formatMoney(selectedTienda.gasto_real)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Saldo</p>
-                <p className={`font-bold text-lg ${selectedTienda.saldo < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {formatMoney(selectedTienda.saldo)}
-                </p>
-              </div>
-            </div>
-
-            <div className="p-6">
-              <h4 className="font-bold mb-4">Desglose de Gastos</h4>
-
-              {loadingDetalle ? (
-                <div className="text-center py-4">Cargando detalle...</div>
-              ) : detalleGastos.length === 0 ? (
-                <div className="text-center py-4 text-gray-500">No hay gastos registrados</div>
-              ) : (
-                <div className="overflow-auto border border-gray-200 rounded-t-lg" style={{ maxHeight: 'calc(100vh - 400px)' }}>
-                    <table className="w-full text-sm">
-                      <thead className="sticky top-0 bg-white z-10 shadow-sm">
-                        <tr className="border-b border-gray-200">
-                          <th className="text-left px-3 py-2 bg-white whitespace-nowrap">Fecha</th>
-                          <th className="text-left px-3 py-2 bg-white">Descripción</th>
-                          <th className="text-left px-3 py-2 bg-white whitespace-nowrap">Clasificación</th>
-                          <th className="text-left px-3 py-2 bg-white">Proveedor</th>
-                          <th className="text-right px-3 py-2 bg-white whitespace-nowrap">Monto</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {detalleGastos.map(g => (
-                          <tr key={g.id} className="hover:bg-gray-50">
-                            <td className="px-3 py-2 whitespace-nowrap">{new Date(g.fecha).toLocaleDateString('es-PA')}</td>
-                            <td className="px-3 py-2 max-w-md truncate" title={g.descripcion}>{g.descripcion}</td>
-                            <td className="px-3 py-2 whitespace-nowrap">
-                              <span className="px-2 py-1 rounded-full text-xs bg-gray-100">{g.clasificacion}</span>
-                            </td>
-                            <td className="px-3 py-2 text-xs">{g.proveedor}</td>
-                            <td className="px-3 py-2 text-right font-bold whitespace-nowrap">{formatMoney(g.monto)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                </div>
-              )}
-
-              {detalleGastos.length > 0 && (
-                <div className="p-4 border border-t-0 border-gray-200 rounded-b-lg bg-gray-50 text-right">
-                  <p className="text-sm text-gray-600">
-                    Total gastos: <span className="font-bold text-red-600 text-lg">{formatMoney(detalleGastos.reduce((sum, g) => sum + g.monto, 0))}</span>
+              <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                  <h3 className="text-lg font-bold">
+                    {selectedTienda.codigo} - {selectedTienda.tienda}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {MESES[selectedTienda.mes - 1]} {selectedTienda.año} | {selectedTienda.unidad_negocio}
                   </p>
                 </div>
-              )}
+                <button
+                  onClick={() => setSelectedTienda(null)}
+                  className="p-2 rounded-lg hover:bg-gray-100"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-6 grid grid-cols-4 gap-4 border-b border-gray-200 bg-gray-50">
+                <div>
+                  <p className="text-xs text-gray-500">Presupuesto</p>
+                  <p className="font-bold text-lg">{formatMoney(selectedTienda.presupuesto_asignado)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Amortizado</p>
+                  <p className="font-bold text-lg text-orange-600">{formatMoney(selectedTienda.amortizado)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Gasto Real</p>
+                  <p className="font-bold text-lg text-red-600">{formatMoney(selectedTienda.gasto_real)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Saldo</p>
+                  <p className={`font-bold text-lg ${selectedTienda.saldo < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                    {formatMoney(selectedTienda.saldo)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-6">
+                <h4 className="font-bold mb-4">Desglose de Gastos</h4>
+
+                {loadingDetalle ? (
+                  <div className="text-center py-4">Cargando detalle...</div>
+                ) : detalleGastos.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">No hay gastos registrados</div>
+                ) : (
+                  <>
+                    <div className="overflow-auto border border-gray-200 rounded-t-lg" style={{ maxHeight: 'calc(100vh - 400px)' }}>
+                      <table className="w-full text-sm">
+                        <thead className="sticky top-0 bg-white z-10 shadow-sm">
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left px-3 py-2 bg-white whitespace-nowrap">Fecha</th>
+                            <th className="text-left px-3 py-2 bg-white">Descripción</th>
+                            <th className="text-left px-3 py-2 bg-white whitespace-nowrap">Clasificación</th>
+                            <th className="text-left px-3 py-2 bg-white">Proveedor</th>
+                            <th className="text-right px-3 py-2 bg-white whitespace-nowrap">Monto</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {detalleGastos.map(g => (
+                            <tr key={g.id} className="hover:bg-gray-50">
+                              <td className="px-3 py-2 whitespace-nowrap">{new Date(g.fecha).toLocaleDateString('es-PA')}</td>
+                              <td className="px-3 py-2 max-w-md truncate" title={g.descripcion}>{g.descripcion}</td>
+                              <td className="px-3 py-2 whitespace-nowrap">
+                                <span className="px-2 py-1 rounded-full text-xs bg-gray-100">{g.clasificacion}</span>
+                              </td>
+                              <td className="px-3 py-2 text-xs">{g.proveedor}</td>
+                              <td className="px-3 py-2 text-right font-bold whitespace-nowrap">{formatMoney(g.monto)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {detalleGastos.length > 0 && (
+                      <div className="p-4 border border-t-0 border-gray-200 rounded-b-lg bg-gray-50 text-right">
+                        <p className="text-sm text-gray-600">
+                          Total gastos: <span className="font-bold text-red-600 text-lg">{formatMoney(detalleGastos.reduce((sum, g) => sum + g.monto, 0))}</span>
+                        </p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
