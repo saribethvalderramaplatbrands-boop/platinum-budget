@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Filter, Search, AlertCircle, CheckCircle2, Clock } from 'lucide-react'
+import { Filter, Search, AlertCircle, CheckCircle2, Clock, Save, X } from 'lucide-react'
 import { useGastos, useTiendas, useProveedores } from '../hooks/useSupabase'
 
 const PERIODOS = [
@@ -20,10 +20,10 @@ const ESTATUS_ICONS = {
 }
 
 export default function GastosTable() {
-  const { gastos, loading, fetchGastos } = useGastos()
+  const { gastos, loading, fetchGastos, updateGasto } = useGastos()
   const { tiendas } = useTiendas()
   const { proveedores } = useProveedores()
-
+  
   const [filters, setFilters] = useState({
     clasificacion: '',
     proveedor_id: '',
@@ -34,6 +34,11 @@ export default function GastosTable() {
   })
 
   const [showFilters, setShowFilters] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editData, setEditData] = useState({
+    orden_compra: '',
+    factura: '',
+  })
 
   const applyFilters = () => {
     const activeFilters: any = {}
@@ -54,6 +59,27 @@ export default function GastosTable() {
       (g.factura || '').toLowerCase().includes(search)
     )
   })
+
+  const handleDoubleClick = (gasto: any) => {
+    setEditingId(gasto.id)
+    setEditData({
+      orden_compra: gasto.orden_compra || '',
+      factura: gasto.factura || '',
+    })
+  }
+
+  const handleSave = async (id: string) => {
+    await updateGasto(id, {
+      orden_compra: editData.orden_compra || null,
+      factura: editData.factura || null,
+    })
+    setEditingId(null)
+  }
+
+  const handleCancel = () => {
+    setEditingId(null)
+    setEditData({ orden_compra: '', factura: '' })
+  }
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('es-PA')
@@ -112,7 +138,7 @@ export default function GastosTable() {
               <option value="">Todos los periodos</option>
               {PERIODOS.slice(1).map(p => <option key={p} value={p}>{p}</option>)}
             </select>
-
+            
             <select
               value={filters.tienda_id}
               onChange={e => setFilters(prev => ({ ...prev, tienda_id: e.target.value }))}
@@ -123,7 +149,7 @@ export default function GastosTable() {
                 <option key={t.id} value={t.id}>{t.codigo} - {t.nombre}</option>
               ))}
             </select>
-
+            
             <select
               value={filters.proveedor_id}
               onChange={e => setFilters(prev => ({ ...prev, proveedor_id: e.target.value }))}
@@ -134,7 +160,7 @@ export default function GastosTable() {
                 <option key={p.id} value={p.id}>{p.codigo} - {p.nombre}</option>
               ))}
             </select>
-
+            
             <select
               value={filters.clasificacion}
               onChange={e => setFilters(prev => ({ ...prev, clasificacion: e.target.value }))}
@@ -145,7 +171,7 @@ export default function GastosTable() {
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
-
+            
             <select
               value={filters.estatus}
               onChange={e => setFilters(prev => ({ ...prev, estatus: e.target.value }))}
@@ -188,8 +214,15 @@ export default function GastosTable() {
             ) : (
               filteredGastos.map(gasto => {
                 const StatusIcon = ESTATUS_ICONS[gasto.estatus as keyof typeof ESTATUS_ICONS] || Clock
+                const isEditing = editingId === gasto.id
+
                 return (
-                  <tr key={gasto.id} className="hover:bg-gray-50 transition-colors">
+                  <tr 
+                    key={gasto.id} 
+                    className={`hover:bg-gray-50 transition-colors ${isEditing ? 'bg-blue-50' : ''}`}
+                    onDoubleClick={() => !isEditing && handleDoubleClick(gasto)}
+                    title="Doble clic para editar"
+                  >
                     <td className="px-4 py-3 whitespace-nowrap">{formatDate(gasto.fecha)}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{gasto.periodo}</td>
                     <td className="px-4 py-3 whitespace-nowrap">{getTiendaName(gasto.tienda_id)}</td>
@@ -211,10 +244,54 @@ export default function GastosTable() {
                         {gasto.estatus}
                       </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
-                      {gasto.orden_compra && <div>OC: {gasto.orden_compra}</div>}
-                      {gasto.factura && <div>Fac: {gasto.factura}</div>}
-                      {!gasto.orden_compra && !gasto.factura && <span className="text-yellow-600">Sin documentos</span>}
+                    <td className="px-4 py-3 whitespace-nowrap text-xs">
+                      {isEditing ? (
+                        <div className="space-y-2">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">OC:</label>
+                            <input
+                              type="text"
+                              value={editData.orden_compra}
+                              onChange={e => setEditData(prev => ({ ...prev, orden_compra: e.target.value }))}
+                              placeholder="Número OC"
+                              className="input-field text-xs py-1 px-2"
+                              autoFocus
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">Factura:</label>
+                            <input
+                              type="text"
+                              value={editData.factura}
+                              onChange={e => setEditData(prev => ({ ...prev, factura: e.target.value }))}
+                              placeholder="Número Factura"
+                              className="input-field text-xs py-1 px-2"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleSave(gasto.id)}
+                              className="btn-primary text-xs py-1 px-2 flex items-center gap-1"
+                            >
+                              <Save className="w-3 h-3" />
+                              Guardar
+                            </button>
+                            <button
+                              onClick={handleCancel}
+                              className="btn-secondary text-xs py-1 px-2 flex items-center gap-1"
+                            >
+                              <X className="w-3 h-3" />
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          {gasto.orden_compra && <div>OC: {gasto.orden_compra}</div>}
+                          {gasto.factura && <div>Fac: {gasto.factura}</div>}
+                          {!gasto.orden_compra && !gasto.factura && <span className="text-yellow-600">Sin documentos</span>}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 )
