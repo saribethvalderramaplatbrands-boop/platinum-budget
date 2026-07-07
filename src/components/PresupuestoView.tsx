@@ -30,9 +30,6 @@ interface GastoDetalle {
   monto: number
   clasificacion: string
   proveedor: string
-  estatus: string
-  orden_compra: string | null
-  factura: string | null
 }
 
 export default function PresupuestoView() {
@@ -165,9 +162,6 @@ export default function PresupuestoView() {
       monto: g.monto,
       clasificacion: g.clasificacion,
       proveedor: g.proveedores ? `${g.proveedores.codigo} - ${g.proveedores.nombre}` : '-',
-      estatus: g.estatus,
-      orden_compra: g.orden_compra,
-      factura: g.factura,
     })))
 
     setLoadingDetalle(false)
@@ -192,6 +186,7 @@ export default function PresupuestoView() {
     return ''
   }
 
+  // Calcular totales filtrados por unidad de negocio
   const dqTotal = presupuestos
     .filter(p => p.unidad_negocio?.includes('Dairy'))
     .reduce((sum, p) => sum + p.presupuesto_asignado, 0)
@@ -211,6 +206,10 @@ export default function PresupuestoView() {
   const kfcAmort = presupuestos
     .filter(p => p.unidad_negocio?.includes('Kentucky'))
     .reduce((sum, p) => sum + p.amortizado, 0)
+
+  // Determinar si mostrar cada card según el filtro de unidad de negocio
+  const showDQCard = !unidadNegocio || unidadNegocio.includes('Dairy')
+  const showKFCCard = !unidadNegocio || unidadNegocio.includes('Kentucky')
 
   return (
     <div className="space-y-6">
@@ -316,47 +315,51 @@ export default function PresupuestoView() {
         </div>
       </div>
 
-      {/* Totales */}
+      {/* Totales - solo mostrar la card correspondiente al filtro */}
       {presupuestos.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="card bg-blue-50">
-            <p className="text-sm text-blue-600 font-medium">Dairy Queen (DQ)</p>
-            <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
-              <div>
-                <span className="text-gray-500">Presup:</span>
-                <p className="font-medium">{formatMoney(dqTotal)}</p>
-              </div>
-              <div>
-                <span className="text-gray-500">Gasto:</span>
-                <p className="font-medium text-red-600">{formatMoney(dqGasto)}</p>
-              </div>
-              <div>
-                <span className="text-gray-500">Amort:</span>
-                <p className="font-medium text-orange-600">{formatMoney(dqAmort)}</p>
-              </div>
-            </div>
-          </div>
-          <div className="card bg-red-50">
-            <p className="text-sm text-red-600 font-medium">Kentucky Fried Chicken (KFC)</p>
-            <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
-              <div>
-                <span className="text-gray-500">Presup:</span>
-                <p className="font-medium">{formatMoney(kfcTotal)}</p>
-              </div>
-              <div>
-                <span className="text-gray-500">Gasto:</span>
-                <p className="font-medium text-red-600">{formatMoney(kfcGasto)}</p>
-              </div>
-              <div>
-                <span className="text-gray-500">Amort:</span>
-                <p className="font-medium text-orange-600">{formatMoney(kfcAmort)}</p>
+        <div className={`grid grid-cols-1 gap-4 ${showDQCard && showKFCCard ? 'sm:grid-cols-2' : ''}`}>
+          {showDQCard && (
+            <div className="card bg-blue-50">
+              <p className="text-sm text-blue-600 font-medium">Dairy Queen (DQ)</p>
+              <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
+                <div>
+                  <span className="text-gray-500">Presup:</span>
+                  <p className="font-medium">{formatMoney(dqTotal)}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Gasto:</span>
+                  <p className="font-medium text-red-600">{formatMoney(dqGasto)}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Amort:</span>
+                  <p className="font-medium text-orange-600">{formatMoney(dqAmort)}</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+          {showKFCCard && (
+            <div className="card bg-red-50">
+              <p className="text-sm text-red-600 font-medium">Kentucky Fried Chicken (KFC)</p>
+              <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
+                <div>
+                  <span className="text-gray-500">Presup:</span>
+                  <p className="font-medium">{formatMoney(kfcTotal)}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Gasto:</span>
+                  <p className="font-medium text-red-600">{formatMoney(kfcGasto)}</p>
+                </div>
+                <div>
+                  <span className="text-gray-500">Amort:</span>
+                  <p className="font-medium text-orange-600">{formatMoney(kfcAmort)}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Tabla */}
+      {/* Tabla - sin columnas: código, gerente área, gerente regional, unidad de negocio */}
       <div className="card overflow-x-auto">
         <h3 className="font-bold mb-4">Detalle por Tienda</h3>
         {isLoading ? (
@@ -367,11 +370,7 @@ export default function PresupuestoView() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="text-left px-3 py-2">Código</th>
                 <th className="text-left px-3 py-2">Tienda</th>
-                <th className="text-left px-3 py-2">Unidad</th>
-                <th className="text-left px-3 py-2">Gerente Área</th>
-                <th className="text-left px-3 py-2">Gerente Regional</th>
                 <th className="text-center px-3 py-2">Mes</th>
                 <th className="text-right px-3 py-2">Presupuesto</th>
                 <th className="text-right px-3 py-2">Amortizado</th>
@@ -394,11 +393,7 @@ export default function PresupuestoView() {
                     onDoubleClick={() => handleRowDoubleClick(p)}
                     title="Doble clic para ver detalle de gastos"
                   >
-                    <td className="px-3 py-2 font-medium">{p.codigo}</td>
-                    <td className="px-3 py-2">{p.tienda}</td>
-                    <td className="px-3 py-2 text-xs">{p.unidad_negocio}</td>
-                    <td className="px-3 py-2 text-xs">{p.gerente_area}</td>
-                    <td className="px-3 py-2 text-xs">{p.gerente_regional}</td>
+                    <td className="px-3 py-2 font-medium">{p.tienda}</td>
                     <td className="px-3 py-2 text-center">{MESES[p.mes - 1]}</td>
                     <td className="px-3 py-2 text-right font-medium">{formatMoney(p.presupuesto_asignado)}</td>
                     <td className="px-3 py-2 text-right text-orange-600">{formatMoney(p.amortizado)}</td>
@@ -425,7 +420,7 @@ export default function PresupuestoView() {
         )}
       </div>
 
-      {/* Modal de detalle */}
+      {/* Modal de detalle - sin estatus y sin OC/Factura, más espacio para descripción */}
       {selectedTienda && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
@@ -483,34 +478,18 @@ export default function PresupuestoView() {
                       <th className="text-left px-3 py-2">Clasificación</th>
                       <th className="text-left px-3 py-2">Proveedor</th>
                       <th className="text-right px-3 py-2">Monto</th>
-                      <th className="text-center px-3 py-2">Estatus</th>
-                      <th className="text-left px-3 py-2">OC / Factura</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {detalleGastos.map(g => (
                       <tr key={g.id} className="hover:bg-gray-50">
                         <td className="px-3 py-2 whitespace-nowrap">{new Date(g.fecha).toLocaleDateString('es-PA')}</td>
-                        <td className="px-3 py-2 max-w-xs truncate" title={g.descripcion}>{g.descripcion}</td>
+                        <td className="px-3 py-2 max-w-md truncate" title={g.descripcion}>{g.descripcion}</td>
                         <td className="px-3 py-2">
                           <span className="px-2 py-1 rounded-full text-xs bg-gray-100">{g.clasificacion}</span>
                         </td>
                         <td className="px-3 py-2 text-xs">{g.proveedor}</td>
                         <td className="px-3 py-2 text-right font-medium">{formatMoney(g.monto)}</td>
-                        <td className="px-3 py-2 text-center">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            g.estatus === 'Completado' ? 'bg-green-100 text-green-700' :
-                            g.estatus === 'Pendiente Factura' ? 'bg-orange-100 text-orange-700' :
-                            'bg-yellow-100 text-yellow-700'
-                          }`}>
-                            {g.estatus}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 text-xs">
-                          {g.orden_compra && <div>OC: {g.orden_compra}</div>}
-                          {g.factura && <div>Fac: {g.factura}</div>}
-                          {!g.orden_compra && !g.factura && <span className="text-yellow-600">-</span>}
-                        </td>
                       </tr>
                     ))}
                   </tbody>
