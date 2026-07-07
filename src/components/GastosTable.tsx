@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { Filter, Search, AlertCircle, CheckCircle2, Clock, Save, X } from 'lucide-react'
+import { Filter, Search, AlertCircle, CheckCircle2, Clock, Save, X, Trash2, MoreVertical, Edit3 } from 'lucide-react'
 import { useGastos, useTiendas, useProveedores } from '../hooks/useSupabase'
 
 const PERIODOS = [
-  'Todos', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ]
 
@@ -20,7 +20,7 @@ const ESTATUS_ICONS = {
 }
 
 export default function GastosTable() {
-  const { gastos, loading, fetchGastos, updateGasto } = useGastos()
+  const { gastos, loading, fetchGastos, updateGasto, deleteGasto } = useGastos()
   const { tiendas } = useTiendas()
   const { proveedores } = useProveedores()
   
@@ -38,7 +38,9 @@ export default function GastosTable() {
   const [editData, setEditData] = useState({
     orden_compra: '',
     factura: '',
+    periodo: '',
   })
+  const [menuOpen, setMenuOpen] = useState<string | null>(null)
 
   const applyFilters = () => {
     const activeFilters: any = {}
@@ -65,20 +67,30 @@ export default function GastosTable() {
     setEditData({
       orden_compra: gasto.orden_compra || '',
       factura: gasto.factura || '',
+      periodo: gasto.periodo || '',
     })
+    setMenuOpen(null)
   }
 
   const handleSave = async (id: string) => {
     await updateGasto(id, {
       orden_compra: editData.orden_compra || null,
       factura: editData.factura || null,
+      periodo: editData.periodo,
     })
     setEditingId(null)
   }
 
+  const handleDelete = async (id: string) => {
+    if (confirm('¿Estás seguro de que quieres eliminar este registro?')) {
+      await deleteGasto(id)
+      setMenuOpen(null)
+    }
+  }
+
   const handleCancel = () => {
     setEditingId(null)
-    setEditData({ orden_compra: '', factura: '' })
+    setEditData({ orden_compra: '', factura: '', periodo: '' })
   }
 
   const formatDate = (dateStr: string) => {
@@ -202,12 +214,13 @@ export default function GastosTable() {
               <th className="text-right px-4 py-3 font-semibold text-gray-700">Monto</th>
               <th className="text-center px-4 py-3 font-semibold text-gray-700">Estatus</th>
               <th className="text-left px-4 py-3 font-semibold text-gray-700">OC / Factura</th>
+              <th className="text-center px-4 py-3 font-semibold text-gray-700">Acciones</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {filteredGastos.length === 0 ? (
               <tr>
-                <td colSpan={9} className="text-center py-8 text-gray-500">
+                <td colSpan={10} className="text-center py-8 text-gray-500">
                   No hay gastos registrados
                 </td>
               </tr>
@@ -215,6 +228,7 @@ export default function GastosTable() {
               filteredGastos.map(gasto => {
                 const StatusIcon = ESTATUS_ICONS[gasto.estatus as keyof typeof ESTATUS_ICONS] || Clock
                 const isEditing = editingId === gasto.id
+                const isMenuOpen = menuOpen === gasto.id
 
                 return (
                   <tr 
@@ -224,7 +238,21 @@ export default function GastosTable() {
                     title="Doble clic para editar"
                   >
                     <td className="px-4 py-3 whitespace-nowrap">{formatDate(gasto.fecha)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">{gasto.periodo}</td>
+                    
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {isEditing ? (
+                        <select
+                          value={editData.periodo}
+                          onChange={e => setEditData(prev => ({ ...prev, periodo: e.target.value }))}
+                          className="input-field text-xs py-1 px-2"
+                        >
+                          {PERIODOS.slice(1).map(p => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                      ) : (
+                        gasto.periodo
+                      )}
+                    </td>
+                    
                     <td className="px-4 py-3 whitespace-nowrap">{getTiendaName(gasto.tienda_id)}</td>
                     <td className="px-4 py-3 max-w-xs truncate" title={gasto.descripcion}>
                       {gasto.descripcion}
@@ -290,6 +318,33 @@ export default function GastosTable() {
                           {gasto.orden_compra && <div>OC: {gasto.orden_compra}</div>}
                           {gasto.factura && <div>Fac: {gasto.factura}</div>}
                           {!gasto.orden_compra && !gasto.factura && <span className="text-yellow-600">Sin documentos</span>}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-center relative">
+                      <button
+                        onClick={() => setMenuOpen(isMenuOpen ? null : gasto.id)}
+                        className="p-1 rounded-lg hover:bg-gray-200 transition-colors"
+                      >
+                        <MoreVertical className="w-4 h-4 text-gray-500" />
+                      </button>
+                      
+                      {isMenuOpen && (
+                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
+                          <button
+                            onClick={() => handleDoubleClick(gasto)}
+                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                          >
+                            <Edit3 className="w-4 h-4 text-blue-500" />
+                            Editar
+                          </button>
+                          <button
+                            onClick={() => handleDelete(gasto.id)}
+                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Eliminar
+                          </button>
                         </div>
                       )}
                     </td>
