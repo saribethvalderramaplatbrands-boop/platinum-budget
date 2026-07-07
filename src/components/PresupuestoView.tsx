@@ -470,7 +470,7 @@ export default function PresupuestoView() {
               </div>
             </div>
 
-            <div className="p-6 overflow-y-auto max-h-[60vh]">
+            <div className="p-6">
               <h4 className="font-bold mb-4">Desglose de Gastos</h4>
 
               {loadingDetalle ? (
@@ -478,30 +478,32 @@ export default function PresupuestoView() {
               ) : detalleGastos.length === 0 ? (
                 <div className="text-center py-4 text-gray-500">No hay gastos registrados</div>
               ) : (
-                <table className="w-full text-sm">
-                  <thead className="sticky top-0 bg-white z-10">
-                    <tr className="border-b border-gray-200">
-                      <th className="text-left px-3 py-2 bg-white">Fecha</th>
-                      <th className="text-left px-3 py-2 bg-white">Descripción</th>
-                      <th className="text-left px-3 py-2 bg-white">Clasificación</th>
-                      <th className="text-left px-3 py-2 bg-white">Proveedor</th>
-                      <th className="text-right px-3 py-2 bg-white">Monto</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {detalleGastos.map(g => (
-                      <tr key={g.id} className="hover:bg-gray-50">
-                        <td className="px-3 py-2 whitespace-nowrap">{new Date(g.fecha).toLocaleDateString('es-PA')}</td>
-                        <td className="px-3 py-2 max-w-md truncate" title={g.descripcion}>{g.descripcion}</td>
-                        <td className="px-3 py-2">
-                          <span className="px-2 py-1 rounded-full text-xs bg-gray-100">{g.clasificacion}</span>
-                        </td>
-                        <td className="px-3 py-2 text-xs">{g.proveedor}</td>
-                        <td className="px-3 py-2 text-right font-bold">{formatMoney(g.monto)}</td>
+                <div className="overflow-auto max-h-[60vh] border border-gray-200 rounded-lg">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-white z-10 shadow-sm">
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left px-3 py-2 bg-white whitespace-nowrap">Fecha</th>
+                        <th className="text-left px-3 py-2 bg-white">Descripción</th>
+                        <th className="text-left px-3 py-2 bg-white whitespace-nowrap">Clasificación</th>
+                        <th className="text-left px-3 py-2 bg-white">Proveedor</th>
+                        <th className="text-right px-3 py-2 bg-white whitespace-nowrap">Monto</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {detalleGastos.map(g => (
+                        <tr key={g.id} className="hover:bg-gray-50">
+                          <td className="px-3 py-2 whitespace-nowrap">{new Date(g.fecha).toLocaleDateString('es-PA')}</td>
+                          <td className="px-3 py-2 max-w-md truncate" title={g.descripcion}>{g.descripcion}</td>
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            <span className="px-2 py-1 rounded-full text-xs bg-gray-100">{g.clasificacion}</span>
+                          </td>
+                          <td className="px-3 py-2 text-xs">{g.proveedor}</td>
+                          <td className="px-3 py-2 text-right font-bold whitespace-nowrap">{formatMoney(g.monto)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
 
               {detalleGastos.length > 0 && (
