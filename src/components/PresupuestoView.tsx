@@ -430,8 +430,9 @@ export default function PresupuestoView() {
 
       {/* Modal de detalle - sin estatus y sin OC/Factura, más espacio para descripción */}
       {selectedTienda && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full max-h-[85vh] overflow-hidden">
+        <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
+          <div className="min-h-screen flex items-start justify-center p-4 pt-8 pb-8">
+            <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full">
             <div className="p-6 border-b border-gray-200 flex justify-between items-center">
               <div>
                 <h3 className="text-lg font-bold">
@@ -478,8 +479,7 @@ export default function PresupuestoView() {
               ) : detalleGastos.length === 0 ? (
                 <div className="text-center py-4 text-gray-500">No hay gastos registrados</div>
               ) : (
-                <div className="flex flex-col" style={{ maxHeight: 'calc(85vh - 280px)' }}>
-                  <div className="overflow-auto border border-gray-200 rounded-t-lg flex-1">
+                <div className="overflow-auto border border-gray-200 rounded-t-lg" style={{ maxHeight: 'calc(100vh - 400px)' }}>
                     <table className="w-full text-sm">
                       <thead className="sticky top-0 bg-white z-10 shadow-sm">
                         <tr className="border-b border-gray-200">
@@ -504,7 +504,6 @@ export default function PresupuestoView() {
                         ))}
                       </tbody>
                     </table>
-                  </div>
                 </div>
               )}
 
