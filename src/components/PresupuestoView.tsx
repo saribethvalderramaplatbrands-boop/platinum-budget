@@ -431,7 +431,7 @@ export default function PresupuestoView() {
       {/* Modal de detalle - sin estatus y sin OC/Factura, más espacio para descripción */}
       {selectedTienda && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+          <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
             <div className="p-6 border-b border-gray-200 flex justify-between items-center">
               <div>
                 <h3 className="text-lg font-bold">
@@ -470,7 +470,7 @@ export default function PresupuestoView() {
               </div>
             </div>
 
-            <div className="p-6 overflow-y-auto max-h-[50vh]">
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
               <h4 className="font-bold mb-4">Desglose de Gastos</h4>
 
               {loadingDetalle ? (
@@ -479,13 +479,13 @@ export default function PresupuestoView() {
                 <div className="text-center py-4 text-gray-500">No hay gastos registrados</div>
               ) : (
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="sticky top-0 bg-white z-10">
                     <tr className="border-b border-gray-200">
-                      <th className="text-left px-3 py-2">Fecha</th>
-                      <th className="text-left px-3 py-2">Descripción</th>
-                      <th className="text-left px-3 py-2">Clasificación</th>
-                      <th className="text-left px-3 py-2">Proveedor</th>
-                      <th className="text-right px-3 py-2">Monto</th>
+                      <th className="text-left px-3 py-2 bg-white">Fecha</th>
+                      <th className="text-left px-3 py-2 bg-white">Descripción</th>
+                      <th className="text-left px-3 py-2 bg-white">Clasificación</th>
+                      <th className="text-left px-3 py-2 bg-white">Proveedor</th>
+                      <th className="text-right px-3 py-2 bg-white">Monto</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
