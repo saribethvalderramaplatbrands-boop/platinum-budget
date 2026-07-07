@@ -146,25 +146,21 @@ export default function CierreMesView() {
     }
   }
 
-  const getClasificacion = (proveedorNombre: string): string => {
+  const getClasificacion = (proveedorNombre: string, clasificacionExcel: string): string => {
+    // Regla 1: Usar clasificación del Excel si viene llena
+    const excelClasif = (clasificacionExcel || '').trim()
+    if (excelClasif && excelClasif !== '') return excelClasif
+
+    // Regla 2: Buscar en catálogo de proveedores
     const provUpper = (proveedorNombre || '').toUpperCase().trim()
-
-    // Regla 1: CAJA CHICA
-    if (provUpper.includes('CAJA CHICA')) return 'Caja Chica'
-
-    // Regla 2: REPUESTOS BODEGA
-    if (provUpper.includes('REPUESTOS BODEGA') || provUpper.includes('REPUESTOS DE BODEGA')) return 'Repuestos de Bodega'
-
-    // Regla 3: Buscar en catálogo de proveedores
-    const proveedorMatch = proveedores.find(p => 
-      p.nombre.toUpperCase().trim() === provUpper ||
-      provUpper.includes(p.nombre.toUpperCase().trim()) ||
-      p.nombre.toUpperCase().trim().includes(provUpper)
-    )
+    const proveedorMatch = proveedores.find(p => {
+      const pUpper = p.nombre.toUpperCase().trim()
+      return pUpper === provUpper || provUpper.includes(pUpper) || pUpper.includes(provUpper)
+    })
 
     if (proveedorMatch) return proveedorMatch.clasificacion
 
-    // Regla 4: N/A
+    // Regla 3: N/A
     return 'N/A'
   }
 
@@ -239,7 +235,7 @@ export default function CierreMesView() {
           const codigoTienda = parseInt(row[8]) || 0
           const tiendaInfo = getTiendaInfo(codigoTienda)
           const proveedorNombre = String(row[4] || '')
-          const clasificacion = getClasificacion(proveedorNombre)
+          const clasificacion = getClasificacion(proveedorNombre, String(row[6] || ''))
 
           return {
             fecha: parseFecha(row[0]),
