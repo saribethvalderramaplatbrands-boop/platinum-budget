@@ -431,7 +431,7 @@ export default function PresupuestoView() {
       {/* Modal de detalle - sin estatus y sin OC/Factura, más espacio para descripción */}
       {selectedTienda && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+          <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full max-h-[85vh] overflow-hidden">
             <div className="p-6 border-b border-gray-200 flex justify-between items-center">
               <div>
                 <h3 className="text-lg font-bold">
@@ -478,38 +478,40 @@ export default function PresupuestoView() {
               ) : detalleGastos.length === 0 ? (
                 <div className="text-center py-4 text-gray-500">No hay gastos registrados</div>
               ) : (
-                <div className="overflow-auto max-h-[60vh] border border-gray-200 rounded-lg">
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-white z-10 shadow-sm">
-                      <tr className="border-b border-gray-200">
-                        <th className="text-left px-3 py-2 bg-white whitespace-nowrap">Fecha</th>
-                        <th className="text-left px-3 py-2 bg-white">Descripción</th>
-                        <th className="text-left px-3 py-2 bg-white whitespace-nowrap">Clasificación</th>
-                        <th className="text-left px-3 py-2 bg-white">Proveedor</th>
-                        <th className="text-right px-3 py-2 bg-white whitespace-nowrap">Monto</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100">
-                      {detalleGastos.map(g => (
-                        <tr key={g.id} className="hover:bg-gray-50">
-                          <td className="px-3 py-2 whitespace-nowrap">{new Date(g.fecha).toLocaleDateString('es-PA')}</td>
-                          <td className="px-3 py-2 max-w-md truncate" title={g.descripcion}>{g.descripcion}</td>
-                          <td className="px-3 py-2 whitespace-nowrap">
-                            <span className="px-2 py-1 rounded-full text-xs bg-gray-100">{g.clasificacion}</span>
-                          </td>
-                          <td className="px-3 py-2 text-xs">{g.proveedor}</td>
-                          <td className="px-3 py-2 text-right font-bold whitespace-nowrap">{formatMoney(g.monto)}</td>
+                <div className="flex flex-col" style={{ maxHeight: 'calc(85vh - 280px)' }}>
+                  <div className="overflow-auto border border-gray-200 rounded-t-lg flex-1">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-white z-10 shadow-sm">
+                        <tr className="border-b border-gray-200">
+                          <th className="text-left px-3 py-2 bg-white whitespace-nowrap">Fecha</th>
+                          <th className="text-left px-3 py-2 bg-white">Descripción</th>
+                          <th className="text-left px-3 py-2 bg-white whitespace-nowrap">Clasificación</th>
+                          <th className="text-left px-3 py-2 bg-white">Proveedor</th>
+                          <th className="text-right px-3 py-2 bg-white whitespace-nowrap">Monto</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {detalleGastos.map(g => (
+                          <tr key={g.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-2 whitespace-nowrap">{new Date(g.fecha).toLocaleDateString('es-PA')}</td>
+                            <td className="px-3 py-2 max-w-md truncate" title={g.descripcion}>{g.descripcion}</td>
+                            <td className="px-3 py-2 whitespace-nowrap">
+                              <span className="px-2 py-1 rounded-full text-xs bg-gray-100">{g.clasificacion}</span>
+                            </td>
+                            <td className="px-3 py-2 text-xs">{g.proveedor}</td>
+                            <td className="px-3 py-2 text-right font-bold whitespace-nowrap">{formatMoney(g.monto)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
 
               {detalleGastos.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-gray-200 text-right">
+                <div className="p-4 border border-t-0 border-gray-200 rounded-b-lg bg-gray-50 text-right">
                   <p className="text-sm text-gray-600">
-                    Total gastos: <span className="font-bold text-red-600">{formatMoney(detalleGastos.reduce((sum, g) => sum + g.monto, 0))}</span>
+                    Total gastos: <span className="font-bold text-red-600 text-lg">{formatMoney(detalleGastos.reduce((sum, g) => sum + g.monto, 0))}</span>
                   </p>
                 </div>
               )}
