@@ -7,6 +7,7 @@ import GastoForm from './components/GastoForm'
 import GastosTable from './components/GastosTable'
 import PresupuestoView from './components/PresupuestoView'
 import AmortizacionesUpload from './components/AmortizacionesUpload'
+import CierreMesView from './components/CierreMesView'
 import { useGastos } from './hooks/useSupabase'
 import { Plus, X } from 'lucide-react'
 
@@ -26,7 +27,7 @@ function GastosPage() {
           {showForm ? 'Cerrar Formulario' : 'Nuevo Gasto'}
         </button>
       </div>
-      
+
       {showForm && (
         <GastoForm
           onSubmit={async (gasto) => {
@@ -36,7 +37,7 @@ function GastosPage() {
           onCancel={() => setShowForm(false)}
         />
       )}
-      
+
       <GastosTable />
     </div>
   )
@@ -48,16 +49,17 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header onMenuClick={() => setSidebarOpen(true)} />
-      
+
       <div className="flex">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-        
+
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/gastos" element={<GastosPage />} />
             <Route path="/presupuesto" element={<PresupuestoView />} />
             <Route path="/amortizaciones" element={<AmortizacionesUpload />} />
+            <Route path="/cierre-mes" element={<CierreMesView />} />
           </Routes>
         </main>
       </div>
