@@ -373,19 +373,20 @@ export default function PresupuestoView() {
         )}
       </div>
 
-      {/* MODAL FIX - Bloquea scroll del body */}
+      {/* MODAL - Scrollable, fondo bloqueado, tamaño ajustado */}
       {selectedTienda && (
-        <div 
-          className="fixed inset-0 z-50"
-          onClick={() => setSelectedTienda(null)}
-        >
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" />
-          <div className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          {/* Overlay oscuro */}
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setSelectedTienda(null)} />
+          
+          {/* Contenedor del modal */}
+          <div className="flex min-h-full items-center justify-center p-4">
             <div 
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col pointer-events-auto animate-fade-in"
+              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl animate-fade-in"
               onClick={e => e.stopPropagation()}
             >
-              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white rounded-t-2xl shrink-0">
+              {/* Header */}
+              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white rounded-t-2xl">
                 <div>
                   <h3 className="text-lg font-bold text-slate-800">{selectedTienda.codigo} - {selectedTienda.tienda}</h3>
                   <p className="text-sm text-slate-500">{MESES[selectedTienda.mes - 1]} {selectedTienda.año} | {selectedTienda.unidad_negocio}</p>
@@ -395,7 +396,8 @@ export default function PresupuestoView() {
                 </button>
               </div>
 
-              <div className="p-6 grid grid-cols-4 gap-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
+              {/* Stats */}
+              <div className="p-5 grid grid-cols-2 lg:grid-cols-4 gap-3 border-b border-slate-100 bg-slate-50/50">
                 <div className="p-3 bg-white rounded-xl border border-slate-100">
                   <p className="text-xs text-slate-500 font-medium">Presupuesto</p>
                   <p className="font-bold text-lg text-slate-800">{formatMoney(selectedTienda.presupuesto_asignado)}</p>
@@ -416,11 +418,13 @@ export default function PresupuestoView() {
                 </div>
               </div>
 
-              <div className="p-6 overflow-y-auto">
-                <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+              {/* Tabla de gastos con scroll propio */}
+              <div className="p-5">
+                <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
                   <Eye className="w-4 h-4 text-slate-400" />
                   Desglose de Gastos
                 </h4>
+                
                 {loadingDetalle ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
@@ -432,13 +436,13 @@ export default function PresupuestoView() {
                   </div>
                 ) : (
                   <>
-                    <div className="overflow-auto border border-slate-200 rounded-xl">
+                    <div className="overflow-auto max-h-[50vh] border border-slate-200 rounded-xl">
                       <table className="w-full text-sm">
                         <thead className="sticky top-0 bg-white z-10 shadow-sm">
                           <tr className="border-b border-slate-200">
                             <th className="text-left px-3 py-2 bg-white whitespace-nowrap font-semibold text-slate-500 text-xs uppercase">Fecha</th>
                             <th className="text-left px-3 py-2 bg-white font-semibold text-slate-500 text-xs uppercase">Descripción</th>
-                            <th className="text-left px-3 py-2 bg-white whitespace-nowrap font-semibold text-slate-500 text-xs uppercase">Clasificación</th>
+                            <th className="text-left px-3 py-2 bg-white whitespace-nowrap font-semibold text-slate-500 text-xs uppercase">Clasif.</th>
                             <th className="text-left px-3 py-2 bg-white font-semibold text-slate-500 text-xs uppercase">Proveedor</th>
                             <th className="text-right px-3 py-2 bg-white whitespace-nowrap font-semibold text-slate-500 text-xs uppercase">Monto</th>
                           </tr>
@@ -447,22 +451,20 @@ export default function PresupuestoView() {
                           {detalleGastos.map(g => (
                             <tr key={g.id} className="hover:bg-slate-50/50">
                               <td className="px-3 py-2 whitespace-nowrap text-slate-600">{new Date(g.fecha).toLocaleDateString('es-PA')}</td>
-                              <td className="px-3 py-2 max-w-md truncate text-slate-700" title={g.descripcion}>{g.descripcion}</td>
+                              <td className="px-3 py-2 max-w-xs truncate text-slate-700" title={g.descripcion}>{g.descripcion}</td>
                               <td className="px-3 py-2 whitespace-nowrap"><span className="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-600 font-medium">{g.clasificacion}</span></td>
-                              <td className="px-3 py-2 text-xs text-slate-500">{g.proveedor}</td>
+                              <td className="px-3 py-2 text-xs text-slate-500 max-w-[150px] truncate" title={g.proveedor}>{g.proveedor}</td>
                               <td className="px-3 py-2 text-right font-bold text-slate-800 whitespace-nowrap">{formatMoney(g.monto)}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                    {detalleGastos.length > 0 && (
-                      <div className="p-4 border border-t-0 border-slate-200 rounded-b-xl bg-slate-50 text-right">
-                        <p className="text-sm text-slate-600">
-                          Total gastos: <span className="font-bold text-red-600 text-lg">{formatMoney(detalleGastos.reduce((sum, g) => sum + g.monto, 0))}</span>
-                        </p>
-                      </div>
-                    )}
+                    <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-100 text-right">
+                      <p className="text-sm text-slate-600">
+                        Total gastos: <span className="font-bold text-red-600 text-lg">{formatMoney(detalleGastos.reduce((sum, g) => sum + g.monto, 0))}</span>
+                      </p>
+                    </div>
                   </>
                 )}
               </div>
