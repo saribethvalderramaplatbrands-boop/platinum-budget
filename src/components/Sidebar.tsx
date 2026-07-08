@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { X, LayoutDashboard, Receipt, PieChart, FileSpreadsheet, CalendarCheck } from 'lucide-react'
+import { X, LayoutDashboard, Receipt, PieChart, FileSpreadsheet, CalendarCheck, TrendingUp } from 'lucide-react'
 
 interface SidebarProps {
   isOpen: boolean
@@ -12,6 +12,7 @@ const menuItems = [
   { path: '/presupuesto', label: 'Presupuesto', icon: PieChart },
   { path: '/amortizaciones', label: 'Amortizaciones', icon: FileSpreadsheet },
   { path: '/cierre-mes', label: 'Cierre de Mes', icon: CalendarCheck },
+  { path: '/planificador', label: 'Planificador', icon: TrendingUp },
 ]
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
