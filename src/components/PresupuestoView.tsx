@@ -373,20 +373,23 @@ export default function PresupuestoView() {
         )}
       </div>
 
-      {/* MODAL - Scrollable, fondo bloqueado, tamaño ajustado */}
+      {/* MODAL FIX - Siempre centrado en pantalla, independiente del scroll */}
       {selectedTienda && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          {/* Overlay oscuro */}
-          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setSelectedTienda(null)} />
+        <>
+          {/* Overlay oscuro - bloquea clicks */}
+          <div 
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50"
+            onClick={() => setSelectedTienda(null)}
+          />
           
-          {/* Contenedor del modal */}
-          <div className="flex min-h-full items-center justify-center p-4">
+          {/* Modal - centrado con position fixed */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
             <div 
-              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-5xl animate-fade-in"
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] flex flex-col pointer-events-auto animate-fade-in"
               onClick={e => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white rounded-t-2xl">
+              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white rounded-t-2xl shrink-0">
                 <div>
                   <h3 className="text-lg font-bold text-slate-800">{selectedTienda.codigo} - {selectedTienda.tienda}</h3>
                   <p className="text-sm text-slate-500">{MESES[selectedTienda.mes - 1]} {selectedTienda.año} | {selectedTienda.unidad_negocio}</p>
@@ -397,7 +400,7 @@ export default function PresupuestoView() {
               </div>
 
               {/* Stats */}
-              <div className="p-5 grid grid-cols-2 lg:grid-cols-4 gap-3 border-b border-slate-100 bg-slate-50/50">
+              <div className="p-5 grid grid-cols-2 lg:grid-cols-4 gap-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
                 <div className="p-3 bg-white rounded-xl border border-slate-100">
                   <p className="text-xs text-slate-500 font-medium">Presupuesto</p>
                   <p className="font-bold text-lg text-slate-800">{formatMoney(selectedTienda.presupuesto_asignado)}</p>
@@ -418,8 +421,8 @@ export default function PresupuestoView() {
                 </div>
               </div>
 
-              {/* Tabla de gastos con scroll propio */}
-              <div className="p-5">
+              {/* Contenido scrolleable */}
+              <div className="p-5 overflow-y-auto">
                 <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
                   <Eye className="w-4 h-4 text-slate-400" />
                   Desglose de Gastos
@@ -436,7 +439,7 @@ export default function PresupuestoView() {
                   </div>
                 ) : (
                   <>
-                    <div className="overflow-auto max-h-[50vh] border border-slate-200 rounded-xl">
+                    <div className="overflow-auto border border-slate-200 rounded-xl">
                       <table className="w-full text-sm">
                         <thead className="sticky top-0 bg-white z-10 shadow-sm">
                           <tr className="border-b border-slate-200">
@@ -470,7 +473,7 @@ export default function PresupuestoView() {
               </div>
             </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   )
