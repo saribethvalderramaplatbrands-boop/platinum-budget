@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTiendas } from '../hooks/useSupabase'
 import { supabase } from '../lib/supabase'
-import { Table, Search, X, ArrowDown, ArrowUp, Filter } from 'lucide-react'
+import { Table, Search, X, ArrowDown, ArrowUp, Filter, Building2, Eye } from 'lucide-react'
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -32,6 +32,10 @@ interface GastoDetalle {
   proveedor: string
 }
 
+const formatMoney = (amount: number) => {
+  return '$' + (amount || 0).toLocaleString('es-PA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
 export default function PresupuestoView() {
   const { tiendas } = useTiendas()
   const [año, setAño] = useState(2026)
@@ -44,12 +48,10 @@ export default function PresupuestoView() {
   const [sortBy, setSortBy] = useState<'saldo' | 'gasto'>('gasto')
   const [sortDesc, setSortDesc] = useState(true)
 
-  // Modal de detalle
   const [selectedTienda, setSelectedTienda] = useState<PresupuestoRow | null>(null)
   const [detalleGastos, setDetalleGastos] = useState<GastoDetalle[]>([])
   const [loadingDetalle, setLoadingDetalle] = useState(false)
 
-  // Obtener listas únicas para filtros
   const gerentesArea = [...new Set(tiendas.map(t => t.gerente_area).filter(Boolean))].sort()
   const gerentesRegional = [...new Set(tiendas.map(t => t.gerente_regional).filter(Boolean))].sort()
   const unidadesNegocio = [...new Set(tiendas.map(t => t.unidad_negocio))].sort()
@@ -72,18 +74,15 @@ export default function PresupuestoView() {
       return
     }
 
-    // Obtener amortizaciones
     const { data: amortData, error: amortError } = await supabase
       .from('amortizaciones')
       .select('codigo_tienda, monto, periodo')
 
     if (amortError) console.error('Error fetching amortizaciones:', amortError)
 
-    // Combinar datos
     let rows: PresupuestoRow[] = (resumenData || []).map((r: any) => {
       const tienda = tiendas.find(t => t.id === r.tienda_id)
 
-      // Calcular amortización para esta tienda/mes
       const amortizado = (amortData || [])
         .filter((a: any) => {
           const matchTienda = a.codigo_tienda === r.codigo
@@ -108,27 +107,16 @@ export default function PresupuestoView() {
       }
     })
 
-    // Aplicar filtros de gerentes y unidad
-    if (gerenteArea) {
-      rows = rows.filter(r => r.gerente_area === gerenteArea)
-    }
-    if (gerenteRegional) {
-      rows = rows.filter(r => r.gerente_regional === gerenteRegional)
-    }
-    if (unidadNegocio) {
-      rows = rows.filter(r => r.unidad_negocio === unidadNegocio)
-    }
+    if (gerenteArea) rows = rows.filter(r => r.gerente_area === gerenteArea)
+    if (gerenteRegional) rows = rows.filter(r => r.gerente_regional === gerenteRegional)
+    if (unidadNegocio) rows = rows.filter(r => r.unidad_negocio === unidadNegocio)
 
-    // Ordenar: primero los que se pasan de presupuesto (saldo negativo), luego por gasto
     rows.sort((a, b) => {
       const aOver = a.saldo < 0 ? 1 : 0
       const bOver = b.saldo < 0 ? 1 : 0
-
       if (aOver !== bOver) return bOver - aOver
-
       const valA = sortBy === 'saldo' ? a.saldo : a.gasto_real
       const valB = sortBy === 'saldo' ? b.saldo : b.gasto_real
-
       return sortDesc ? valB - valA : valA - valB
     })
 
@@ -136,22 +124,15 @@ export default function PresupuestoView() {
     setIsLoading(false)
   }
 
-  // Recargar cuando cambie el ordenamiento
   useEffect(() => {
-    if (presupuestos.length > 0) {
-      fetchPresupuestos()
-    }
+    if (presupuestos.length > 0) fetchPresupuestos()
   }, [sortBy, sortDesc])
 
   const fetchDetalleGastos = async (tiendaId: string, mesNum: number) => {
     setLoadingDetalle(true)
-
     const { data, error } = await supabase
       .from('gastos_diarios')
-      .select(`
-        *,
-        proveedores:proveedor_id(codigo, nombre)
-      `)
+      .select(`*, proveedores:proveedor_id(codigo, nombre)`)
       .eq('tienda_id', tiendaId)
       .eq('periodo', MESES[mesNum - 1])
       .order('fecha', { ascending: false })
@@ -170,7 +151,6 @@ export default function PresupuestoView() {
       clasificacion: g.clasificacion,
       proveedor: g.proveedores ? `${g.proveedores.codigo} - ${g.proveedores.nombre}` : '-',
     })))
-
     setLoadingDetalle(false)
   }
 
@@ -179,112 +159,64 @@ export default function PresupuestoView() {
     fetchDetalleGastos(row.tienda_id, row.mes)
   }
 
-  const formatMoney = (amount: number) => {
-    return new Intl.NumberFormat('es-PA', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount)
-  }
-
   const getAlertClass = (saldo: number, presupuesto: number) => {
-    if (saldo < 0) return 'bg-red-50 text-red-700 border-red-200'
-    if (presupuesto > 0 && (presupuesto - saldo) / presupuesto > 0.9) return 'bg-yellow-50 text-yellow-700 border-yellow-200'
+    if (saldo < 0) return 'bg-red-50/80 text-red-700 border-red-100'
+    if (presupuesto > 0 && (presupuesto - saldo) / presupuesto > 0.9) return 'bg-amber-50/80 text-amber-700 border-amber-100'
     return ''
   }
 
-  // Determinar qué unidades de negocio están presentes en los resultados filtrados
   const unidadesEnResultados = [...new Set(presupuestos.map(p => p.unidad_negocio))]
   const hayDQ = unidadesEnResultados.some(u => u?.includes('Dairy'))
   const hayKFC = unidadesEnResultados.some(u => u?.includes('Kentucky'))
 
-  // Calcular totales filtrados por unidad de negocio (solo de las unidades presentes en resultados)
-  const dqTotal = presupuestos
-    .filter(p => p.unidad_negocio?.includes('Dairy'))
-    .reduce((sum, p) => sum + p.presupuesto_asignado, 0)
-  const dqGasto = presupuestos
-    .filter(p => p.unidad_negocio?.includes('Dairy'))
-    .reduce((sum, p) => sum + p.gasto_real, 0)
-  const dqAmort = presupuestos
-    .filter(p => p.unidad_negocio?.includes('Dairy'))
-    .reduce((sum, p) => sum + p.amortizado, 0)
+  const dqTotal = presupuestos.filter(p => p.unidad_negocio?.includes('Dairy')).reduce((sum, p) => sum + p.presupuesto_asignado, 0)
+  const dqGasto = presupuestos.filter(p => p.unidad_negocio?.includes('Dairy')).reduce((sum, p) => sum + p.gasto_real, 0)
+  const dqAmort = presupuestos.filter(p => p.unidad_negocio?.includes('Dairy')).reduce((sum, p) => sum + p.amortizado, 0)
 
-  const kfcTotal = presupuestos
-    .filter(p => p.unidad_negocio?.includes('Kentucky'))
-    .reduce((sum, p) => sum + p.presupuesto_asignado, 0)
-  const kfcGasto = presupuestos
-    .filter(p => p.unidad_negocio?.includes('Kentucky'))
-    .reduce((sum, p) => sum + p.gasto_real, 0)
-  const kfcAmort = presupuestos
-    .filter(p => p.unidad_negocio?.includes('Kentucky'))
-    .reduce((sum, p) => sum + p.amortizado, 0)
+  const kfcTotal = presupuestos.filter(p => p.unidad_negocio?.includes('Kentucky')).reduce((sum, p) => sum + p.presupuesto_asignado, 0)
+  const kfcGasto = presupuestos.filter(p => p.unidad_negocio?.includes('Kentucky')).reduce((sum, p) => sum + p.gasto_real, 0)
+  const kfcAmort = presupuestos.filter(p => p.unidad_negocio?.includes('Kentucky')).reduce((sum, p) => sum + p.amortizado, 0)
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Presupuesto por Tienda</h2>
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-800">Presupuesto por Tienda</h2>
+        <p className="text-sm text-slate-500 mt-1">Consulta y filtra el presupuesto detallado</p>
+      </div>
 
       {/* Filtros */}
-      <div className="card">
+      <div className="card-solid">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Año</label>
-            <input
-              type="number"
-              value={año}
-              onChange={e => setAño(parseInt(e.target.value))}
-              className="input-field"
-            />
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Año</label>
+            <input type="number" value={año} onChange={e => setAño(parseInt(e.target.value))} className="input-field" />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Mes</label>
-            <select
-              value={mes || ''}
-              onChange={e => setMes(e.target.value ? parseInt(e.target.value) : null)}
-              className="input-field"
-            >
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Mes</label>
+            <select value={mes || ''} onChange={e => setMes(e.target.value ? parseInt(e.target.value) : null)} className="input-field">
               <option value="">Todos los meses</option>
-              {MESES.map((m, i) => (
-                <option key={i + 1} value={i + 1}>{m}</option>
-              ))}
+              {MESES.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Unidad de Negocio</label>
-            <select
-              value={unidadNegocio}
-              onChange={e => setUnidadNegocio(e.target.value)}
-              className="input-field"
-            >
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Unidad de Negocio</label>
+            <select value={unidadNegocio} onChange={e => setUnidadNegocio(e.target.value)} className="input-field">
               <option value="">Todas</option>
-              {unidadesNegocio.map(u => (
-                <option key={u} value={u}>{u}</option>
-              ))}
+              {unidadesNegocio.map(u => <option key={u} value={u}>{u}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Gerente de Área</label>
-            <select
-              value={gerenteArea}
-              onChange={e => setGerenteArea(e.target.value)}
-              className="input-field"
-            >
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Gerente de Área</label>
+            <select value={gerenteArea} onChange={e => setGerenteArea(e.target.value)} className="input-field">
               <option value="">Todos</option>
-              {gerentesArea.map(g => (
-                <option key={g} value={g}>{g}</option>
-              ))}
+              {gerentesArea.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Gerente Regional</label>
-            <select
-              value={gerenteRegional}
-              onChange={e => setGerenteRegional(e.target.value)}
-              className="input-field"
-            >
+            <label className="block text-sm font-medium text-slate-700 mb-1.5">Gerente Regional</label>
+            <select value={gerenteRegional} onChange={e => setGerenteRegional(e.target.value)} className="input-field">
               <option value="">Todos</option>
-              {gerentesRegional.map(g => (
-                <option key={g} value={g}>{g}</option>
-              ))}
+              {gerentesRegional.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
           </div>
           <div className="flex items-end gap-2">
@@ -295,70 +227,61 @@ export default function PresupuestoView() {
           </div>
         </div>
 
-        {/* Ordenamiento */}
         <div className="flex items-center gap-2 text-sm">
-          <span className="text-gray-600">Ordenar por:</span>
-          <button
-            onClick={() => {
-              if (sortBy === 'gasto') setSortDesc(!sortDesc)
-              else { setSortBy('gasto'); setSortDesc(true) }
-            }}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-              sortBy === 'gasto' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
+          <span className="text-slate-500 font-medium">Ordenar por:</span>
+          <button onClick={() => { if (sortBy === 'gasto') setSortDesc(!sortDesc); else { setSortBy('gasto'); setSortDesc(true) } }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${sortBy === 'gasto' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
             Gasto {sortBy === 'gasto' && (sortDesc ? <ArrowDown className="w-3 h-3 inline" /> : <ArrowUp className="w-3 h-3 inline" />)}
           </button>
-          <button
-            onClick={() => {
-              if (sortBy === 'saldo') setSortDesc(!sortDesc)
-              else { setSortBy('saldo'); setSortDesc(true) }
-            }}
-            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-              sortBy === 'saldo' ? 'bg-primary-100 text-primary-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
+          <button onClick={() => { if (sortBy === 'saldo') setSortDesc(!sortDesc); else { setSortBy('saldo'); setSortDesc(true) } }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${sortBy === 'saldo' ? 'bg-blue-100 text-blue-700 shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
             Saldo {sortBy === 'saldo' && (sortDesc ? <ArrowDown className="w-3 h-3 inline" /> : <ArrowUp className="w-3 h-3 inline" />)}
           </button>
         </div>
       </div>
 
-      {/* Totales - mostrar solo las cards de las unidades presentes en los resultados filtrados */}
+      {/* Totales */}
       {presupuestos.length > 0 && (
         <div className={`grid grid-cols-1 gap-4 ${hayDQ && hayKFC ? 'sm:grid-cols-2' : ''}`}>
           {hayDQ && (
-            <div className="card bg-blue-50">
-              <p className="text-sm text-blue-600 font-medium">Dairy Queen (DQ)</p>
-              <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
-                <div>
-                  <span className="text-gray-500">Presup:</span>
-                  <p className="font-bold">{formatMoney(dqTotal)}</p>
+            <div className="card-dq">
+              <div className="flex items-center gap-3 mb-3">
+                <img src="/dq-logo.png" alt="DQ" className="h-8 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                <p className="text-sm font-bold text-blue-700">Dairy Queen</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <div className="p-2 bg-white/60 rounded-lg text-center">
+                  <span className="text-xs text-slate-500 block">Presup</span>
+                  <p className="font-bold text-slate-800">{formatMoney(dqTotal)}</p>
                 </div>
-                <div>
-                  <span className="text-gray-500">Gasto:</span>
+                <div className="p-2 bg-white/60 rounded-lg text-center">
+                  <span className="text-xs text-slate-500 block">Gasto</span>
                   <p className="font-bold text-red-600">{formatMoney(dqGasto)}</p>
                 </div>
-                <div>
-                  <span className="text-gray-500">Amort:</span>
+                <div className="p-2 bg-white/60 rounded-lg text-center">
+                  <span className="text-xs text-slate-500 block">Amort</span>
                   <p className="font-bold text-orange-600">{formatMoney(dqAmort)}</p>
                 </div>
               </div>
             </div>
           )}
           {hayKFC && (
-            <div className="card bg-red-50">
-              <p className="text-sm text-red-600 font-medium">Kentucky Fried Chicken (KFC)</p>
-              <div className="grid grid-cols-3 gap-2 mt-2 text-sm">
-                <div>
-                  <span className="text-gray-500">Presup:</span>
-                  <p className="font-bold">{formatMoney(kfcTotal)}</p>
+            <div className="card-kfc">
+              <div className="flex items-center gap-3 mb-3">
+                <img src="/kfc-logo.png" alt="KFC" className="h-8 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                <p className="text-sm font-bold text-red-700">Kentucky Fried Chicken</p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <div className="p-2 bg-white/60 rounded-lg text-center">
+                  <span className="text-xs text-slate-500 block">Presup</span>
+                  <p className="font-bold text-slate-800">{formatMoney(kfcTotal)}</p>
                 </div>
-                <div>
-                  <span className="text-gray-500">Gasto:</span>
+                <div className="p-2 bg-white/60 rounded-lg text-center">
+                  <span className="text-xs text-slate-500 block">Gasto</span>
                   <p className="font-bold text-red-600">{formatMoney(kfcGasto)}</p>
                 </div>
-                <div>
-                  <span className="text-gray-500">Amort:</span>
+                <div className="p-2 bg-white/60 rounded-lg text-center">
+                  <span className="text-xs text-slate-500 block">Amort</span>
                   <p className="font-bold text-orange-600">{formatMoney(kfcAmort)}</p>
                 </div>
               </div>
@@ -367,148 +290,156 @@ export default function PresupuestoView() {
         </div>
       )}
 
-      {/* Tabla - sin columnas: código, gerente área, gerente regional, unidad de negocio */}
-      <div className="card overflow-x-auto">
-        <h3 className="font-bold mb-4">Detalle por Tienda</h3>
+      {/* Tabla */}
+      <div className="card-solid overflow-hidden">
+        <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
+          <Building2 className="w-5 h-5 text-slate-500" />
+          Detalle por Tienda
+        </h3>
         {isLoading ? (
-          <div className="text-center py-8">Cargando...</div>
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            <span className="ml-3 text-slate-500">Cargando...</span>
+          </div>
         ) : presupuestos.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">No hay datos para mostrar</div>
+          <div className="text-center py-12 text-slate-400">
+            <Search className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            <p>No hay datos para mostrar</p>
+            <p className="text-sm mt-1">Aplica filtros y consulta</p>
+          </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left px-3 py-2">Tienda</th>
-                <th className="text-center px-3 py-2">Mes</th>
-                <th className="text-right px-3 py-2">Presupuesto</th>
-                <th className="text-right px-3 py-2">Amortizado</th>
-                <th className="text-right px-3 py-2">Gasto</th>
-                <th className="text-right px-3 py-2">Saldo</th>
-                <th className="text-center px-3 py-2">%</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {presupuestos.map(p => {
-                const pct = p.presupuesto_asignado > 0
-                  ? ((p.gasto_real + p.amortizado) / p.presupuesto_asignado) * 100
-                  : 0
-                const alertClass = getAlertClass(p.saldo, p.presupuesto_asignado)
-
-                return (
-                  <tr
-                    key={`${p.tienda_id}-${p.mes}`}
-                    className={`hover:bg-gray-50 transition-colors cursor-pointer ${alertClass}`}
-                    onDoubleClick={() => handleRowDoubleClick(p)}
-                    title="Doble clic para ver detalle de gastos"
-                  >
-                    <td className="px-3 py-2 font-bold">{p.tienda}</td>
-                    <td className="px-3 py-2 text-center">{MESES[p.mes - 1]}</td>
-                    <td className="px-3 py-2 text-right font-bold">{formatMoney(p.presupuesto_asignado)}</td>
-                    <td className="px-3 py-2 text-right font-bold text-orange-600">{formatMoney(p.amortizado)}</td>
-                    <td className="px-3 py-2 text-right font-bold text-red-600">{formatMoney(p.gasto_real)}</td>
-                    <td className={`px-3 py-2 text-right font-bold ${p.saldo < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                      {formatMoney(p.saldo)}
-                    </td>
-                    <td className="px-3 py-2 text-center">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-gray-200 rounded-full h-1.5">
-                          <div
-                            className={`h-1.5 rounded-full ${pct > 100 ? 'bg-red-500' : pct > 90 ? 'bg-yellow-500' : 'bg-green-500'}`}
-                            style={{ width: `${Math.min(pct, 100)}%` }}
-                          />
+          <div className="overflow-x-auto">
+            <table className="table-modern">
+              <thead>
+                <tr>
+                  <th>Tienda</th>
+                  <th className="text-center">Mes</th>
+                  <th className="text-right">Presupuesto</th>
+                  <th className="text-right">Amortizado</th>
+                  <th className="text-right">Gasto</th>
+                  <th className="text-right">Saldo</th>
+                  <th className="text-center">%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {presupuestos.map(p => {
+                  const pct = p.presupuesto_asignado > 0 ? ((p.gasto_real + p.amortizado) / p.presupuesto_asignado) * 100 : 0
+                  const alertClass = getAlertClass(p.saldo, p.presupuesto_asignado)
+                  return (
+                    <tr key={`${p.tienda_id}-${p.mes}`} className={`cursor-pointer transition-colors ${alertClass}`} onDoubleClick={() => handleRowDoubleClick(p)} title="Doble clic para ver detalle">
+                      <td className="font-bold text-slate-800">
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                            p.unidad_negocio?.includes('Dairy') ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
+                          }`}>
+                            {p.unidad_negocio?.includes('Dairy') ? 'DQ' : 'KFC'}
+                          </span>
+                          {p.tienda}
                         </div>
-                        <span className="text-xs">{pct.toFixed(0)}%</span>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="text-center text-slate-500">{MESES[p.mes - 1]}</td>
+                      <td className="text-right font-bold text-slate-700">{formatMoney(p.presupuesto_asignado)}</td>
+                      <td className="text-right font-bold text-orange-600">{formatMoney(p.amortizado)}</td>
+                      <td className="text-right font-bold text-red-600">{formatMoney(p.gasto_real)}</td>
+                      <td className={`text-right font-bold ${p.saldo < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                        {formatMoney(p.saldo)}
+                      </td>
+                      <td className="text-center">
+                        <div className="flex items-center gap-2">
+                          <div className="w-12 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                            <div className={`h-1.5 rounded-full ${pct > 100 ? 'bg-red-500' : pct > 90 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                          </div>
+                          <span className="text-xs font-medium text-slate-500">{pct.toFixed(0)}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* Modal de detalle - sin estatus y sin OC/Factura, más espacio para descripción */}
+      {/* Modal de detalle */}
       {selectedTienda && (
-        <div className="fixed inset-0 bg-black/50 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 overflow-y-auto">
           <div className="min-h-screen flex items-start justify-center p-4 pt-8 pb-8">
-            <div className="bg-white rounded-xl shadow-xl max-w-6xl w-full">
-              <div className="p-6 border-b border-gray-200 flex justify-between items-center">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full animate-fade-in">
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white rounded-t-2xl">
                 <div>
-                  <h3 className="text-lg font-bold">
-                    {selectedTienda.codigo} - {selectedTienda.tienda}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {MESES[selectedTienda.mes - 1]} {selectedTienda.año} | {selectedTienda.unidad_negocio}
-                  </p>
+                  <h3 className="text-lg font-bold text-slate-800">{selectedTienda.codigo} - {selectedTienda.tienda}</h3>
+                  <p className="text-sm text-slate-500">{MESES[selectedTienda.mes - 1]} {selectedTienda.año} | {selectedTienda.unidad_negocio}</p>
                 </div>
-                <button
-                  onClick={() => setSelectedTienda(null)}
-                  className="p-2 rounded-lg hover:bg-gray-100"
-                >
-                  <X className="w-5 h-5" />
+                <button onClick={() => setSelectedTienda(null)} className="p-2 rounded-xl hover:bg-slate-100 transition-colors">
+                  <X className="w-5 h-5 text-slate-500" />
                 </button>
               </div>
 
-              <div className="p-6 grid grid-cols-4 gap-4 border-b border-gray-200 bg-gray-50">
-                <div>
-                  <p className="text-xs text-gray-500">Presupuesto</p>
-                  <p className="font-bold text-lg">{formatMoney(selectedTienda.presupuesto_asignado)}</p>
+              <div className="p-6 grid grid-cols-4 gap-4 border-b border-slate-100 bg-slate-50/50">
+                <div className="p-3 bg-white rounded-xl border border-slate-100">
+                  <p className="text-xs text-slate-500 font-medium">Presupuesto</p>
+                  <p className="font-bold text-lg text-slate-800">{formatMoney(selectedTienda.presupuesto_asignado)}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500">Amortizado</p>
+                <div className="p-3 bg-white rounded-xl border border-slate-100">
+                  <p className="text-xs text-slate-500 font-medium">Amortizado</p>
                   <p className="font-bold text-lg text-orange-600">{formatMoney(selectedTienda.amortizado)}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500">Gasto Real</p>
+                <div className="p-3 bg-white rounded-xl border border-slate-100">
+                  <p className="text-xs text-slate-500 font-medium">Gasto Real</p>
                   <p className="font-bold text-lg text-red-600">{formatMoney(selectedTienda.gasto_real)}</p>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500">Saldo</p>
-                  <p className={`font-bold text-lg ${selectedTienda.saldo < 0 ? 'text-red-600' : 'text-green-600'}`}>
+                <div className="p-3 bg-white rounded-xl border border-slate-100">
+                  <p className="text-xs text-slate-500 font-medium">Saldo</p>
+                  <p className={`font-bold text-lg ${selectedTienda.saldo < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                     {formatMoney(selectedTienda.saldo)}
                   </p>
                 </div>
               </div>
 
               <div className="p-6">
-                <h4 className="font-bold mb-4">Desglose de Gastos</h4>
-
+                <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                  <Eye className="w-4 h-4 text-slate-400" />
+                  Desglose de Gastos
+                </h4>
                 {loadingDetalle ? (
-                  <div className="text-center py-4">Cargando detalle...</div>
+                  <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+                    <span className="ml-2 text-slate-500">Cargando...</span>
+                  </div>
                 ) : detalleGastos.length === 0 ? (
-                  <div className="text-center py-4 text-gray-500">No hay gastos registrados</div>
+                  <div className="text-center py-8 text-slate-400">
+                    <p>No hay gastos registrados</p>
+                  </div>
                 ) : (
                   <>
-                    <div className="overflow-auto border border-gray-200 rounded-t-lg" style={{ maxHeight: 'calc(100vh - 400px)' }}>
+                    <div className="overflow-auto border border-slate-200 rounded-t-xl" style={{ maxHeight: 'calc(100vh - 400px)' }}>
                       <table className="w-full text-sm">
                         <thead className="sticky top-0 bg-white z-10 shadow-sm">
-                          <tr className="border-b border-gray-200">
-                            <th className="text-left px-3 py-2 bg-white whitespace-nowrap">Fecha</th>
-                            <th className="text-left px-3 py-2 bg-white">Descripción</th>
-                            <th className="text-left px-3 py-2 bg-white whitespace-nowrap">Clasificación</th>
-                            <th className="text-left px-3 py-2 bg-white">Proveedor</th>
-                            <th className="text-right px-3 py-2 bg-white whitespace-nowrap">Monto</th>
+                          <tr className="border-b border-slate-200">
+                            <th className="text-left px-3 py-2 bg-white whitespace-nowrap font-semibold text-slate-500 text-xs uppercase">Fecha</th>
+                            <th className="text-left px-3 py-2 bg-white font-semibold text-slate-500 text-xs uppercase">Descripción</th>
+                            <th className="text-left px-3 py-2 bg-white whitespace-nowrap font-semibold text-slate-500 text-xs uppercase">Clasificación</th>
+                            <th className="text-left px-3 py-2 bg-white font-semibold text-slate-500 text-xs uppercase">Proveedor</th>
+                            <th className="text-right px-3 py-2 bg-white whitespace-nowrap font-semibold text-slate-500 text-xs uppercase">Monto</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-100">
+                        <tbody className="divide-y divide-slate-100">
                           {detalleGastos.map(g => (
-                            <tr key={g.id} className="hover:bg-gray-50">
-                              <td className="px-3 py-2 whitespace-nowrap">{new Date(g.fecha).toLocaleDateString('es-PA')}</td>
-                              <td className="px-3 py-2 max-w-md truncate" title={g.descripcion}>{g.descripcion}</td>
-                              <td className="px-3 py-2 whitespace-nowrap">
-                                <span className="px-2 py-1 rounded-full text-xs bg-gray-100">{g.clasificacion}</span>
-                              </td>
-                              <td className="px-3 py-2 text-xs">{g.proveedor}</td>
-                              <td className="px-3 py-2 text-right font-bold whitespace-nowrap">{formatMoney(g.monto)}</td>
+                            <tr key={g.id} className="hover:bg-slate-50/50">
+                              <td className="px-3 py-2 whitespace-nowrap text-slate-600">{new Date(g.fecha).toLocaleDateString('es-PA')}</td>
+                              <td className="px-3 py-2 max-w-md truncate text-slate-700" title={g.descripcion}>{g.descripcion}</td>
+                              <td className="px-3 py-2 whitespace-nowrap"><span className="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-600 font-medium">{g.clasificacion}</span></td>
+                              <td className="px-3 py-2 text-xs text-slate-500">{g.proveedor}</td>
+                              <td className="px-3 py-2 text-right font-bold text-slate-800 whitespace-nowrap">{formatMoney(g.monto)}</td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
                     {detalleGastos.length > 0 && (
-                      <div className="p-4 border border-t-0 border-gray-200 rounded-b-lg bg-gray-50 text-right">
-                        <p className="text-sm text-gray-600">
+                      <div className="p-4 border border-t-0 border-slate-200 rounded-b-xl bg-slate-50 text-right">
+                        <p className="text-sm text-slate-600">
                           Total gastos: <span className="font-bold text-red-600 text-lg">{formatMoney(detalleGastos.reduce((sum, g) => sum + g.monto, 0))}</span>
                         </p>
                       </div>
