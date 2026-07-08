@@ -10,7 +10,8 @@ import {
   Wallet,
   Gauge,
   Calendar,
-  ArrowRight
+  ArrowRight,
+  Minus
 } from 'lucide-react'
 
 const MESES = [
@@ -37,10 +38,6 @@ export default function Planificador() {
   const totalAmortizaciones = datos.reduce((sum, d) => sum + (d.amortizaciones || 0), 0)
   const totalConsumido = datos.reduce((sum, d) => sum + (d.total_consumido || 0), 0)
   const totalSaldo = datos.reduce((sum, d) => sum + (d.saldo_ajustado || 0), 0)
-  const totalDisponible = datos.reduce((sum, d) => {
-    const disponible = d.estado === 'proyectado' ? (d.a_gastar || 0) : (d.saldo_ajustado || 0)
-    return sum + disponible
-  }, 0)
   
   const totalAjustadoAnual = datos.reduce((sum, d) => sum + (d.presupuesto_ajustado || 0), 0)
   const disponibleAnual = totalAjustadoAnual - totalConsumido
@@ -48,7 +45,7 @@ export default function Planificador() {
 
   const descargarExcel = () => {
     const csv = [
-      ['Mes', 'Presupuesto Original', 'Presupuesto Ajustado', 'Gasto Real', 'Amortizaciones', 'Total Consumido', 'Saldo', 'Disponible', 'Estado'].join(','),
+      ['Mes', 'Presupuesto Original', 'Presupuesto Ajustado', 'Gasto Real', 'Amortizaciones', 'Total Consumido', 'Saldo', 'A GASTAR', 'Estado'].join(','),
       ...datos.map(d => [
         MESES[d.mes - 1],
         d.presupuesto_original,
@@ -57,10 +54,10 @@ export default function Planificador() {
         d.amortizaciones,
         d.total_consumido,
         d.saldo_ajustado,
-        d.estado === 'proyectado' ? d.a_gastar : d.saldo_ajustado,
+        d.estado === 'proyectado' ? d.a_gastar : '-',
         d.estado
       ].join(',')),
-      ['TOTAL', totalOriginal, totalAjustado, totalGastoReal, totalAmortizaciones, totalConsumido, totalSaldo, totalDisponible, ''].join(',')
+      ['TOTAL', totalOriginal, totalAjustado, totalGastoReal, totalAmortizaciones, totalConsumido, totalSaldo, '', ''].join(',')
     ].join('\n')
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -148,8 +145,12 @@ export default function Planificador() {
         <div className="card bg-purple-50 border-purple-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-purple-600 font-medium">Ahorro Acumulado (Colchón)</p>
-              <p className="text-2xl font-bold text-purple-700">{formatMoney(colchonActual)}</p>
+              <p className="text-sm text-purple-600 font-medium">A GASTAR Mensual</p>
+              <p className="text-2xl font-bold text-purple-700">
+                {datos.find(d => d.estado === 'proyectado')?.a_gastar 
+                  ? formatMoney(datos.find(d => d.estado === 'proyectado')!.a_gastar) 
+                  : '-'}
+              </p>
             </div>
             <div className="p-3 bg-purple-100 rounded-xl">
               <TrendingUp className="w-6 h-6 text-purple-600" />
@@ -183,7 +184,7 @@ export default function Planificador() {
               <th className="text-right px-3 py-2">Amortizaciones</th>
               <th className="text-right px-3 py-2 font-bold">Total</th>
               <th className="text-right px-3 py-2">Saldo</th>
-              <th className="text-right px-3 py-2 font-bold text-primary-700">Disponible</th>
+              <th className="text-right px-3 py-2 font-bold text-primary-700">A GASTAR</th>
               <th className="text-center px-3 py-2">Estado</th>
             </tr>
           </thead>
@@ -191,7 +192,7 @@ export default function Planificador() {
             {datos.map(d => {
               const esGastado = d.estado === 'gastado'
               const esProyectado = d.estado === 'proyectado'
-              const disponible = esGastado ? d.saldo_ajustado : d.a_gastar
+              const aGastar = esProyectado ? d.a_gastar : null
               
               return (
                 <tr 
@@ -212,16 +213,16 @@ export default function Planificador() {
                   <td className={`px-3 py-2 text-right font-medium ${d.saldo_ajustado < 0 ? 'text-red-600' : 'text-green-600'}`}>
                     ${d.saldo_ajustado?.toLocaleString('es-PA', { minimumFractionDigits: 2 })}
                   </td>
-                  <td className={`px-3 py-2 text-right font-bold ${esProyectado ? 'text-blue-700' : d.saldo_ajustado < 0 ? 'text-red-700' : 'text-green-700'}`}>
-                    {esGastado ? (
-                      <span className="flex items-center justify-end gap-1">
-                        {d.saldo_ajustado < 0 ? <AlertTriangle className="w-3 h-3" /> : <CheckCircle className="w-3 h-3" />}
-                        {formatMoney(disponible)}
+                  <td className="px-3 py-2 text-right font-bold">
+                    {esProyectado ? (
+                      <span className="flex items-center justify-end gap-1 text-blue-700">
+                        <ArrowRight className="w-3 h-3" />
+                        {formatMoney(aGastar)}
                       </span>
                     ) : (
-                      <span className="flex items-center justify-end gap-1">
-                        <ArrowRight className="w-3 h-3" />
-                        {formatMoney(disponible)}
+                      <span className="flex items-center justify-end gap-1 text-gray-400">
+                        <Minus className="w-3 h-3" />
+                        -
                       </span>
                     )}
                   </td>
@@ -252,7 +253,9 @@ export default function Planificador() {
                 ${totalSaldo.toLocaleString('es-PA', { minimumFractionDigits: 2 })}
               </td>
               <td className="px-3 py-3 text-right text-lg text-blue-700">
-                ${totalDisponible.toLocaleString('es-PA', { minimumFractionDigits: 2 })}
+                {datos.find(d => d.estado === 'proyectado')?.a_gastar 
+                  ? formatMoney(datos.find(d => d.estado === 'proyectado')!.a_gastar) 
+                  : '-'}
               </td>
               <td className="px-3 py-3"></td>
             </tr>
@@ -274,11 +277,11 @@ export default function Planificador() {
           </div>
           <div className="flex items-start gap-2">
             <span className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">Proyectado</span>
-            <span className="text-gray-600">Mes futuro. El disponible azul es cuánto puedes gastar.</span>
+            <span className="text-gray-600">Mes futuro. El A GASTAR azul es tu límite mensual para no pasarte del presupuesto anual.</span>
           </div>
           <div className="flex items-start gap-2">
-            <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">Colchón</span>
-            <span className="text-gray-600">Ahorro acumulado de meses anteriores que te permite gastar más en meses futuros.</span>
+            <span className="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">A GASTAR</span>
+            <span className="text-gray-600">Disponible Anual / Meses Restantes - $10K. Es lo mismo para todos los meses proyectados.</span>
           </div>
         </div>
       </div>
