@@ -60,3 +60,33 @@ export interface ResumenMensual {
   gasto_real: number;
   saldo: number;
 }
+
+// NUEVO: Interfaces para el planificador
+export interface EscenarioPlanificador {
+  id: string;
+  nombre: string;
+  año: number;
+  recorte_mensual: number;
+  mes_recorte_inicio: number;
+  activo: boolean;
+  created_at: string;
+}
+
+export interface PlanificadorMensual {
+  escenario_id: string;
+  nombre: string;
+  año: number;
+  recorte_mensual: number;
+  mes_recorte_inicio: number;
+  mes: number;
+  presupuesto_original: number;
+  presupuesto_ajustado: number;
+  gasto_real: number;
+  amortizaciones: number;
+  total_consumido: number;
+  saldo_ajustado: number;
+  a_gastar: number;
+  tope_activo: string;
+  estado: string;
+  colchon_acumulado: number;
+}
