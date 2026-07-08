@@ -52,6 +52,18 @@ export default function PresupuestoView() {
   const [detalleGastos, setDetalleGastos] = useState<GastoDetalle[]>([])
   const [loadingDetalle, setLoadingDetalle] = useState(false)
 
+  // BLOQUEAR SCROLL DEL BODY CUANDO MODAL ESTÁ ABIERTO
+  useEffect(() => {
+    if (selectedTienda) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [selectedTienda])
+
   const gerentesArea = [...new Set(tiendas.map(t => t.gerente_area).filter(Boolean))].sort()
   const gerentesRegional = [...new Set(tiendas.map(t => t.gerente_regional).filter(Boolean))].sort()
   const unidadesNegocio = [...new Set(tiendas.map(t => t.unidad_negocio))].sort()
@@ -361,22 +373,18 @@ export default function PresupuestoView() {
         )}
       </div>
 
-      {/* MODAL FIX - Fondo bloqueado, modal centrado */}
+      {/* MODAL FIX - Bloquea scroll del body */}
       {selectedTienda && (
         <div 
           className="fixed inset-0 z-50"
           onClick={() => setSelectedTienda(null)}
         >
-          {/* Overlay oscuro que bloquea el fondo */}
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" />
-          
-          {/* Contenedor centrado */}
           <div className="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
             <div 
               className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[90vh] flex flex-col pointer-events-auto animate-fade-in"
               onClick={e => e.stopPropagation()}
             >
-              {/* Header fijo */}
               <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white rounded-t-2xl shrink-0">
                 <div>
                   <h3 className="text-lg font-bold text-slate-800">{selectedTienda.codigo} - {selectedTienda.tienda}</h3>
@@ -387,7 +395,6 @@ export default function PresupuestoView() {
                 </button>
               </div>
 
-              {/* Stats fijos */}
               <div className="p-6 grid grid-cols-4 gap-4 border-b border-slate-100 bg-slate-50/50 shrink-0">
                 <div className="p-3 bg-white rounded-xl border border-slate-100">
                   <p className="text-xs text-slate-500 font-medium">Presupuesto</p>
@@ -409,7 +416,6 @@ export default function PresupuestoView() {
                 </div>
               </div>
 
-              {/* Contenido scrolleable del modal */}
               <div className="p-6 overflow-y-auto">
                 <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
                   <Eye className="w-4 h-4 text-slate-400" />
