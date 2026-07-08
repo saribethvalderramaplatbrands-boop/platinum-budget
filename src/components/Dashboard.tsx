@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useResumen } from '../hooks/useSupabase'
+import { useResumen, useAmortizaciones } from '../hooks/useSupabase'
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -11,7 +11,8 @@ import {
   Wallet,
   Gauge,
   IceCream,
-  Drumstick
+  Drumstick,
+  Receipt
 } from 'lucide-react'
 
 const MESES = [
@@ -23,9 +24,17 @@ export default function Dashboard() {
   const [año, setAño] = useState(2026)
   const [mes, setMes] = useState(new Date().getMonth() + 1)
   const { resumen, loading } = useResumen(año, mes)
+  const { amortizaciones } = useAmortizaciones()
+
+  const periodoActual = MESES[mes - 1]
+
+  // Calcular amortizaciones del mes
+  const amortizacionesMes = amortizaciones.filter(a => a.periodo === periodoActual)
+  const totalAmortizaciones = amortizacionesMes.reduce((sum, a) => sum + (a.monto || 0), 0)
 
   const totalPresupuesto = resumen.reduce((sum, r) => sum + (r.presupuesto_asignado || 0), 0)
-  const totalGasto = resumen.reduce((sum, r) => sum + (r.gasto_real || 0), 0)
+  const totalGastoReal = resumen.reduce((sum, r) => sum + (r.gasto_real || 0), 0)
+  const totalGasto = totalGastoReal + totalAmortizaciones
   const totalSaldo = totalPresupuesto - totalGasto
   const porcentajeUsado = totalPresupuesto > 0 ? (totalGasto / totalPresupuesto) * 100 : 0
 
@@ -34,12 +43,27 @@ export default function Dashboard() {
   const dqResumen = resumen.filter(r => r.unidad_negocio?.includes('Dairy'))
   const kfcResumen = resumen.filter(r => r.unidad_negocio?.includes('Kentucky'))
 
+  // Calcular amortizaciones por unidad de negocio
+  const getAmortizacionesPorCodigos = (codigos: number[]) => {
+    return amortizacionesMes
+      .filter(a => codigos.includes(a.codigo_tienda))
+      .reduce((sum, a) => sum + (a.monto || 0), 0)
+  }
+
+  const dqCodigos = dqResumen.map(r => r.codigo)
+  const kfcCodigos = kfcResumen.map(r => r.codigo)
+
+  const dqAmortizaciones = getAmortizacionesPorCodigos(dqCodigos)
+  const kfcAmortizaciones = getAmortizacionesPorCodigos(kfcCodigos)
+
   const dqPresupuesto = dqResumen.reduce((sum, r) => sum + (r.presupuesto_asignado || 0), 0)
-  const dqGasto = dqResumen.reduce((sum, r) => sum + (r.gasto_real || 0), 0)
+  const dqGastoReal = dqResumen.reduce((sum, r) => sum + (r.gasto_real || 0), 0)
+  const dqGasto = dqGastoReal + dqAmortizaciones
   const dqSaldo = dqPresupuesto - dqGasto
 
   const kfcPresupuesto = kfcResumen.reduce((sum, r) => sum + (r.presupuesto_asignado || 0), 0)
-  const kfcGasto = kfcResumen.reduce((sum, r) => sum + (r.gasto_real || 0), 0)
+  const kfcGastoReal = kfcResumen.reduce((sum, r) => sum + (r.gasto_real || 0), 0)
+  const kfcGasto = kfcGastoReal + kfcAmortizaciones
   const kfcSaldo = kfcPresupuesto - kfcGasto
 
   // Filtrar tiendas para mostrar: top 10 por gasto + todas las que están pasadas de presupuesto
@@ -141,6 +165,22 @@ export default function Dashboard() {
             <div className="p-3 bg-yellow-100 rounded-xl">
               <Gauge className="w-6 h-6 text-yellow-600" />
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Card de Amortizaciones */}
+      <div className="card bg-orange-50 border-orange-200">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-orange-600 font-medium">Amortizaciones {periodoActual}</p>
+            <p className="text-2xl font-bold text-orange-700">
+              ${totalAmortizaciones.toLocaleString('es-PA', { minimumFractionDigits: 2 })}
+            </p>
+            <p className="text-xs text-orange-500">{amortizacionesMes.length} registros</p>
+          </div>
+          <div className="p-3 bg-orange-100 rounded-xl">
+            <Receipt className="w-6 h-6 text-orange-600" />
           </div>
         </div>
       </div>
