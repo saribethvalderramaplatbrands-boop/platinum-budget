@@ -52,7 +52,6 @@ export default function PresupuestoView() {
   const [detalleGastos, setDetalleGastos] = useState<GastoDetalle[]>([])
   const [loadingDetalle, setLoadingDetalle] = useState(false)
 
-  // BLOQUEAR SCROLL DEL BODY CUANDO MODAL ESTÁ ABIERTO
   useEffect(() => {
     if (selectedTienda) {
       document.body.style.overflow = 'hidden'
@@ -196,7 +195,6 @@ export default function PresupuestoView() {
         <p className="text-sm text-slate-500 mt-1">Consulta y filtra el presupuesto detallado</p>
       </div>
 
-      {/* Filtros */}
       <div className="card-solid">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <div>
@@ -252,7 +250,6 @@ export default function PresupuestoView() {
         </div>
       </div>
 
-      {/* Totales */}
       {presupuestos.length > 0 && (
         <div className={`grid grid-cols-1 gap-4 ${hayDQ && hayKFC ? 'sm:grid-cols-2' : ''}`}>
           {hayDQ && (
@@ -302,7 +299,6 @@ export default function PresupuestoView() {
         </div>
       )}
 
-      {/* Tabla */}
       <div className="card-solid overflow-hidden">
         <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
           <Building2 className="w-5 h-5 text-slate-500" />
@@ -373,104 +369,110 @@ export default function PresupuestoView() {
         )}
       </div>
 
-      {/* MODAL FIX - Siempre centrado en pantalla, independiente del scroll */}
+      {/* MODAL - SOLUCIÓN DEFINITIVA CON TOP/LEFT/TRANSFORM */}
       {selectedTienda && (
         <>
-          {/* Overlay oscuro - bloquea clicks */}
+          {/* Overlay */}
           <div 
             className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50"
             onClick={() => setSelectedTienda(null)}
           />
           
-          {/* Modal - centrado con position fixed */}
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-            <div 
-              className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] flex flex-col pointer-events-auto animate-fade-in"
-              onClick={e => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white rounded-t-2xl shrink-0">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-800">{selectedTienda.codigo} - {selectedTienda.tienda}</h3>
-                  <p className="text-sm text-slate-500">{MESES[selectedTienda.mes - 1]} {selectedTienda.año} | {selectedTienda.unidad_negocio}</p>
-                </div>
-                <button onClick={() => setSelectedTienda(null)} className="p-2 rounded-xl hover:bg-slate-100 transition-colors">
-                  <X className="w-5 h-5 text-slate-500" />
-                </button>
+          {/* Modal - SIEMPRE centrado en la ventana visible */}
+          <div 
+            className="fixed z-50 bg-white rounded-2xl shadow-2xl w-full max-w-5xl animate-fade-in"
+            style={{
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              maxHeight: '85vh',
+              display: 'flex',
+              flexDirection: 'column'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white rounded-t-2xl shrink-0">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">{selectedTienda.codigo} - {selectedTienda.tienda}</h3>
+                <p className="text-sm text-slate-500">{MESES[selectedTienda.mes - 1]} {selectedTienda.año} | {selectedTienda.unidad_negocio}</p>
               </div>
+              <button onClick={() => setSelectedTienda(null)} className="p-2 rounded-xl hover:bg-slate-100 transition-colors">
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
 
-              {/* Stats */}
-              <div className="p-5 grid grid-cols-2 lg:grid-cols-4 gap-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
-                <div className="p-3 bg-white rounded-xl border border-slate-100">
-                  <p className="text-xs text-slate-500 font-medium">Presupuesto</p>
-                  <p className="font-bold text-lg text-slate-800">{formatMoney(selectedTienda.presupuesto_asignado)}</p>
-                </div>
-                <div className="p-3 bg-white rounded-xl border border-slate-100">
-                  <p className="text-xs text-slate-500 font-medium">Amortizado</p>
-                  <p className="font-bold text-lg text-orange-600">{formatMoney(selectedTienda.amortizado)}</p>
-                </div>
-                <div className="p-3 bg-white rounded-xl border border-slate-100">
-                  <p className="text-xs text-slate-500 font-medium">Gasto Real</p>
-                  <p className="font-bold text-lg text-red-600">{formatMoney(selectedTienda.gasto_real)}</p>
-                </div>
-                <div className="p-3 bg-white rounded-xl border border-slate-100">
-                  <p className="text-xs text-slate-500 font-medium">Saldo</p>
-                  <p className={`font-bold text-lg ${selectedTienda.saldo < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                    {formatMoney(selectedTienda.saldo)}
-                  </p>
-                </div>
+            {/* Stats */}
+            <div className="p-5 grid grid-cols-2 lg:grid-cols-4 gap-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
+              <div className="p-3 bg-white rounded-xl border border-slate-100">
+                <p className="text-xs text-slate-500 font-medium">Presupuesto</p>
+                <p className="font-bold text-lg text-slate-800">{formatMoney(selectedTienda.presupuesto_asignado)}</p>
               </div>
+              <div className="p-3 bg-white rounded-xl border border-slate-100">
+                <p className="text-xs text-slate-500 font-medium">Amortizado</p>
+                <p className="font-bold text-lg text-orange-600">{formatMoney(selectedTienda.amortizado)}</p>
+              </div>
+              <div className="p-3 bg-white rounded-xl border border-slate-100">
+                <p className="text-xs text-slate-500 font-medium">Gasto Real</p>
+                <p className="font-bold text-lg text-red-600">{formatMoney(selectedTienda.gasto_real)}</p>
+              </div>
+              <div className="p-3 bg-white rounded-xl border border-slate-100">
+                <p className="text-xs text-slate-500 font-medium">Saldo</p>
+                <p className={`font-bold text-lg ${selectedTienda.saldo < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                  {formatMoney(selectedTienda.saldo)}
+                </p>
+              </div>
+            </div>
 
-              {/* Contenido scrolleable */}
-              <div className="p-5 overflow-y-auto">
-                <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                  <Eye className="w-4 h-4 text-slate-400" />
-                  Desglose de Gastos
-                </h4>
-                
-                {loadingDetalle ? (
-                  <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
-                    <span className="ml-2 text-slate-500">Cargando...</span>
-                  </div>
-                ) : detalleGastos.length === 0 ? (
-                  <div className="text-center py-8 text-slate-400">
-                    <p>No hay gastos registrados</p>
-                  </div>
-                ) : (
-                  <>
-                    <div className="overflow-auto border border-slate-200 rounded-xl">
-                      <table className="w-full text-sm">
-                        <thead className="sticky top-0 bg-white z-10 shadow-sm">
-                          <tr className="border-b border-slate-200">
-                            <th className="text-left px-3 py-2 bg-white whitespace-nowrap font-semibold text-slate-500 text-xs uppercase">Fecha</th>
-                            <th className="text-left px-3 py-2 bg-white font-semibold text-slate-500 text-xs uppercase">Descripción</th>
-                            <th className="text-left px-3 py-2 bg-white whitespace-nowrap font-semibold text-slate-500 text-xs uppercase">Clasif.</th>
-                            <th className="text-left px-3 py-2 bg-white font-semibold text-slate-500 text-xs uppercase">Proveedor</th>
-                            <th className="text-right px-3 py-2 bg-white whitespace-nowrap font-semibold text-slate-500 text-xs uppercase">Monto</th>
+            {/* Contenido scrolleable */}
+            <div className="p-5 overflow-y-auto">
+              <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                <Eye className="w-4 h-4 text-slate-400" />
+                Desglose de Gastos
+              </h4>
+              
+              {loadingDetalle ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
+                  <span className="ml-2 text-slate-500">Cargando...</span>
+                </div>
+              ) : detalleGastos.length === 0 ? (
+                <div className="text-center py-8 text-slate-400">
+                  <p>No hay gastos registrados</p>
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-auto border border-slate-200 rounded-xl">
+                    <table className="w-full text-sm">
+                      <thead className="sticky top-0 bg-white z-10 shadow-sm">
+                        <tr className="border-b border-slate-200">
+                          <th className="text-left px-3 py-2 bg-white whitespace-nowrap font-semibold text-slate-500 text-xs uppercase">Fecha</th>
+                          <th className="text-left px-3 py-2 bg-white font-semibold text-slate-500 text-xs uppercase">Descripción</th>
+                          <th className="text-left px-3 py-2 bg-white whitespace-nowrap font-semibold text-slate-500 text-xs uppercase">Clasif.</th>
+                          <th className="text-left px-3 py-2 bg-white font-semibold text-slate-500 text-xs uppercase">Proveedor</th>
+                          <th className="text-right px-3 py-2 bg-white whitespace-nowrap font-semibold text-slate-500 text-xs uppercase">Monto</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {detalleGastos.map(g => (
+                          <tr key={g.id} className="hover:bg-slate-50/50">
+                            <td className="px-3 py-2 whitespace-nowrap text-slate-600">{new Date(g.fecha).toLocaleDateString('es-PA')}</td>
+                            <td className="px-3 py-2 max-w-xs truncate text-slate-700" title={g.descripcion}>{g.descripcion}</td>
+                            <td className="px-3 py-2 whitespace-nowrap"><span className="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-600 font-medium">{g.clasificacion}</span></td>
+                            <td className="px-3 py-2 text-xs text-slate-500 max-w-[150px] truncate" title={g.proveedor}>{g.proveedor}</td>
+                            <td className="px-3 py-2 text-right font-bold text-slate-800 whitespace-nowrap">{formatMoney(g.monto)}</td>
                           </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {detalleGastos.map(g => (
-                            <tr key={g.id} className="hover:bg-slate-50/50">
-                              <td className="px-3 py-2 whitespace-nowrap text-slate-600">{new Date(g.fecha).toLocaleDateString('es-PA')}</td>
-                              <td className="px-3 py-2 max-w-xs truncate text-slate-700" title={g.descripcion}>{g.descripcion}</td>
-                              <td className="px-3 py-2 whitespace-nowrap"><span className="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-600 font-medium">{g.clasificacion}</span></td>
-                              <td className="px-3 py-2 text-xs text-slate-500 max-w-[150px] truncate" title={g.proveedor}>{g.proveedor}</td>
-                              <td className="px-3 py-2 text-right font-bold text-slate-800 whitespace-nowrap">{formatMoney(g.monto)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-100 text-right">
-                      <p className="text-sm text-slate-600">
-                        Total gastos: <span className="font-bold text-red-600 text-lg">{formatMoney(detalleGastos.reduce((sum, g) => sum + g.monto, 0))}</span>
-                      </p>
-                    </div>
-                  </>
-                )}
-              </div>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-100 text-right">
+                    <p className="text-sm text-slate-600">
+                      Total gastos: <span className="font-bold text-red-600 text-lg">{formatMoney(detalleGastos.reduce((sum, g) => sum + g.monto, 0))}</span>
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </>
