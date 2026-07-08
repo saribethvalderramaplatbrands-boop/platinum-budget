@@ -177,3 +177,41 @@ export function useAmortizaciones() {
 
   return { amortizaciones, loading, uploadAmortizaciones, refetch: fetchAmortizaciones }
 }
+
+// NUEVO: Hook para el planificador de presupuesto
+export function usePlanificador(año: number) {
+  const [datos, setDatos] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchPlanificador()
+  }, [año])
+
+  const fetchPlanificador = async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('vista_planificador')
+      .select('*')
+      .eq('año', año)
+      .order('mes')
+
+    if (error) {
+      console.error('Error fetching planificador:', error)
+    } else {
+      setDatos(data || [])
+    }
+    setLoading(false)
+  }
+
+  const recalcular = async () => {
+    const { error } = await supabase.rpc('recalcular_planificador', { p_año: año })
+    if (error) {
+      console.error('Error recalculando planificador:', error)
+    } else {
+      fetchPlanificador()
+    }
+    return error
+  }
+
+  return { datos, loading, recalcular, refetch: fetchPlanificador }
+}
