@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Filter, Search, AlertCircle, CheckCircle2, Clock, Save, X, Trash2, MoreVertical, Edit3 } from 'lucide-react'
+import { Filter, Search, AlertCircle, CheckCircle2, Clock, Save, X, Trash2, MoreVertical, Edit3, Receipt } from 'lucide-react'
 import { useGastos, useTiendas, useProveedores } from '../hooks/useSupabase'
 
 const PERIODOS = [
@@ -8,15 +8,19 @@ const PERIODOS = [
 ]
 
 const ESTATUS_COLORS = {
-  'Pendiente OC': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+  'Pendiente OC': 'bg-amber-100 text-amber-800 border-amber-200',
   'Pendiente Factura': 'bg-orange-100 text-orange-800 border-orange-200',
-  'Completado': 'bg-green-100 text-green-800 border-green-200',
+  'Completado': 'bg-emerald-100 text-emerald-800 border-emerald-200',
 }
 
 const ESTATUS_ICONS = {
   'Pendiente OC': Clock,
   'Pendiente Factura': AlertCircle,
   'Completado': CheckCircle2,
+}
+
+const formatMoney = (amount: number) => {
+  return '$' + (amount || 0).toLocaleString('es-PA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 export default function GastosTable() {
@@ -97,13 +101,6 @@ export default function GastosTable() {
     return new Date(dateStr).toLocaleDateString('es-PA')
   }
 
-  const formatMoney = (amount: number) => {
-    return new Intl.NumberFormat('es-PA', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount)
-  }
-
   const getTiendaName = (tiendaId: string) => {
     const tienda = tiendas.find(t => t.id === tiendaId)
     return tienda ? `${tienda.codigo} - ${tienda.nombre}` : tiendaId
@@ -115,13 +112,18 @@ export default function GastosTable() {
     return prov ? `${prov.codigo} - ${prov.nombre}` : proveedorId
   }
 
-  if (loading) return <div className="text-center py-8">Cargando...</div>
+  if (loading) return (
+    <div className="flex items-center justify-center py-12">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      <span className="ml-3 text-slate-500">Cargando...</span>
+    </div>
+  )
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             placeholder="Buscar en descripción, OC o factura..."
@@ -140,7 +142,7 @@ export default function GastosTable() {
       </div>
 
       {showFilters && (
-        <div className="card bg-gray-50">
+        <div className="card-solid bg-slate-50/50">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <select
               value={filters.periodo}
@@ -201,27 +203,28 @@ export default function GastosTable() {
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto card-solid p-0">
+        <table className="table-modern">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">Fecha</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">Periodo</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">Tienda</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">Descripción</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">Proveedor</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">Clasificación</th>
-              <th className="text-right px-4 py-3 font-semibold text-gray-700">Monto</th>
-              <th className="text-center px-4 py-3 font-semibold text-gray-700">Estatus</th>
-              <th className="text-left px-4 py-3 font-semibold text-gray-700">OC / Factura</th>
-              <th className="text-center px-4 py-3 font-semibold text-gray-700">Acciones</th>
+            <tr>
+              <th>Fecha</th>
+              <th>Periodo</th>
+              <th>Tienda</th>
+              <th>Descripción</th>
+              <th>Proveedor</th>
+              <th>Clasificación</th>
+              <th className="text-right">Monto</th>
+              <th className="text-center">Estatus</th>
+              <th>OC / Factura</th>
+              <th className="text-center">Acciones</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody>
             {filteredGastos.length === 0 ? (
               <tr>
-                <td colSpan={10} className="text-center py-8 text-gray-500">
-                  No hay gastos registrados
+                <td colSpan={10} className="text-center py-12 text-slate-400">
+                  <Receipt className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>No hay gastos registrados</p>
                 </td>
               </tr>
             ) : (
@@ -233,13 +236,13 @@ export default function GastosTable() {
                 return (
                   <tr 
                     key={gasto.id} 
-                    className={`hover:bg-gray-50 transition-colors ${isEditing ? 'bg-blue-50' : ''}`}
+                    className={`transition-colors ${isEditing ? 'bg-blue-50/50' : 'hover:bg-slate-50/50'}`}
                     onDoubleClick={() => !isEditing && handleDoubleClick(gasto)}
                     title="Doble clic para editar"
                   >
-                    <td className="px-4 py-3 whitespace-nowrap">{formatDate(gasto.fecha)}</td>
+                    <td className="whitespace-nowrap text-slate-600">{formatDate(gasto.fecha)}</td>
                     
-                    <td className="px-4 py-3 whitespace-nowrap">
+                    <td className="whitespace-nowrap">
                       {isEditing ? (
                         <select
                           value={editData.periodo}
@@ -249,34 +252,34 @@ export default function GastosTable() {
                           {PERIODOS.slice(1).map(p => <option key={p} value={p}>{p}</option>)}
                         </select>
                       ) : (
-                        gasto.periodo
+                        <span className="text-slate-600">{gasto.periodo}</span>
                       )}
                     </td>
                     
-                    <td className="px-4 py-3 whitespace-nowrap">{getTiendaName(gasto.tienda_id)}</td>
-                    <td className="px-4 py-3 max-w-xs truncate" title={gasto.descripcion}>
+                    <td className="whitespace-nowrap font-medium text-slate-700">{getTiendaName(gasto.tienda_id)}</td>
+                    <td className="max-w-xs truncate text-slate-700" title={gasto.descripcion}>
                       {gasto.descripcion}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">{getProveedorName(gasto.proveedor_id)}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                    <td className="whitespace-nowrap text-slate-500 text-xs">{getProveedorName(gasto.proveedor_id)}</td>
+                    <td className="whitespace-nowrap">
+                      <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
                         {gasto.clasificacion}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-right font-medium whitespace-nowrap">
+                    <td className="text-right font-bold text-slate-800 whitespace-nowrap">
                       {formatMoney(gasto.monto)}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${ESTATUS_COLORS[gasto.estatus as keyof typeof ESTATUS_COLORS]}`}>
+                    <td className="whitespace-nowrap">
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${ESTATUS_COLORS[gasto.estatus as keyof typeof ESTATUS_COLORS]}`}>
                         <StatusIcon className="w-3 h-3" />
                         {gasto.estatus}
                       </span>
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-xs">
+                    <td className="whitespace-nowrap text-xs">
                       {isEditing ? (
                         <div className="space-y-2">
                           <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">OC:</label>
+                            <label className="block text-xs font-medium text-slate-600 mb-1">OC:</label>
                             <input
                               type="text"
                               value={editData.orden_compra}
@@ -287,7 +290,7 @@ export default function GastosTable() {
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Factura:</label>
+                            <label className="block text-xs font-medium text-slate-600 mb-1">Factura:</label>
                             <input
                               type="text"
                               value={editData.factura}
@@ -315,32 +318,32 @@ export default function GastosTable() {
                         </div>
                       ) : (
                         <div>
-                          {gasto.orden_compra && <div>OC: {gasto.orden_compra}</div>}
-                          {gasto.factura && <div>Fac: {gasto.factura}</div>}
-                          {!gasto.orden_compra && !gasto.factura && <span className="text-yellow-600">Sin documentos</span>}
+                          {gasto.orden_compra && <div className="text-slate-600">OC: {gasto.orden_compra}</div>}
+                          {gasto.factura && <div className="text-slate-600">Fac: {gasto.factura}</div>}
+                          {!gasto.orden_compra && !gasto.factura && <span className="text-amber-600 font-medium">Sin documentos</span>}
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-center relative">
+                    <td className="whitespace-nowrap text-center relative">
                       <button
                         onClick={() => setMenuOpen(isMenuOpen ? null : gasto.id)}
-                        className="p-1 rounded-lg hover:bg-gray-200 transition-colors"
+                        className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
                       >
-                        <MoreVertical className="w-4 h-4 text-gray-500" />
+                        <MoreVertical className="w-4 h-4 text-slate-400" />
                       </button>
                       
                       {isMenuOpen && (
-                        <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50 py-1">
+                        <div className="absolute right-0 mt-1 w-40 bg-white rounded-xl shadow-xl border border-slate-100 z-50 py-1 overflow-hidden">
                           <button
                             onClick={() => handleDoubleClick(gasto)}
-                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2"
+                            className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 transition-colors"
                           >
                             <Edit3 className="w-4 h-4 text-blue-500" />
                             Editar
                           </button>
                           <button
                             onClick={() => handleDelete(gasto.id)}
-                            className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
+                            className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 flex items-center gap-2 text-red-600 transition-colors"
                           >
                             <Trash2 className="w-4 h-4" />
                             Eliminar
