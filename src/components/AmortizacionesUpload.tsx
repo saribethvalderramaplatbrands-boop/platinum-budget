@@ -1,9 +1,13 @@
 import { useState, useRef } from 'react'
-import { Upload, FileSpreadsheet, Check, AlertCircle } from 'lucide-react'
+import { Upload, FileSpreadsheet, Check, AlertCircle, Receipt } from 'lucide-react'
 import { useAmortizaciones } from '../hooks/useSupabase'
 
 // @ts-ignore
 import * as XLSX from 'xlsx'
+
+const formatMoney = (amount: number) => {
+  return '$' + (amount || 0).toLocaleString('es-PA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
 
 export default function AmortizacionesUpload() {
   const { amortizaciones, uploadAmortizaciones, refetch } = useAmortizaciones()
@@ -52,48 +56,37 @@ export default function AmortizacionesUpload() {
     }
   }
 
-  const formatMoney = (amount: number) => {
-    return new Intl.NumberFormat('es-PA', {
-      style: 'currency',
-      currency: 'USD',
-    }).format(amount)
-  }
-
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Amortizaciones</h2>
+    <div className="space-y-6 animate-fade-in">
+      <div>
+        <h2 className="text-2xl font-bold text-slate-800">Amortizaciones</h2>
+        <p className="text-sm text-slate-500 mt-1">Sube y gestiona las amortizaciones mensuales</p>
+      </div>
 
-      <div className="card">
+      <div className="card-solid">
         <div className="flex items-center gap-3 mb-4">
-          <FileSpreadsheet className="w-8 h-8 text-green-600" />
+          <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl shadow-lg shadow-emerald-500/20">
+            <FileSpreadsheet className="w-6 h-6 text-white" />
+          </div>
           <div>
-            <h3 className="font-bold">Subir archivo Excel</h3>
-            <p className="text-sm text-gray-500">Sube la hoja de amortizaciones mensual</p>
+            <h3 className="font-bold text-slate-800">Subir archivo Excel</h3>
+            <p className="text-sm text-slate-500">Sube la hoja de amortizaciones mensual</p>
           </div>
         </div>
 
-        <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-primary-400 transition-colors">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls"
-            onChange={handleFileUpload}
-            className="hidden"
-            id="file-upload"
-          />
-          <label htmlFor="file-upload" className="cursor-pointer">
-            <Upload className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-            <p className="text-gray-600 font-medium">Haz clic para seleccionar archivo</p>
-            <p className="text-sm text-gray-400 mt-1">Formato: Excel (.xlsx, .xls)</p>
+        <div className="border-2 border-dashed border-slate-200 rounded-xl p-10 text-center hover:border-blue-400 hover:bg-blue-50/30 transition-all duration-300">
+          <input ref={fileInputRef} type="file" accept=".xlsx,.xls" onChange={handleFileUpload} className="hidden" id="file-upload" />
+          <label htmlFor="file-upload" className="cursor-pointer block">
+            <Upload className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+            <p className="text-slate-600 font-semibold">Haz clic para seleccionar archivo</p>
+            <p className="text-sm text-slate-400 mt-1">Formato: Excel (.xlsx, .xls)</p>
           </label>
         </div>
 
-        {uploading && (
-          <p className="text-center mt-4 text-primary-600">Procesando...</p>
-        )}
+        {uploading && <p className="text-center mt-4 text-blue-600 font-medium">Procesando...</p>}
 
         {message && (
-          <div className={`mt-4 p-3 rounded-lg flex items-center gap-2 ${message.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+          <div className={`mt-4 p-4 rounded-xl flex items-center gap-3 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
             {message.type === 'success' ? <Check className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
             {message.text}
           </div>
@@ -101,32 +94,37 @@ export default function AmortizacionesUpload() {
       </div>
 
       {amortizaciones.length > 0 && (
-        <div className="card overflow-x-auto">
-          <h3 className="font-bold mb-4">Amortizaciones Registradas</h3>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left px-3 py-2">Código</th>
-                <th className="text-left px-3 py-2">Tienda</th>
-                <th className="text-left px-3 py-2">Descripción</th>
-                <th className="text-right px-3 py-2">Monto</th>
-                <th className="text-center px-3 py-2">Periodo</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {amortizaciones.map(a => (
-                <tr key={a.id}>
-                  <td className="px-3 py-2 font-medium">{a.codigo_tienda}</td>
-                  <td className="px-3 py-2">{a.tienda_nombre}</td>
-                  <td className="px-3 py-2 max-w-md truncate" title={a.descripcion}>{a.descripcion}</td>
-                  <td className="px-3 py-2 text-right">{formatMoney(a.monto)}</td>
-                  <td className="px-3 py-2 text-center">
-                    <span className="px-2 py-1 rounded-full text-xs bg-gray-100">{a.periodo}</span>
-                  </td>
+        <div className="card-solid overflow-hidden">
+          <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <Receipt className="w-5 h-5 text-slate-400" />
+            Amortizaciones Registradas
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="table-modern">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Tienda</th>
+                  <th>Descripción</th>
+                  <th className="text-right">Monto</th>
+                  <th className="text-center">Periodo</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {amortizaciones.map(a => (
+                  <tr key={a.id}>
+                    <td className="font-bold text-slate-700">{a.codigo_tienda}</td>
+                    <td className="text-slate-700">{a.tienda_nombre}</td>
+                    <td className="max-w-md truncate text-slate-600" title={a.descripcion}>{a.descripcion}</td>
+                    <td className="text-right font-bold text-slate-800">{formatMoney(a.monto)}</td>
+                    <td className="text-center">
+                      <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">{a.periodo}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
