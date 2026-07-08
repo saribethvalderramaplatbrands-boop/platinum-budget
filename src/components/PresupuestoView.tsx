@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useTiendas } from '../hooks/useSupabase'
 import { supabase } from '../lib/supabase'
 import { Table, Search, X, ArrowDown, ArrowUp, Filter, Building2, Eye } from 'lucide-react'
@@ -36,6 +37,150 @@ const formatMoney = (amount: number) => {
   return '$' + (amount || 0).toLocaleString('es-PA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+// Componente Modal separado que se renderiza con Portal
+function TiendaModal({ 
+  tienda, 
+  gastos, 
+  loading, 
+  onClose 
+}: { 
+  tienda: PresupuestoRow
+  gastos: GastoDetalle[]
+  loading: boolean
+  onClose: () => void
+}) {
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [])
+
+  return (
+    <div 
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 99999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px'
+      }}
+    >
+      {/* Overlay */}
+      <div 
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.5)',
+          backdropFilter: 'blur(4px)'
+        }}
+        onClick={onClose}
+      />
+      
+      {/* Modal */}
+      <div 
+        style={{
+          position: 'relative',
+          backgroundColor: 'white',
+          borderRadius: '16px',
+          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          width: '100%',
+          maxWidth: '1024px',
+          maxHeight: '85vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ padding: '20px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(to right, #f8fafc, #ffffff)', borderRadius: '16px 16px 0 0', flexShrink: 0 }}>
+          <div>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b' }}>{tienda.codigo} - {tienda.tienda}</h3>
+            <p style={{ fontSize: '14px', color: '#64748b' }}>{MESES[tienda.mes - 1]} {tienda.año} | {tienda.unidad_negocio}</p>
+          </div>
+          <button onClick={onClose} style={{ padding: '8px', borderRadius: '12px', border: 'none', background: 'transparent', cursor: 'pointer' }}>
+            <X style={{ width: '20px', height: '20px', color: '#64748b' }} />
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', borderBottom: '1px solid #f1f5f9', backgroundColor: '#f8fafc80', flexShrink: 0 }}>
+          {[
+            { label: 'Presupuesto', value: formatMoney(tienda.presupuesto_asignado), color: '#1e293b' },
+            { label: 'Amortizado', value: formatMoney(tienda.amortizado), color: '#ea580c' },
+            { label: 'Gasto Real', value: formatMoney(tienda.gasto_real), color: '#dc2626' },
+            { label: 'Saldo', value: formatMoney(tienda.saldo), color: tienda.saldo < 0 ? '#dc2626' : '#059669' },
+          ].map((stat, i) => (
+            <div key={i} style={{ padding: '12px', backgroundColor: 'white', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
+              <p style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>{stat.label}</p>
+              <p style={{ fontSize: '18px', fontWeight: 'bold', color: stat.color }}>{stat.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Contenido */}
+        <div style={{ padding: '20px', overflowY: 'auto' }}>
+          <h4 style={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Eye style={{ width: '16px', height: '16px', color: '#94a3b8' }} />
+            Desglose de Gastos
+          </h4>
+          
+          {loading ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
+              <div className="animate-spin" style={{ width: '24px', height: '24px', border: '2px solid #3b82f6', borderTopColor: 'transparent', borderRadius: '50%' }} />
+              <span style={{ marginLeft: '8px', color: '#64748b' }}>Cargando...</span>
+            </div>
+          ) : gastos.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: '#94a3b8' }}>
+              <p>No hay gastos registrados</p>
+            </div>
+          ) : (
+            <>
+              <div style={{ overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+                <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                      {['Fecha', 'Descripción', 'Clasif.', 'Proveedor', 'Monto'].map((h, i) => (
+                        <th key={i} style={{ textAlign: i === 4 ? 'right' : 'left', padding: '8px 12px', fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', whiteSpace: 'nowrap', backgroundColor: 'white' }}>
+                          {h}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {gastos.map(g => (
+                      <tr key={g.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                        <td style={{ padding: '8px 12px', whiteSpace: 'nowrap', color: '#475569' }}>{new Date(g.fecha).toLocaleDateString('es-PA')}</td>
+                        <td style={{ padding: '8px 12px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#334155' }} title={g.descripcion}>{g.descripcion}</td>
+                        <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                          <span style={{ padding: '4px 8px', borderRadius: '9999px', fontSize: '12px', backgroundColor: '#f1f5f9', color: '#475569', fontWeight: 500 }}>{g.clasificacion}</span>
+                        </td>
+                        <td style={{ padding: '8px 12px', fontSize: '12px', color: '#64748b', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={g.proveedor}>{g.proveedor}</td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 'bold', color: '#1e293b', whiteSpace: 'nowrap' }}>{formatMoney(g.monto)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #f1f5f9', textAlign: 'right' }}>
+                <p style={{ fontSize: '14px', color: '#475569' }}>
+                  Total gastos: <span style={{ fontWeight: 'bold', color: '#dc2626', fontSize: '18px' }}>{formatMoney(gastos.reduce((sum, g) => sum + g.monto, 0))}</span>
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function PresupuestoView() {
   const { tiendas } = useTiendas()
   const [año, setAño] = useState(2026)
@@ -51,17 +196,6 @@ export default function PresupuestoView() {
   const [selectedTienda, setSelectedTienda] = useState<PresupuestoRow | null>(null)
   const [detalleGastos, setDetalleGastos] = useState<GastoDetalle[]>([])
   const [loadingDetalle, setLoadingDetalle] = useState(false)
-
-  useEffect(() => {
-    if (selectedTienda) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = ''
-    }
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [selectedTienda])
 
   const gerentesArea = [...new Set(tiendas.map(t => t.gerente_area).filter(Boolean))].sort()
   const gerentesRegional = [...new Set(tiendas.map(t => t.gerente_regional).filter(Boolean))].sort()
@@ -369,106 +503,15 @@ export default function PresupuestoView() {
         )}
       </div>
 
-      {/* MODAL - SOLUCIÓN DEFINITIVA */}
-      {selectedTienda && (
-        <div className="fixed inset-0 z-[9999]">
-          {/* Overlay */}
-          <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setSelectedTienda(null)} />
-          
-          {/* Modal container */}
-          <div className="absolute inset-0 overflow-y-auto">
-            <div className="flex min-h-full items-center justify-center p-4">
-              <div 
-                className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl max-h-[85vh] flex flex-col animate-fade-in"
-                onClick={e => e.stopPropagation()}
-              >
-                {/* Header */}
-                <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white rounded-t-2xl shrink-0">
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-800">{selectedTienda.codigo} - {selectedTienda.tienda}</h3>
-                    <p className="text-sm text-slate-500">{MESES[selectedTienda.mes - 1]} {selectedTienda.año} | {selectedTienda.unidad_negocio}</p>
-                  </div>
-                  <button onClick={() => setSelectedTienda(null)} className="p-2 rounded-xl hover:bg-slate-100 transition-colors">
-                    <X className="w-5 h-5 text-slate-500" />
-                  </button>
-                </div>
-
-                {/* Stats */}
-                <div className="p-5 grid grid-cols-2 lg:grid-cols-4 gap-3 border-b border-slate-100 bg-slate-50/50 shrink-0">
-                  <div className="p-3 bg-white rounded-xl border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium">Presupuesto</p>
-                    <p className="font-bold text-lg text-slate-800">{formatMoney(selectedTienda.presupuesto_asignado)}</p>
-                  </div>
-                  <div className="p-3 bg-white rounded-xl border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium">Amortizado</p>
-                    <p className="font-bold text-lg text-orange-600">{formatMoney(selectedTienda.amortizado)}</p>
-                  </div>
-                  <div className="p-3 bg-white rounded-xl border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium">Gasto Real</p>
-                    <p className="font-bold text-lg text-red-600">{formatMoney(selectedTienda.gasto_real)}</p>
-                  </div>
-                  <div className="p-3 bg-white rounded-xl border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium">Saldo</p>
-                    <p className={`font-bold text-lg ${selectedTienda.saldo < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                      {formatMoney(selectedTienda.saldo)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Contenido scrolleable */}
-                <div className="p-5 overflow-y-auto">
-                  <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                    <Eye className="w-4 h-4 text-slate-400" />
-                    Desglose de Gastos
-                  </h4>
-                  
-                  {loadingDetalle ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600" />
-                      <span className="ml-2 text-slate-500">Cargando...</span>
-                    </div>
-                  ) : detalleGastos.length === 0 ? (
-                    <div className="text-center py-8 text-slate-400">
-                      <p>No hay gastos registrados</p>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="overflow-auto border border-slate-200 rounded-xl">
-                        <table className="w-full text-sm">
-                          <thead className="sticky top-0 bg-white z-10 shadow-sm">
-                            <tr className="border-b border-slate-200">
-                              <th className="text-left px-3 py-2 bg-white whitespace-nowrap font-semibold text-slate-500 text-xs uppercase">Fecha</th>
-                              <th className="text-left px-3 py-2 bg-white font-semibold text-slate-500 text-xs uppercase">Descripción</th>
-                              <th className="text-left px-3 py-2 bg-white whitespace-nowrap font-semibold text-slate-500 text-xs uppercase">Clasif.</th>
-                              <th className="text-left px-3 py-2 bg-white font-semibold text-slate-500 text-xs uppercase">Proveedor</th>
-                              <th className="text-right px-3 py-2 bg-white whitespace-nowrap font-semibold text-slate-500 text-xs uppercase">Monto</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {detalleGastos.map(g => (
-                              <tr key={g.id} className="hover:bg-slate-50/50">
-                                <td className="px-3 py-2 whitespace-nowrap text-slate-600">{new Date(g.fecha).toLocaleDateString('es-PA')}</td>
-                                <td className="px-3 py-2 max-w-xs truncate text-slate-700" title={g.descripcion}>{g.descripcion}</td>
-                                <td className="px-3 py-2 whitespace-nowrap"><span className="px-2 py-1 rounded-full text-xs bg-slate-100 text-slate-600 font-medium">{g.clasificacion}</span></td>
-                                <td className="px-3 py-2 text-xs text-slate-500 max-w-[150px] truncate" title={g.proveedor}>{g.proveedor}</td>
-                                <td className="px-3 py-2 text-right font-bold text-slate-800 whitespace-nowrap">{formatMoney(g.monto)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                      <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-100 text-right">
-                        <p className="text-sm text-slate-600">
-                          Total gastos: <span className="font-bold text-red-600 text-lg">{formatMoney(detalleGastos.reduce((sum, g) => sum + g.monto, 0))}</span>
-                        </p>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+      {/* MODAL CON PORTAL - Renderizado fuera del árbol DOM normal */}
+      {selectedTienda && createPortal(
+        <TiendaModal 
+          tienda={selectedTienda} 
+          gastos={detalleGastos} 
+          loading={loadingDetalle} 
+          onClose={() => setSelectedTienda(null)} 
+        />,
+        document.body
       )}
     </div>
   )
