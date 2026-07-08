@@ -8,6 +8,7 @@ import GastosTable from './components/GastosTable'
 import PresupuestoView from './components/PresupuestoView'
 import AmortizacionesUpload from './components/AmortizacionesUpload'
 import CierreMesView from './components/CierreMesView'
+import Planificador from './components/Planificador'
 import { useGastos } from './hooks/useSupabase'
 import { Plus, X } from 'lucide-react'
 
@@ -60,6 +61,7 @@ export default function App() {
             <Route path="/presupuesto" element={<PresupuestoView />} />
             <Route path="/amortizaciones" element={<AmortizacionesUpload />} />
             <Route path="/cierre-mes" element={<CierreMesView />} />
+            <Route path="/planificador" element={<Planificador />} />
           </Routes>
         </main>
       </div>
