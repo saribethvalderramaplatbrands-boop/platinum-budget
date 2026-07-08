@@ -18,7 +18,6 @@ const menuItems = [
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <>
-      {/* Overlay para móvil */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 lg:hidden"
@@ -60,33 +59,35 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 key={item.path}
                 to={item.path}
                 onClick={() => onClose()}
-                className={({ isActive }) => `
-                  sidebar-nav-item
-                  ${isActive 
-                    ? 'sidebar-nav-item-active' 
-                    : 'text-slate-600 hover:text-slate-900'
-                  }
-                `}
               >
-                <div className={`
-                  p-2 rounded-lg transition-colors
-                  ${isActive 
-                    ? `bg-${item.color}-100 text-${item.color}-600` 
-                    : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
-                  }
-                `}>
-                  <Icon className="w-4 h-4" />
-                </div>
-                <span>{item.label}</span>
-                {isActive && (
-                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500" />
+                {({ isActive }) => (
+                  <div className={`
+                    sidebar-nav-item
+                    ${isActive 
+                      ? 'sidebar-nav-item-active' 
+                      : 'text-slate-600 hover:text-slate-900'
+                    }
+                  `}>
+                    <div className={`
+                      p-2 rounded-lg transition-colors
+                      ${isActive 
+                        ? `bg-${item.color}-100 text-${item.color}-600` 
+                        : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
+                      }
+                    `}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span>{item.label}</span>
+                    {isActive && (
+                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    )}
+                  </div>
                 )}
               </NavLink>
             )
           })}
         </nav>
 
-        {/* Footer del sidebar */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100">
           <div className="flex items-center justify-center gap-3 opacity-50">
             <img src="/dq-logo.png" alt="DQ" className="h-4 w-auto object-contain" />
