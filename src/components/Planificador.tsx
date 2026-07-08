@@ -31,10 +31,17 @@ export default function Planificador() {
   }
 
   // Calcular totales
-  const mesesGastados = datos.filter(d => d.estado === 'gastado')
-  const mesesProyectados = datos.filter(d => d.estado === 'proyectado')
-  
+  const totalOriginal = datos.reduce((sum, d) => sum + (d.presupuesto_original || 0), 0)
+  const totalAjustado = datos.reduce((sum, d) => sum + (d.presupuesto_ajustado || 0), 0)
+  const totalGastoReal = datos.reduce((sum, d) => sum + (d.gasto_real || 0), 0)
+  const totalAmortizaciones = datos.reduce((sum, d) => sum + (d.amortizaciones || 0), 0)
   const totalConsumido = datos.reduce((sum, d) => sum + (d.total_consumido || 0), 0)
+  const totalSaldo = datos.reduce((sum, d) => sum + (d.saldo_ajustado || 0), 0)
+  const totalDisponible = datos.reduce((sum, d) => {
+    const disponible = d.estado === 'proyectado' ? (d.a_gastar || 0) : (d.saldo_ajustado || 0)
+    return sum + disponible
+  }, 0)
+  
   const totalAjustadoAnual = datos.reduce((sum, d) => sum + (d.presupuesto_ajustado || 0), 0)
   const disponibleAnual = totalAjustadoAnual - totalConsumido
   const colchonActual = datos.length > 0 ? datos[datos.length - 1].colchon_acumulado : 0
@@ -52,7 +59,8 @@ export default function Planificador() {
         d.saldo_ajustado,
         d.estado === 'proyectado' ? d.a_gastar : d.saldo_ajustado,
         d.estado
-      ].join(','))
+      ].join(',')),
+      ['TOTAL', totalOriginal, totalAjustado, totalGastoReal, totalAmortizaciones, totalConsumido, totalSaldo, totalDisponible, ''].join(',')
     ].join('\n')
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -231,6 +239,23 @@ export default function Planificador() {
                 </tr>
               )
             })}
+            
+            {/* Fila de totales */}
+            <tr className="border-t-2 border-gray-300 bg-gray-100 font-bold">
+              <td className="px-3 py-3 text-lg">TOTAL</td>
+              <td className="px-3 py-3 text-right text-lg">${totalOriginal.toLocaleString('es-PA', { minimumFractionDigits: 2 })}</td>
+              <td className="px-3 py-3 text-right text-lg text-purple-700">${totalAjustado.toLocaleString('es-PA', { minimumFractionDigits: 2 })}</td>
+              <td className="px-3 py-3 text-right text-lg text-red-700">${totalGastoReal.toLocaleString('es-PA', { minimumFractionDigits: 2 })}</td>
+              <td className="px-3 py-3 text-right text-lg text-orange-700">${totalAmortizaciones.toLocaleString('es-PA', { minimumFractionDigits: 2 })}</td>
+              <td className="px-3 py-3 text-right text-lg">${totalConsumido.toLocaleString('es-PA', { minimumFractionDigits: 2 })}</td>
+              <td className={`px-3 py-3 text-right text-lg ${totalSaldo < 0 ? 'text-red-700' : 'text-green-700'}`}>
+                ${totalSaldo.toLocaleString('es-PA', { minimumFractionDigits: 2 })}
+              </td>
+              <td className="px-3 py-3 text-right text-lg text-blue-700">
+                ${totalDisponible.toLocaleString('es-PA', { minimumFractionDigits: 2 })}
+              </td>
+              <td className="px-3 py-3"></td>
+            </tr>
           </tbody>
         </table>
       </div>
