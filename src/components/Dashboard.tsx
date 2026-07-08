@@ -20,6 +20,18 @@ const MESES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ]
 
+interface TiendaConAmortizacion {
+  tienda_id: string
+  codigo: number
+  tienda: string
+  unidad_negocio: string
+  presupuesto_asignado: number
+  gasto_real: number
+  amortizado: number
+  saldo: number
+  mes: number
+}
+
 export default function Dashboard() {
   const [año, setAño] = useState(2026)
   const [mes, setMes] = useState(new Date().getMonth() + 1)
@@ -32,16 +44,35 @@ export default function Dashboard() {
   const amortizacionesMes = amortizaciones.filter(a => a.periodo === periodoActual)
   const totalAmortizaciones = amortizacionesMes.reduce((sum, a) => sum + (a.monto || 0), 0)
 
-  const totalPresupuesto = resumen.reduce((sum, r) => sum + (r.presupuesto_asignado || 0), 0)
-  const totalGastoReal = resumen.reduce((sum, r) => sum + (r.gasto_real || 0), 0)
+  // Combinar resumen con amortizaciones por tienda
+  const resumenConAmortizaciones: TiendaConAmortizacion[] = resumen.map(r => {
+    const amortizado = amortizacionesMes
+      .filter(a => a.codigo_tienda === r.codigo)
+      .reduce((sum, a) => sum + (a.monto || 0), 0)
+    
+    return {
+      tienda_id: r.tienda_id,
+      codigo: r.codigo,
+      tienda: r.tienda,
+      unidad_negocio: r.unidad_negocio,
+      presupuesto_asignado: r.presupuesto_asignado || 0,
+      gasto_real: r.gasto_real || 0,
+      amortizado: amortizado,
+      saldo: (r.presupuesto_asignado || 0) - (r.gasto_real || 0) - amortizado,
+      mes: r.mes,
+    }
+  })
+
+  const totalPresupuesto = resumenConAmortizaciones.reduce((sum, r) => sum + r.presupuesto_asignado, 0)
+  const totalGastoReal = resumenConAmortizaciones.reduce((sum, r) => sum + r.gasto_real, 0)
   const totalGasto = totalGastoReal + totalAmortizaciones
   const totalSaldo = totalPresupuesto - totalGasto
   const porcentajeUsado = totalPresupuesto > 0 ? (totalGasto / totalPresupuesto) * 100 : 0
 
-  const tiendasAlerta = resumen.filter(r => r.saldo < 0).length
+  const tiendasAlerta = resumenConAmortizaciones.filter(r => r.saldo < 0).length
 
-  const dqResumen = resumen.filter(r => r.unidad_negocio?.includes('Dairy'))
-  const kfcResumen = resumen.filter(r => r.unidad_negocio?.includes('Kentucky'))
+  const dqResumen = resumenConAmortizaciones.filter(r => r.unidad_negocio?.includes('Dairy'))
+  const kfcResumen = resumenConAmortizaciones.filter(r => r.unidad_negocio?.includes('Kentucky'))
 
   // Calcular amortizaciones por unidad de negocio
   const getAmortizacionesPorCodigos = (codigos: number[]) => {
@@ -56,26 +87,26 @@ export default function Dashboard() {
   const dqAmortizaciones = getAmortizacionesPorCodigos(dqCodigos)
   const kfcAmortizaciones = getAmortizacionesPorCodigos(kfcCodigos)
 
-  const dqPresupuesto = dqResumen.reduce((sum, r) => sum + (r.presupuesto_asignado || 0), 0)
-  const dqGastoReal = dqResumen.reduce((sum, r) => sum + (r.gasto_real || 0), 0)
+  const dqPresupuesto = dqResumen.reduce((sum, r) => sum + r.presupuesto_asignado, 0)
+  const dqGastoReal = dqResumen.reduce((sum, r) => sum + r.gasto_real, 0)
   const dqGasto = dqGastoReal + dqAmortizaciones
   const dqSaldo = dqPresupuesto - dqGasto
 
-  const kfcPresupuesto = kfcResumen.reduce((sum, r) => sum + (r.presupuesto_asignado || 0), 0)
-  const kfcGastoReal = kfcResumen.reduce((sum, r) => sum + (r.gasto_real || 0), 0)
+  const kfcPresupuesto = kfcResumen.reduce((sum, r) => sum + r.presupuesto_asignado, 0)
+  const kfcGastoReal = kfcResumen.reduce((sum, r) => sum + r.gasto_real, 0)
   const kfcGasto = kfcGastoReal + kfcAmortizaciones
   const kfcSaldo = kfcPresupuesto - kfcGasto
 
   // Filtrar tiendas para mostrar: top 10 por gasto + todas las que están pasadas de presupuesto
-  const tiendasPasadas = resumen.filter(r => r.saldo < 0)
-  const tiendasRestantes = resumen.filter(r => r.saldo >= 0)
-  const top10PorGasto = [...tiendasRestantes].sort((a, b) => b.gasto_real - a.gasto_real).slice(0, 10)
+  const tiendasPasadas = resumenConAmortizaciones.filter(r => r.saldo < 0)
+  const tiendasRestantes = resumenConAmortizaciones.filter(r => r.saldo >= 0)
+  const top10PorGasto = [...tiendasRestantes].sort((a, b) => (b.gasto_real + b.amortizado) - (a.gasto_real + a.amortizado)).slice(0, 10)
   const tiendasMostrar = [...tiendasPasadas, ...top10PorGasto]
     .sort((a, b) => {
-      // Primero las pasadas de presupuesto, luego por gasto descendente
+      // Primero las pasadas de presupuesto, luego por gasto total descendente
       if (a.saldo < 0 && b.saldo >= 0) return -1
       if (a.saldo >= 0 && b.saldo < 0) return 1
-      return b.gasto_real - a.gasto_real
+      return (b.gasto_real + b.amortizado) - (a.gasto_real + a.amortizado)
     })
 
   if (loading) return <div className="text-center py-8">Cargando dashboard...</div>
@@ -298,6 +329,7 @@ export default function Dashboard() {
               <th className="text-left px-3 py-2">Tienda</th>
               <th className="text-left px-3 py-2">Unidad</th>
               <th className="text-right px-3 py-2">Presupuesto</th>
+              <th className="text-right px-3 py-2">Amortizado</th>
               <th className="text-right px-3 py-2">Gasto</th>
               <th className="text-right px-3 py-2">Saldo</th>
               <th className="text-center px-3 py-2">%</th>
@@ -305,13 +337,15 @@ export default function Dashboard() {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {tiendasMostrar.map(r => {
-              const pct = r.presupuesto_asignado > 0 ? (r.gasto_real / r.presupuesto_asignado) * 100 : 0
+              const gastoTotal = r.gasto_real + r.amortizado
+              const pct = r.presupuesto_asignado > 0 ? (gastoTotal / r.presupuesto_asignado) * 100 : 0
               return (
                 <tr key={`${r.tienda_id}-${r.mes}`} className={r.saldo < 0 ? 'bg-red-50' : 'hover:bg-gray-50'}>
                   <td className="px-3 py-2 font-medium">{r.codigo}</td>
                   <td className="px-3 py-2">{r.tienda}</td>
                   <td className="px-3 py-2 text-xs">{r.unidad_negocio}</td>
                   <td className="px-3 py-2 text-right">${r.presupuesto_asignado.toLocaleString('es-PA', { minimumFractionDigits: 2 })}</td>
+                  <td className="px-3 py-2 text-right text-orange-600">${r.amortizado.toLocaleString('es-PA', { minimumFractionDigits: 2 })}</td>
                   <td className="px-3 py-2 text-right text-red-600">${r.gasto_real.toLocaleString('es-PA', { minimumFractionDigits: 2 })}</td>
                   <td className={`px-3 py-2 text-right font-medium ${r.saldo < 0 ? 'text-red-600' : 'text-green-600'}`}>
                     ${r.saldo.toLocaleString('es-PA', { minimumFractionDigits: 2 })}
