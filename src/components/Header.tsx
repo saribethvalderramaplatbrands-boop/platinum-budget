@@ -18,7 +18,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
             </button>
             
             <div className="flex items-center gap-3">
-              {/* Logo Platinum Brands */}
               <div className="relative">
                 <img 
                   src="/platinum-logo.png" 
@@ -47,7 +46,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Logos de marcas pequeños */}
             <div className="hidden md:flex items-center gap-2">
               <img 
                 src="/dq-logo.png" 
