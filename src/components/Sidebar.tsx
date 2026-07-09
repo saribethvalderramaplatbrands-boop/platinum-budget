@@ -1,100 +1,82 @@
-import { NavLink } from 'react-router-dom'
-import { X, LayoutDashboard, Receipt, PieChart, FileSpreadsheet, CalendarCheck, TrendingUp } from 'lucide-react'
+import { BarChart3, Menu } from 'lucide-react'
 
-interface SidebarProps {
-  isOpen: boolean
-  onClose: () => void
+interface HeaderProps {
+  onMenuClick: () => void;
 }
 
-const menuItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard, color: 'blue' },
-  { path: '/gastos', label: 'Gastos Diarios', icon: Receipt, color: 'emerald' },
-  { path: '/presupuesto', label: 'Presupuesto', icon: PieChart, color: 'violet' },
-  { path: '/amortizaciones', label: 'Amortizaciones', icon: FileSpreadsheet, color: 'orange' },
-  { path: '/cierre-mes', label: 'Cierre de Mes', icon: CalendarCheck, color: 'rose' },
-  { path: '/planificador', label: 'Planificador', icon: TrendingUp, color: 'cyan' },
-]
-
-export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+export default function Header({ onMenuClick }: HeaderProps) {
   return (
-    <>
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 lg:hidden"
-          onClick={onClose}
-        />
-      )}
-
-      <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-72 sidebar-modern
-        transform transition-transform duration-300 ease-out
-        ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-      `}>
-        <div className="p-5 flex items-center justify-between lg:hidden">
-          <div className="flex items-center gap-2">
-            <img 
-              src="/platinum-logo.png" 
-              alt="Platinum Brands" 
-              className="h-6 w-auto object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none'
-              }}
-            />
-            <span className="font-bold text-slate-800">Platinum Budget</span>
+    <header className="glass-header sticky top-0 z-[60]">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={onMenuClick} 
+              className="p-2 rounded-xl hover:bg-slate-100 lg:hidden transition-colors"
+            >
+              <Menu className="w-6 h-6 text-slate-600" />
+            </button>
+            
+            <div className="flex items-center gap-3">
+              {/* Logo Platinum Brands */}
+              <div className="relative">
+                <img 
+                  src="/platinum-logo.png" 
+                  alt="Platinum Brands" 
+                  className="h-8 w-auto object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none'
+                  }}
+                />
+              </div>
+              <div className="hidden sm:block h-8 w-px bg-slate-200" />
+              <div className="hidden sm:flex items-center gap-2">
+                <div className="p-2 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow-lg shadow-blue-500/20">
+                  <BarChart3 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+                    Platinum Budget
+                  </h1>
+                  <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest">
+                    Presupuesto de Mantenimiento
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
-            <X className="w-5 h-5 text-slate-500" />
-          </button>
-        </div>
 
-        <nav className="p-4 space-y-1">
-          <div className="px-4 py-3 mb-2">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Menú Principal</p>
-          </div>
-          
-          {menuItems.map(item => {
-            const Icon = item.icon
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                onClick={() => onClose()}
-              >
-                {({ isActive }) => (
-                  <div className={`
-                    sidebar-nav-item
-                    ${isActive 
-                      ? 'sidebar-nav-item-active' 
-                      : 'text-slate-600 hover:text-slate-900'
-                    }
-                  `}>
-                    <div className={`
-                      p-2 rounded-lg transition-colors
-                      ${isActive 
-                        ? `bg-${item.color}-100 text-${item.color}-600` 
-                        : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
-                      }
-                    `}>
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <span>{item.label}</span>
-                    {isActive && (
-                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500" />
-                    )}
-                  </div>
-                )}
-              </NavLink>
-            )
-          })}
-        </nav>
-
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100">
-          <div className="flex items-center justify-center gap-3 opacity-50">
-            <img src="/dq-logo.png" alt="DQ" className="h-4 w-auto object-contain" />
-            <img src="/kfc-logo.png" alt="KFC" className="h-4 w-auto object-contain" />
+          <div className="flex items-center gap-4">
+            {/* Logos de marcas pequeños */}
+            <div className="hidden md:flex items-center gap-2">
+              <img 
+                src="/dq-logo.png" 
+                alt="DQ" 
+                className="h-6 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none'
+                }}
+              />
+              <img 
+                src="/kfc-logo.png" 
+                alt="KFC" 
+                className="h-6 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none'
+                }}
+              />
+            </div>
+            
+            <div className="text-sm font-medium text-slate-500 bg-slate-100/80 px-3 py-1.5 rounded-lg">
+              {new Date().toLocaleDateString('es-PA', { 
+                day: '2-digit', 
+                month: 'short', 
+                year: 'numeric' 
+              })}
+            </div>
           </div>
         </div>
-      </aside>
-    </>
+      </div>
+    </header>
   )
 }
