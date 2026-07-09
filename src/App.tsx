@@ -68,6 +68,3 @@ export default function App() {
     </div>
   )
 }
-git add .
-git commit -m "force rebuild - fix header props"
-git push origin main
