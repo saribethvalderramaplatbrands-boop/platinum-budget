@@ -3,20 +3,11 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Header from './components/Header'
 import Sidebar from './components/Sidebar'
 import Dashboard from './components/Dashboard'
+import GastosDiarios from './components/GastosDiarios'
 import PresupuestoView from './components/PresupuestoView'
-import Planificador from './components/Planificador'
 import AmortizacionesUpload from './components/AmortizacionesUpload'
 import CierreMesView from './components/CierreMesView'
-
-// Placeholder rápido para Gastos Diarios mientras decides
-function GastosDiarios() {
-  return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold text-slate-800 mb-4">Gastos Diarios</h2>
-      <p className="text-slate-500">En construcción...</p>
-    </div>
-  )
-}
+import Planificador from './components/Planificador'
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
