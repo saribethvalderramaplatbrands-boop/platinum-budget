@@ -10,7 +10,7 @@ import AmortizacionesUpload from './components/AmortizacionesUpload'
 import CierreMesView from './components/CierreMesView'
 import Planificador from './components/Planificador'
 import { useGastos } from './hooks/useSupabase'
-import { Plus, X } from 'lucide-react'
+import { Plus, X } from 'lucide-react'.....
 
 function GastosPage() {
   const [showForm, setShowForm] = useState(false)
