@@ -13,6 +13,10 @@ export interface Proveedor {
   codigo: string;
   nombre: string;
   activo: boolean;
+  clasificacion_id?: string;
+  clasificacion?: {
+    nombre: string;
+  };
 }
 
 export interface PresupuestoMensual {
