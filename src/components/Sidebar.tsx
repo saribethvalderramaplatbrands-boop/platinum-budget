@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { X, LayoutDashboard, Receipt, PieChart, FileSpreadsheet, CalendarCheck, TrendingUp } from 'lucide-react'
+import { X, LayoutDashboard, Receipt, PieChart, FileSpreadsheet, CalendarCheck, TrendingUp, Wrench } from 'lucide-react'
 
 interface SidebarProps {
   isOpen: boolean
