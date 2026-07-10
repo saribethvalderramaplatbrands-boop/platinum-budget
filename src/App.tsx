@@ -9,6 +9,7 @@ import PresupuestoView from './components/PresupuestoView'
 import AmortizacionesUpload from './components/AmortizacionesUpload'
 import CierreMesView from './components/CierreMesView'
 import Planificador from './components/Planificador'
+import CalendarioMantenimiento from './components/CalendarioMantenimiento'
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
