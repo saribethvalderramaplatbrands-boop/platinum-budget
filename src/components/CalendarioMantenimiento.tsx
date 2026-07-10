@@ -15,7 +15,8 @@ import {
   Repeat,
   AlertTriangle,
   Sparkles,
-  Search
+  Search,
+  Filter
 } from 'lucide-react'
 
 const MESES = [
@@ -107,6 +108,11 @@ export default function CalendarioMantenimiento() {
   const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [viewMode, setViewMode] = useState<'calendario' | 'lista'>('calendario')
+
+  // Filtros para vista lista
+  const [filtroProveedor, setFiltroProveedor] = useState('')
+  const [filtroMes, setFiltroMes] = useState('')
+  const [showFiltros, setShowFiltros] = useState(false)
 
   const [tiendaSearch, setTiendaSearch] = useState('')
   const [showTiendaResults, setShowTiendaResults] = useState(false)
@@ -231,6 +237,7 @@ export default function CalendarioMantenimiento() {
     }
 
     const tienda = tiendas.find(t => t.id === formData.tienda_id)
+    const mesIndex = parseInt(formData.fecha_programada.split('-')[1]) - 1
 
     try {
       const { data: mantData, error: mantError } = await supabase
@@ -258,7 +265,7 @@ export default function CalendarioMantenimiento() {
         .insert([{
           tienda_id: formData.tienda_id,
           fecha: formData.fecha_programada,
-          periodo: MESES[new Date(formData.fecha_programada).getMonth()],
+          periodo: MESES[mesIndex],
           descripcion: 'MANTENIMIENTO PREVENTIVO: ' + formData.tipo_servicio + (formData.descripcion ? ' - ' + formData.descripcion : ''),
           monto: parseFloat(formData.monto_estimado),
           clasificacion: 'Servicios Fijos',
@@ -316,6 +323,8 @@ export default function CalendarioMantenimiento() {
 
     if (!confirm('¿Completar este mantenimiento y registrar el gasto?')) return
 
+    const mesIndex = parseInt(mantenimiento.fecha_programada.split('-')[1]) - 1
+
     const { data: gastoData, error: gastoError } = await supabase
       .from('gastos_diarios')
       .insert([{
@@ -325,7 +334,7 @@ export default function CalendarioMantenimiento() {
         monto: mantenimiento.monto_estimado,
         clasificacion: 'Servicios Fijos',
         proveedor_id: mantenimiento.proveedor_id,
-        periodo: MESES[new Date().getMonth()],
+        periodo: MESES[mesIndex],
         estatus: 'Completado'
       }])
       .select()
@@ -369,6 +378,24 @@ export default function CalendarioMantenimiento() {
   const mantenimientosFiltrados = mantenimientos.filter(m => {
     const [year, month] = m.fecha_programada.split('-').map(Number)
     return month === mes && year === año
+  })
+
+  // Filtros para vista lista
+  const mantenimientosListaFiltrados = mantenimientos.filter(m => {
+    let cumple = true
+    
+    // Filtro por proveedor
+    if (filtroProveedor) {
+      cumple = cumple && m.proveedor_id === filtroProveedor
+    }
+    
+    // Filtro por mes
+    if (filtroMes) {
+      const mesMantenimiento = parseInt(m.fecha_programada.split('-')[1])
+      cumple = cumple && mesMantenimiento === parseInt(filtroMes)
+    }
+    
+    return cumple
   })
 
   const getDiasEnMes = (año: number, mes: number) => new Date(año, mes, 0).getDate()
@@ -700,89 +727,163 @@ export default function CalendarioMantenimiento() {
       )}
 
       {viewMode === 'lista' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200">
-                <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">Fecha</th>
-                <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">Tienda</th>
-                <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">Servicio</th>
-                <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">Frecuencia</th>
-                <th className="text-right py-3 px-4 text-xs font-bold text-slate-500 uppercase">Monto</th>
-                <th className="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">Estatus</th>
-                <th className="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {mantenimientosFiltrados.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-400">
-                    <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                    <p>No hay mantenimientos programados</p>
-                  </td>
+        <div className="space-y-4">
+          {/* Filtros de lista */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-bold text-slate-700 flex items-center gap-2">
+                <Filter className="w-4 h-4 text-violet-500" />
+                Filtros
+              </h4>
+              <button 
+                onClick={() => setShowFiltros(!showFiltros)}
+                className="text-sm text-violet-600 hover:text-violet-700 font-medium"
+              >
+                {showFiltros ? 'Ocultar' : 'Mostrar'}
+              </button>
+            </div>
+            
+            {showFiltros && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Proveedor</label>
+                  <select 
+                    value={filtroProveedor} 
+                    onChange={e => setFiltroProveedor(e.target.value)}
+                    className="input-field"
+                  >
+                    <option value="">Todos los proveedores</option>
+                    {proveedores.map(p => (
+                      <option key={p.id} value={p.id}>{p.codigo} - {p.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1.5">Mes</label>
+                  <select 
+                    value={filtroMes} 
+                    onChange={e => setFiltroMes(e.target.value)}
+                    className="input-field"
+                  >
+                    <option value="">Todos los meses</option>
+                    {MESES.map((m, index) => (
+                      <option key={index + 1} value={index + 1}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+            
+            {(filtroProveedor || filtroMes) && (
+              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-100">
+                <span className="text-sm text-slate-500">Filtros activos:</span>
+                {filtroProveedor && (
+                  <span className="px-2 py-1 bg-violet-100 text-violet-700 rounded-lg text-xs font-medium">
+                    {proveedores.find(p => p.id === filtroProveedor)?.nombre || 'Proveedor'}
+                  </span>
+                )}
+                {filtroMes && (
+                  <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-medium">
+                    {MESES[parseInt(filtroMes) - 1]}
+                  </span>
+                )}
+                <button 
+                  onClick={() => { setFiltroProveedor(''); setFiltroMes('') }}
+                  className="text-xs text-red-500 hover:text-red-700 font-medium ml-auto"
+                >
+                  Limpiar filtros
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200">
+                  <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">Fecha</th>
+                  <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">Tienda</th>
+                  <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">Servicio</th>
+                  <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">Proveedor</th>
+                  <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">Frecuencia</th>
+                  <th className="text-right py-3 px-4 text-xs font-bold text-slate-500 uppercase">Monto</th>
+                  <th className="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">Estatus</th>
+                  <th className="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">Acciones</th>
                 </tr>
-              ) : (
-                mantenimientosFiltrados.map(m => {
-                  const tienda = tiendas.find(t => t.id === m.tienda_id)
-                  const proveedor = proveedores.find(p => p.id === m.proveedor_id)
-                  const yaRegistrado = !!m.gasto_registrado_id
-                  return (
-                    <tr key={m.id} className={yaRegistrado ? 'bg-emerald-50/30' : ''}>
-                      <td className="py-3 px-4 whitespace-nowrap text-slate-600">{new Date(m.fecha_programada).toLocaleDateString('es-PA')}</td>
-                      <td className="py-3 px-4 font-medium text-slate-800">
-                        <div className="flex items-center gap-2">
-                          {tienda?.nombre || 'N/A'}
-                          {yaRegistrado && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-slate-600 max-w-xs truncate" title={m.tipo_servicio}>{m.tipo_servicio}</td>
-                      <td className="py-3 px-4">
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
-                          {FRECUENCIAS.find(f => f.value === m.frecuencia)?.label}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold text-slate-800">{formatMoney(m.monto_estimado)}</td>
-                      <td className="py-3 px-4 text-center">
-                        {yaRegistrado ? (
-                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
-                            <CheckCircle2 className="w-3 h-3 inline mr-1" />
-                            Registrado
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {mantenimientosListaFiltrados.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="text-center py-12 text-slate-400">
+                      <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                      <p>No hay mantenimientos con los filtros seleccionados</p>
+                    </td>
+                  </tr>
+                ) : (
+                  mantenimientosListaFiltrados.map(m => {
+                    const tienda = tiendas.find(t => t.id === m.tienda_id)
+                    const proveedor = proveedores.find(p => p.id === m.proveedor_id)
+                    const yaRegistrado = !!m.gasto_registrado_id
+                    return (
+                      <tr key={m.id} className={yaRegistrado ? 'bg-emerald-50/30' : ''}>
+                        <td className="py-3 px-4 whitespace-nowrap text-slate-600">{new Date(m.fecha_programada).toLocaleDateString('es-PA')}</td>
+                        <td className="py-3 px-4 font-medium text-slate-800">
+                          <div className="flex items-center gap-2">
+                            {tienda?.nombre || 'N/A'}
+                            {yaRegistrado && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                          </div>
+                        </td>
+                        <td className="py-3 px-4 text-slate-600 max-w-xs truncate" title={m.tipo_servicio}>{m.tipo_servicio}</td>
+                        <td className="py-3 px-4 text-slate-500 text-xs">{proveedor?.nombre || 'Sin proveedor'}</td>
+                        <td className="py-3 px-4">
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
+                            {FRECUENCIAS.find(f => f.value === m.frecuencia)?.label}
                           </span>
-                        ) : (
-                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
-                            <Clock className="w-3 h-3 inline mr-1" />
-                            Pendiente
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <button 
-                            onClick={() => completarMantenimiento(m)}
-                            className={`p-1.5 rounded-lg transition-colors ${
-                              yaRegistrado 
-                                ? 'bg-slate-100 text-slate-400 cursor-default' 
-                                : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200'
-                            }`}
-                            title={yaRegistrado ? 'Gasto ya registrado' : 'Completar y registrar gasto'}
-                          >
-                            <CheckCircle2 className="w-4 h-4" />
-                          </button>
-                          <button 
-                            onClick={() => cancelarMantenimiento(m.id)}
-                            className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                            title="Cancelar"
-                          >
-                            <XCircle className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
+                        </td>
+                        <td className="py-3 px-4 text-right font-bold text-slate-800">{formatMoney(m.monto_estimado)}</td>
+                        <td className="py-3 px-4 text-center">
+                          {yaRegistrado ? (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3 inline mr-1" />
+                              Registrado
+                            </span>
+                          ) : (
+                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                              <Clock className="w-3 h-3 inline mr-1" />
+                              Pendiente
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button 
+                              onClick={() => completarMantenimiento(m)}
+                              className={`p-1.5 rounded-lg transition-colors ${
+                                yaRegistrado 
+                                  ? 'bg-slate-100 text-slate-400 cursor-default' 
+                                  : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200'
+                              }`}
+                              title={yaRegistrado ? 'Gasto ya registrado' : 'Completar y registrar gasto'}
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                            </button>
+                            <button 
+                              onClick={() => cancelarMantenimiento(m.id)}
+                              className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                              title="Cancelar"
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
