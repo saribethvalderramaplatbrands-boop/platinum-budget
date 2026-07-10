@@ -234,7 +234,7 @@ export default function CalendarioMantenimiento() {
     const tienda = tiendas.find(t => t.id === formData.tienda_id)
 
     try {
-      const { data: mantData, error: mantError } = await supabase
+      const { error: mantError } = await supabase
         .from('mantenimientos_preventivos')
         .insert([{
           tienda_id: formData.tienda_id,
@@ -247,14 +247,13 @@ export default function CalendarioMantenimiento() {
           fecha_tope: formData.fecha_tope,
           estatus: 'Pendiente'
         }])
-        .select()
 
       if (mantError) {
         alert('Error al programar mantenimiento: ' + mantError.message)
         return
       }
 
-      const { data: gastoData, error: gastoError } = await supabase
+      const { error: gastoError } = await supabase
         .from('gastos_diarios')
         .insert([{
           tienda_id: formData.tienda_id,
@@ -270,13 +269,10 @@ export default function CalendarioMantenimiento() {
           gerente_area: tienda?.gerente_area || '',
           gerente_regional: tienda?.gerente_regional || ''
         }])
-        .select()
 
       if (gastoError) {
         console.error('Error registrando gasto:', gastoError)
         alert('⚠️ Mantenimiento programado pero error al registrar gasto: ' + gastoError.message)
-      } else {
-        console.log('Gasto registrado automáticamente:', gastoData)
       }
 
       setShowForm(false)
@@ -295,7 +291,7 @@ export default function CalendarioMantenimiento() {
       
       await fetchMantenimientos()
       
-      alert('✅ Mantenimiento programado y gasto registrado automáticamente!\n\n💰 Monto: ' + formatMoney(parseFloat(formData.monto_estimado)) + '\n📍 Tienda: ' + (tienda?.nombre || 'N/A') + '\n🔧 Servicio: ' + formData.tipo_servicio)
+      alert('✅ Mantenimiento programado y gasto registrado automáticamente!')
 
     } catch (err) {
       console.error('Error inesperado:', err)
@@ -712,6 +708,7 @@ export default function CalendarioMantenimiento() {
               ) : (
                 mantenimientosFiltrados.map(m => {
                   const tienda = tiendas.find(t => t.id === m.tienda_id)
+                  const proveedor = proveedores.find(p => p.id === m.proveedor_id)
                   return (
                     <tr key={m.id}>
                       <td className="py-3 px-4 whitespace-nowrap text-slate-600">{new Date(m.fecha_programada).toLocaleDateString('es-PA')}</td>
