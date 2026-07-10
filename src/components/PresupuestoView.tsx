@@ -268,31 +268,37 @@ export default function PresupuestoView() {
   }, [sortBy, sortDesc])
 
   const fetchDetalleGastos = async (tiendaId: string, mesNum: number) => {
-    setLoadingDetalle(true)
-    const { data, error } = await supabase
-      .from('gastos_diarios')
-      .select(`*, proveedores:proveedor_id(codigo, nombre)`)
-      .eq('tienda_id', tiendaId)
-      .eq('periodo', MESES[mesNum - 1])
-      .order('fecha', { ascending: false })
+  setLoadingDetalle(true)
+  const { data, error } = await supabase
+    .from('gastos_diarios')
+    .select(`
+      *,
+      proveedores:proveedor_id(
+        codigo, 
+        nombre,
+        clasificacion:clasificacion_id(nombre)
+      )
+    `)
+    .eq('tienda_id', tiendaId)
+    .eq('periodo', MESES[mesNum - 1])
+    .order('fecha', { ascending: false })
 
-    if (error) {
-      console.error('Error fetching detalle:', error)
-      setLoadingDetalle(false)
-      return
-    }
-
-    setDetalleGastos((data || []).map((g: any) => ({
-      id: g.id,
-      fecha: g.fecha,
-      descripcion: g.descripcion,
-      monto: g.monto,
-      clasificacion: g.clasificacion,
-      proveedor: g.proveedores ? `${g.proveedores.codigo} - ${g.proveedores.nombre}` : '-',
-    })))
+  if (error) {
+    console.error('Error fetching detalle:', error)
     setLoadingDetalle(false)
+    return
   }
 
+  setDetalleGastos((data || []).map((g: any) => ({
+    id: g.id,
+    fecha: g.fecha,
+    descripcion: g.descripcion,
+    monto: g.monto,
+    clasificacion: g.proveedores?.clasificacion?.nombre || g.clasificacion,
+    proveedor: g.proveedores ? `${g.proveedores.codigo} - ${g.proveedores.nombre}` : '-',
+  })))
+  setLoadingDetalle(false)
+}
   const handleRowDoubleClick = (row: PresupuestoRow) => {
     setSelectedTienda(row)
     fetchDetalleGastos(row.tienda_id, row.mes)
