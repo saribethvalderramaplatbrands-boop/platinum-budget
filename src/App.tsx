@@ -23,6 +23,7 @@ function App() {
             <Route path="/" element={<Dashboard />} />
             <Route path="/presupuesto" element={<PresupuestoView />} />
             <Route path="/planificador" element={<Planificador />} />
+            <Route path="/mantenimientos" element={<CalendarioMantenimiento />} />
             
             {/* Rutas protegidas con PIN */}
             <Route path="/gastos" element={
