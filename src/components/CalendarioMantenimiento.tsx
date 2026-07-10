@@ -226,41 +226,102 @@ export default function CalendarioMantenimiento() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    const { error } = await supabase.from('mantenimientos_preventivos').insert([{
-      tienda_id: formData.tienda_id,
-      fecha_programada: formData.fecha_programada,
-      tipo_servicio: formData.tipo_servicio,
-      frecuencia: formData.frecuencia,
-      proveedor_id: formData.proveedor_id || null,
-      monto_estimado: parseFloat(formData.monto_estimado),
-      descripcion: formData.descripcion,
-      fecha_tope: formData.fecha_tope
-    }])
-
-    if (error) {
-      alert('Error: ' + error.message)
-    } else {
-      setShowForm(false)
-      setFormData({
-        tienda_id: '',
-        fecha_programada: '',
-        tipo_servicio: TIPOS_SERVICIO[0],
-        frecuencia: 'mensual',
-        proveedor_id: '',
-        monto_estimado: '',
-        descripcion: '',
-        fecha_tope: ''
-      })
-      setTiendaSearch('')
-      setProvSearch('')
-      fetchMantenimientos()
-    }
+  e.preventDefault()
+  
+  // Validaciones
+  if (!formData.tienda_id) {
+    alert('Error: Debes seleccionar una tienda')
+    return
+  }
+  if (!formData.fecha_programada) {
+    alert('Error: Debes seleccionar una fecha programada')
+    return
+  }
+  if (!formData.fecha_tope) {
+    alert('Error: Debes seleccionar una fecha tope')
+    return
+  }
+  if (!formData.monto_estimado || parseFloat(formData.monto_estimado) <= 0) {
+    alert('Error: El monto estimado debe ser mayor a 0')
+    return
   }
 
-  const completarMantenimiento = async (mantenimiento: Mantenimiento) => {
-    if (!confirm('¿Completar este mantenimiento y registrar el gasto?')) return
+  const tienda = tiendas.find(t => t.id === formData.tienda_id)
+  const proveedor = proveedores.find(p => p.id === formData.proveedor_id)
+
+  try {
+    // 1. Crear el mantenimiento preventivo
+    const { data: mantData, error: mantError } = await supabase
+      .from('mantenimientos_preventivos')
+      .insert([{
+        tienda_id: formData.tienda_id,
+        fecha_programada: formData.fecha_programada,
+        tipo_servicio: formData.tipo_servicio,
+        frecuencia: formData.frecuencia,
+        proveedor_id: formData.proveedor_id || null,
+        monto_estimado: parseFloat(formData.monto_estimado),
+        descripcion: formData.descripcion,
+        fecha_tope: formData.fecha_tope,
+        estatus: 'Pendiente'
+      }])
+      .select()
+
+    if (mantError) {
+      alert('Error al programar mantenimiento: ' + mantError.message)
+      return
+    }
+
+    // 2. REGISTRAR EL GASTO AUTOMÁTICAMENTE
+    const { data: gastoData, error: gastoError } = await supabase
+      .from('gastos_diarios')
+      .insert([{
+        tienda_id: formData.tienda_id,
+        fecha: formData.fecha_programada, // Usa la misma fecha del mantenimiento
+        periodo: MESES[new Date(formData.fecha_programada).getMonth()],
+        descripcion: 'MANTENIMIENTO PREVENTIVO: ' + formData.tipo_servicio + (formData.descripcion ? ' - ' + formData.descripcion : ''),
+        monto: parseFloat(formData.monto_estimado),
+        clasificacion: 'Servicios Fijos',
+        proveedor_id: formData.proveedor_id || null,
+        estatus: 'Completado',
+        orden_compra: null,
+        factura: null,
+        gerente_area: tienda?.gerente_area || '',
+        gerente_regional: tienda?.gerente_regional || ''
+      }])
+      .select()
+
+    if (gastoError) {
+      console.error('Error registrando gasto:', gastoError)
+      alert('⚠️ Mantenimiento programado pero error al registrar gasto: ' + gastoError.message)
+    } else {
+      console.log('Gasto registrado automáticamente:', gastoData)
+    }
+
+    // 3. Resetear formulario
+    setShowForm(false)
+    setFormData({
+      tienda_id: '',
+      fecha_programada: '',
+      tipo_servicio: TIPOS_SERVICIO[0],
+      frecuencia: 'mensual',
+      proveedor_id: '',
+      monto_estimado: '',
+      descripcion: '',
+      fecha_tope: ''
+    })
+    setTiendaSearch('')
+    setProvSearch('')
+    
+    // 4. Refrescar lista
+    await fetchMantenimientos()
+    
+    alert('✅ Mantenimiento programado y gasto registrado automáticamente!\n\n💰 Monto: ' + formatMoney(parseFloat(formData.monto_estimado)) + '\n📍 Tienda: ' + (tienda?.nombre || 'N/A') + '\n🔧 Servicio: ' + formData.tipo_servicio)
+
+  } catch (err) {
+    console.error('Error inesperado:', err)
+    alert('Error inesperado: ' + (err as Error).message)
+  }
+}
 
     const { data: gastoData, error: gastoError } = await supabase
       .from('gastos_diarios')
