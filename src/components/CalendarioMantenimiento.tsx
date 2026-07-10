@@ -162,20 +162,29 @@ export default function CalendarioMantenimiento() {
   }, [])
 
   const fetchMantenimientos = async () => {
-    setLoading(true)
-    const { data, error } = await supabase
-      .from('mantenimientos_preventivos')
-      .select('*')
-      .eq('estatus', 'Pendiente')
-      .order('fecha_programada', { ascending: true })
+  console.log('=== FETCHING MANTENIMIENTOS ===')
+  setLoading(true)
+  
+  const { data, error } = await supabase
+    .from('mantenimientos_preventivos')
+    .select('*')
+    .eq('estatus', 'Pendiente')
+    .order('fecha_programada', { ascending: true })
 
-    if (error) {
-      console.error('Error:', error)
-    } else {
-      setMantenimientos(data || [])
-    }
+  console.log('Respuesta Supabase:', { data, error })
+  
+  if (error) {
+    console.error('Error:', error)
     setLoading(false)
+    return
   }
+
+  console.log('Mantenimientos cargados:', data?.length || 0)
+  console.log('Primeros 3:', data?.slice(0, 3))
+  
+  setMantenimientos(data || [])
+  setLoading(false)
+}
 
   useEffect(() => {
     fetchMantenimientos()
@@ -304,10 +313,13 @@ export default function CalendarioMantenimiento() {
     }
   }
 
-  const mantenimientosFiltrados = mantenimientos.filter(m => {
-    const fecha = new Date(m.fecha_programada)
-    return fecha.getMonth() + 1 === mes && fecha.getFullYear() === año
-  })
+ const mantenimientosFiltrados = mantenimientos.filter(m => {
+  const fecha = new Date(m.fecha_programada)
+  const mesMatch = fecha.getMonth() + 1 === mes
+  const añoMatch = fecha.getFullYear() === año
+  console.log('Filtrando:', m.fecha_programada, 'mes:', fecha.getMonth() + 1, 'año:', fecha.getFullYear(), 'match:', mesMatch && añoMatch)
+  return mesMatch && añoMatch
+})
 
   const getDiasEnMes = (año: number, mes: number) => new Date(año, mes, 0).getDate()
   const getPrimerDiaMes = (año: number, mes: number) => new Date(año, mes - 1, 1).getDay()
