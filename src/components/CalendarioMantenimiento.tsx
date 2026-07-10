@@ -338,9 +338,9 @@ export default function CalendarioMantenimiento() {
 
     for (let dia = 1; dia <= diasEnMes; dia++) {
       const mantenimientosDia = mantenimientosFiltrados.filter(m => {
-        const fecha = new Date(m.fecha_programada)
-        return fecha.getDate() === dia
-      })
+  const [year, month, day] = m.fecha_programada.split('-').map(Number)
+  return day === dia
+})
 
       const isToday = dia === new Date().getDate() && mes === new Date().getMonth() + 1 && año === new Date().getFullYear()
 
