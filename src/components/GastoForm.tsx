@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Plus, Check } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Plus, Check, Search } from 'lucide-react'
 import { useTiendas, useProveedores } from '../hooks/useSupabase'
 
 interface GastoFormProps {
@@ -36,24 +36,48 @@ export default function GastoForm({ onSubmit, onCancel }: GastoFormProps) {
     gerente_regional: '',
   })
 
+  // Búsqueda de tiendas
   const [tiendaSearch, setTiendaSearch] = useState('')
-  const [provSearch, setProvSearch] = useState('')
+  const [showTiendaResults, setShowTiendaResults] = useState(false)
+  const tiendaRef = useRef<HTMLDivElement>(null)
 
+  // Búsqueda de proveedores
+  const [provSearch, setProvSearch] = useState('')
+  const [showProvResults, setShowProvResults] = useState(false)
+  const [selectedProvIndex, setSelectedProvIndex] = useState(-1)
+  const provRef = useRef<HTMLDivElement>(null)
+
+  // Filtrar tiendas
   const filteredTiendas = tiendaSearch 
     ? tiendas.filter(t => 
         t.nombre.toLowerCase().includes(tiendaSearch.toLowerCase()) ||
         t.codigo.toString().includes(tiendaSearch)
       )
-    : tiendas
+    : []
 
+  // Filtrar proveedores
   const filteredProveedores = provSearch
     ? proveedores.filter(p => 
         p.nombre.toLowerCase().includes(provSearch.toLowerCase()) ||
         p.codigo.toLowerCase().includes(provSearch.toLowerCase())
       )
-    : proveedores
+    : []
 
-  const handleTiendaChange = (tiendaId: string) => {
+  // Cerrar dropdowns al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tiendaRef.current && !tiendaRef.current.contains(event.target as Node)) {
+        setShowTiendaResults(false)
+      }
+      if (provRef.current && !provRef.current.contains(event.target as Node)) {
+        setShowProvResults(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleTiendaSelect = (tiendaId: string) => {
     const tienda = tiendas.find(t => t.id === tiendaId)
     setFormData(prev => ({
       ...prev,
@@ -61,11 +85,11 @@ export default function GastoForm({ onSubmit, onCancel }: GastoFormProps) {
       gerente_area: tienda?.gerente_area || '',
       gerente_regional: tienda?.gerente_regional || '',
     }))
-    setTiendaSearch('')
+    setTiendaSearch(`${tienda?.codigo} - ${tienda?.nombre}`)
+    setShowTiendaResults(false)
   }
 
-  // NUEVO: Auto-clasificación según proveedor
-  const handleProveedorChange = (proveedorId: string) => {
+  const handleProveedorSelect = (proveedorId: string) => {
     const proveedor = proveedores.find(p => p.id === proveedorId)
     const clasificacionProveedor = proveedor?.clasificacion?.nombre || CLASIFICACIONES[0]
     
@@ -74,7 +98,29 @@ export default function GastoForm({ onSubmit, onCancel }: GastoFormProps) {
       proveedor_id: proveedorId,
       clasificacion: clasificacionProveedor,
     }))
-    setProvSearch('')
+    setProvSearch(`${proveedor?.codigo} - ${proveedor?.nombre}`)
+    setShowProvResults(false)
+    setSelectedProvIndex(-1)
+  }
+
+  // Navegación con teclado para proveedores
+  const handleProvKeyDown = (e: React.KeyboardEvent) => {
+    if (!showProvResults || filteredProveedores.length === 0) return
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setSelectedProvIndex(prev => (prev + 1) % filteredProveedores.length)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSelectedProvIndex(prev => (prev - 1 + filteredProveedores.length) % filteredProveedores.length)
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (selectedProvIndex >= 0) {
+        handleProveedorSelect(filteredProveedores[selectedProvIndex].id)
+      }
+    } else if (e.key === 'Escape') {
+      setShowProvResults(false)
+    }
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -110,23 +156,44 @@ export default function GastoForm({ onSubmit, onCancel }: GastoFormProps) {
           </select>
         </div>
 
-        <div>
+        {/* Tienda con búsqueda inteligente */}
+        <div ref={tiendaRef}>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">Tienda *</label>
-          <input type="text" placeholder="Buscar tienda por nombre o código..." value={tiendaSearch} onChange={e => setTiendaSearch(e.target.value)} className="input-field mb-2" />
-          {tiendaSearch && (
-            <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-xl mb-2 bg-white shadow-sm">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Escribe código o nombre..." 
+              value={tiendaSearch}
+              onChange={e => {
+                setTiendaSearch(e.target.value)
+                setShowTiendaResults(true)
+              }}
+              onFocus={() => setShowTiendaResults(true)}
+              className="input-field pl-10"
+            />
+          </div>
+          {showTiendaResults && filteredTiendas.length > 0 && (
+            <div className="absolute z-50 w-full max-w-md mt-1 max-h-48 overflow-y-auto border border-slate-200 rounded-xl bg-white shadow-lg">
               {filteredTiendas.map(t => (
-                <button key={t.id} type="button" onClick={() => handleTiendaChange(t.id)} className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm transition-colors">
-                  {t.codigo} - {t.nombre}
+                <button 
+                  key={t.id} 
+                  type="button" 
+                  onClick={() => handleTiendaSelect(t.id)} 
+                  className="w-full text-left px-4 py-2.5 hover:bg-blue-50 text-sm transition-colors border-b border-slate-50 last:border-0"
+                >
+                  <span className="font-bold text-slate-700">{t.codigo}</span>
+                  <span className="text-slate-400 mx-2">-</span>
+                  <span className="text-slate-600">{t.nombre}</span>
                 </button>
               ))}
-              {filteredTiendas.length === 0 && <p className="px-3 py-2 text-sm text-slate-400">No se encontraron tiendas</p>}
             </div>
           )}
-          <select required value={formData.tienda_id} onChange={e => handleTiendaChange(e.target.value)} className="input-field">
-            <option value="">Seleccionar tienda...</option>
-            {tiendas.map(t => <option key={t.id} value={t.id}>{t.codigo} - {t.nombre}</option>)}
-          </select>
+          {showTiendaResults && tiendaSearch && filteredTiendas.length === 0 && (
+            <div className="absolute z-50 w-full mt-1 p-3 bg-white border border-slate-200 rounded-xl shadow-lg text-sm text-slate-400">
+              No se encontraron tiendas
+            </div>
+          )}
         </div>
 
         <div>
@@ -139,23 +206,59 @@ export default function GastoForm({ onSubmit, onCancel }: GastoFormProps) {
           <input type="text" placeholder="Opcional" value={formData.factura} onChange={e => setFormData(prev => ({ ...prev, factura: e.target.value }))} className="input-field" />
         </div>
 
-        <div>
+        {/* Proveedor con búsqueda inteligente y navegación por teclado */}
+        <div ref={provRef}>
           <label className="block text-sm font-medium text-slate-700 mb-1.5">Proveedor</label>
-          <input type="text" placeholder="Buscar proveedor por nombre o código..." value={provSearch} onChange={e => setProvSearch(e.target.value)} className="input-field mb-2" />
-          {provSearch && (
-            <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-xl mb-2 bg-white shadow-sm">
-              {filteredProveedores.map(p => (
-                <button key={p.id} type="button" onClick={() => handleProveedorChange(p.id)} className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm transition-colors">
-                  {p.codigo} - {p.nombre}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Escribe código o nombre..." 
+              value={provSearch}
+              onChange={e => {
+                setProvSearch(e.target.value)
+                setShowProvResults(true)
+                setSelectedProvIndex(-1)
+              }}
+              onFocus={() => setShowProvResults(true)}
+              onKeyDown={handleProvKeyDown}
+              className="input-field pl-10"
+            />
+          </div>
+          {showProvResults && filteredProveedores.length > 0 && (
+            <div className="absolute z-50 w-full max-w-md mt-1 max-h-48 overflow-y-auto border border-slate-200 rounded-xl bg-white shadow-lg">
+              {filteredProveedores.map((p, index) => (
+                <button 
+                  key={p.id} 
+                  type="button" 
+                  onClick={() => handleProveedorSelect(p.id)}
+                  className={`w-full text-left px-4 py-2.5 text-sm transition-colors border-b border-slate-50 last:border-0 ${
+                    index === selectedProvIndex ? 'bg-blue-100 text-blue-700' : 'hover:bg-blue-50 text-slate-700'
+                  }`}
+                >
+                  <span className="font-bold">{p.codigo}</span>
+                  <span className="text-slate-400 mx-2">-</span>
+                  <span>{p.nombre}</span>
+                  {p.clasificacion?.nombre && (
+                    <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500">
+                      {p.clasificacion.nombre}
+                    </span>
+                  )}
                 </button>
               ))}
-              {filteredProveedores.length === 0 && <p className="px-3 py-2 text-sm text-slate-400">No se encontraron proveedores</p>}
             </div>
           )}
-          <select value={formData.proveedor_id} onChange={e => handleProveedorChange(e.target.value)} className="input-field">
-            <option value="">Seleccionar proveedor...</option>
-            {proveedores.map(p => <option key={p.id} value={p.id}>{p.codigo} - {p.nombre}</option>)}
-          </select>
+          {showProvResults && provSearch && filteredProveedores.length === 0 && (
+            <div className="absolute z-50 w-full mt-1 p-3 bg-white border border-slate-200 rounded-xl shadow-lg text-sm text-slate-400">
+              No se encontraron proveedores
+            </div>
+          )}
+          {formData.proveedor_id && (
+            <p className="text-xs text-emerald-600 mt-1 font-medium flex items-center gap-1">
+              <Check className="w-3 h-3" />
+              {proveedores.find(p => p.id === formData.proveedor_id)?.clasificacion?.nombre || 'Sin clasificación'}
+            </p>
+          )}
         </div>
 
         <div>
@@ -163,11 +266,6 @@ export default function GastoForm({ onSubmit, onCancel }: GastoFormProps) {
           <select required value={formData.clasificacion} onChange={e => setFormData(prev => ({ ...prev, clasificacion: e.target.value }))} className="input-field">
             {CLASIFICACIONES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          {formData.proveedor_id && (
-            <p className="text-xs text-emerald-600 mt-1 font-medium">
-              Auto-clasificado según proveedor
-            </p>
-          )}
         </div>
 
         <div>
