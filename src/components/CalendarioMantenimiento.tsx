@@ -314,10 +314,11 @@ export default function CalendarioMantenimiento() {
   }
 
  const mantenimientosFiltrados = mantenimientos.filter(m => {
-  const fecha = new Date(m.fecha_programada)
-  const mesMatch = fecha.getMonth() + 1 === mes
-  const añoMatch = fecha.getFullYear() === año
-  console.log('Filtrando:', m.fecha_programada, 'mes:', fecha.getMonth() + 1, 'año:', fecha.getFullYear(), 'match:', mesMatch && añoMatch)
+  // Extraer mes y año directamente del string YYYY-MM-DD
+  const [year, month, day] = m.fecha_programada.split('-').map(Number)
+  const mesMatch = month === mes
+  const añoMatch = year === año
+  console.log('Filtrando:', m.fecha_programada, 'mes:', month, 'año:', year, 'match:', mesMatch && añoMatch)
   return mesMatch && añoMatch
 })
 
