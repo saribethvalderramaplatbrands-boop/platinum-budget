@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useTiendas, useProveedores } from '../hooks/useSupabase'
 import { 
@@ -14,7 +14,8 @@ import {
   DollarSign,
   Repeat,
   AlertTriangle,
-  Sparkles
+  Sparkles,
+  Search
 } from 'lucide-react'
 
 const MESES = [
@@ -108,6 +109,17 @@ export default function CalendarioMantenimiento() {
   const [showForm, setShowForm] = useState(false)
   const [viewMode, setViewMode] = useState<'calendario' | 'lista'>('calendario')
 
+  // Búsqueda de tiendas
+  const [tiendaSearch, setTiendaSearch] = useState('')
+  const [showTiendaResults, setShowTiendaResults] = useState(false)
+  const tiendaRef = useRef<HTMLDivElement>(null)
+
+  // Búsqueda de proveedores
+  const [provSearch, setProvSearch] = useState('')
+  const [showProvResults, setShowProvResults] = useState(false)
+  const [selectedProvIndex, setSelectedProvIndex] = useState(-1)
+  const provRef = useRef<HTMLDivElement>(null)
+
   const [formData, setFormData] = useState({
     tienda_id: '',
     fecha_programada: '',
@@ -118,6 +130,36 @@ export default function CalendarioMantenimiento() {
     descripcion: '',
     fecha_tope: ''
   })
+
+  // Filtrar tiendas
+  const filteredTiendas = tiendaSearch 
+    ? tiendas.filter(t => 
+        t.nombre.toLowerCase().includes(tiendaSearch.toLowerCase()) ||
+        t.codigo.toString().includes(tiendaSearch)
+      )
+    : []
+
+  // Filtrar proveedores
+  const filteredProveedores = provSearch
+    ? proveedores.filter(p => 
+        p.nombre.toLowerCase().includes(provSearch.toLowerCase()) ||
+        p.codigo.toLowerCase().includes(provSearch.toLowerCase())
+      )
+    : []
+
+  // Cerrar dropdowns al hacer click fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tiendaRef.current && !tiendaRef.current.contains(event.target as Node)) {
+        setShowTiendaResults(false)
+      }
+      if (provRef.current && !provRef.current.contains(event.target as Node)) {
+        setShowProvResults(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const fetchMantenimientos = async () => {
     setLoading(true)
@@ -138,6 +180,41 @@ export default function CalendarioMantenimiento() {
   useEffect(() => {
     fetchMantenimientos()
   }, [])
+
+  const handleTiendaSelect = (tiendaId: string) => {
+    const tienda = tiendas.find(t => t.id === tiendaId)
+    setFormData(prev => ({ ...prev, tienda_id: tiendaId }))
+    setTiendaSearch(`${tienda?.codigo} - ${tienda?.nombre}`)
+    setShowTiendaResults(false)
+  }
+
+  const handleProveedorSelect = (proveedorId: string) => {
+    const proveedor = proveedores.find(p => p.id === proveedorId)
+    setFormData(prev => ({ ...prev, proveedor_id: proveedorId }))
+    setProvSearch(`${proveedor?.codigo} - ${proveedor?.nombre}`)
+    setShowProvResults(false)
+    setSelectedProvIndex(-1)
+  }
+
+  // Navegación con teclado para proveedores
+  const handleProvKeyDown = (e: React.KeyboardEvent) => {
+    if (!showProvResults || filteredProveedores.length === 0) return
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setSelectedProvIndex(prev => (prev + 1) % filteredProveedores.length)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSelectedProvIndex(prev => (prev - 1 + filteredProveedores.length) % filteredProveedores.length)
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (selectedProvIndex >= 0) {
+        handleProveedorSelect(filteredProveedores[selectedProvIndex].id)
+      }
+    } else if (e.key === 'Escape') {
+      setShowProvResults(false)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -167,6 +244,8 @@ export default function CalendarioMantenimiento() {
         descripcion: '',
         fecha_tope: ''
       })
+      setTiendaSearch('')
+      setProvSearch('')
       fetchMantenimientos()
     }
   }
@@ -381,7 +460,7 @@ export default function CalendarioMantenimiento() {
         </div>
       </div>
 
-      {/* Formulario */}
+      {/* Formulario con búsqueda inteligente */}
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 shadow-lg p-6 space-y-4 animate-fade-in">
           <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
@@ -392,60 +471,139 @@ export default function CalendarioMantenimiento() {
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div>
+            {/* Tienda con búsqueda inteligente */}
+            <div ref={tiendaRef}>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Tienda *</label>
-              <select required value={formData.tienda_id} onChange={e => setFormData({...formData, tienda_id: e.target.value})} className="input-field">
-                <option value="">Seleccionar tienda...</option>
-                {tiendas.map(t => <option key={t.id} value={t.id}>{t.codigo} - {t.nombre}</option>)}
-              </select>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input 
+                  type="text" 
+                  placeholder="Escribe código o nombre..." 
+                  value={tiendaSearch}
+                  onChange={e => {
+                    setTiendaSearch(e.target.value)
+                    setShowTiendaResults(true)
+                  }}
+                  onFocus={() => setShowTiendaResults(true)}
+                  className="input-field pl-10"
+                />
+              </div>
+              {showTiendaResults && filteredTiendas.length > 0 && (
+                <div className="absolute z-50 w-full max-w-md mt-1 max-h-48 overflow-y-auto border border-slate-200 rounded-xl bg-white shadow-lg">
+                  {filteredTiendas.map(t => (
+                    <button 
+                      key={t.id} 
+                      type="button" 
+                      onClick={() => handleTiendaSelect(t.id)}
+                      className="w-full text-left px-4 py-2.5 hover:bg-blue-50 text-sm transition-colors border-b border-slate-50 last:border-0"
+                    >
+                      <span className="font-bold text-slate-700">{t.codigo}</span>
+                      <span className="text-slate-400 mx-2">-</span>
+                      <span className="text-slate-600">{t.nombre}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {showTiendaResults && tiendaSearch && filteredTiendas.length === 0 && (
+                <div className="absolute z-50 w-full mt-1 p-3 bg-white border border-slate-200 rounded-xl shadow-lg text-sm text-slate-400">
+                  No se encontraron tiendas
+                </div>
+              )}
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Tipo de Servicio *</label>
-              <select required value={formData.tipo_servicio} onChange={e => setFormData({...formData, tipo_servicio: e.target.value})} className="input-field">
+              <select required value={formData.tipo_servicio} onChange={e => setFormData(prev => ({...prev, tipo_servicio: e.target.value}))} className="input-field">
                 {TIPOS_SERVICIO.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Frecuencia *</label>
-              <select required value={formData.frecuencia} onChange={e => setFormData({...formData, frecuencia: e.target.value})} className="input-field">
+              <select required value={formData.frecuencia} onChange={e => setFormData(prev => ({...prev, frecuencia: e.target.value}))} className="input-field">
                 {FRECUENCIAS.map(f => <option key={f.value} value={f.value}>{f.label}</option>)}
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Fecha Programada *</label>
-              <input type="date" required value={formData.fecha_programada} onChange={e => setFormData({...formData, fecha_programada: e.target.value})} className="input-field" />
+              <input type="date" required value={formData.fecha_programada} onChange={e => setFormData(prev => ({...prev, fecha_programada: e.target.value}))} className="input-field" />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Fecha Tope *</label>
-              <input type="date" required value={formData.fecha_tope} onChange={e => setFormData({...formData, fecha_tope: e.target.value})} className="input-field" />
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Fecha Tope (hasta cuándo se repite) *</label>
+              <input type="date" required value={formData.fecha_tope} onChange={e => setFormData(prev => ({...prev, fecha_tope: e.target.value}))} className="input-field" />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Monto Estimado *</label>
-              <input type="number" step="0.01" required value={formData.monto_estimado} onChange={e => setFormData({...formData, monto_estimado: e.target.value})} className="input-field" placeholder="0.00" />
+              <input type="number" step="0.01" required value={formData.monto_estimado} onChange={e => setFormData(prev => ({...prev, monto_estimado: e.target.value}))} className="input-field" placeholder="0.00" />
             </div>
 
-            <div>
+            {/* Proveedor con búsqueda inteligente */}
+            <div ref={provRef}>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Proveedor</label>
-              <select value={formData.proveedor_id} onChange={e => setFormData({...formData, proveedor_id: e.target.value})} className="input-field">
-                <option value="">Seleccionar proveedor...</option>
-                {proveedores.map(p => <option key={p.id} value={p.id}>{p.codigo} - {p.nombre}</option>)}
-              </select>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input 
+                  type="text" 
+                  placeholder="Escribe código o nombre..." 
+                  value={provSearch}
+                  onChange={e => {
+                    setProvSearch(e.target.value)
+                    setShowProvResults(true)
+                    setSelectedProvIndex(-1)
+                  }}
+                  onFocus={() => setShowProvResults(true)}
+                  onKeyDown={handleProvKeyDown}
+                  className="input-field pl-10"
+                />
+              </div>
+              {showProvResults && filteredProveedores.length > 0 && (
+                <div className="absolute z-50 w-full max-w-md mt-1 max-h-48 overflow-y-auto border border-slate-200 rounded-xl bg-white shadow-lg">
+                  {filteredProveedores.map((p, index) => (
+                    <button 
+                      key={p.id} 
+                      type="button" 
+                      onClick={() => handleProveedorSelect(p.id)}
+                      className={`w-full text-left px-4 py-2.5 text-sm transition-colors border-b border-slate-50 last:border-0 ${
+                        index === selectedProvIndex ? 'bg-blue-100 text-blue-700' : 'hover:bg-blue-50 text-slate-700'
+                      }`}
+                    >
+                      <span className="font-bold">{p.codigo}</span>
+                      <span className="text-slate-400 mx-2">-</span>
+                      <span>{p.nombre}</span>
+                      {p.clasificacion?.nombre && (
+                        <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-500">
+                          {p.clasificacion.nombre}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {showProvResults && provSearch && filteredProveedores.length === 0 && (
+                <div className="absolute z-50 w-full mt-1 p-3 bg-white border border-slate-200 rounded-xl shadow-lg text-sm text-slate-400">
+                  No se encontraron proveedores
+                </div>
+              )}
+              {formData.proveedor_id && (
+                <p className="text-xs text-emerald-600 mt-1 font-medium flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3" />
+                  {proveedores.find(p => p.id === formData.proveedor_id)?.clasificacion?.nombre || 'Sin clasificación'}
+                </p>
+              )}
             </div>
 
             <div className="md:col-span-2 lg:col-span-3">
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Descripción / Notas</label>
-              <textarea rows={2} value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} className="input-field" placeholder="Detalles adicionales..." />
+              <textarea rows={2} value={formData.descripcion} onChange={e => setFormData(prev => ({...prev, descripcion: e.target.value}))} className="input-field" placeholder="Detalles adicionales..." />
             </div>
           </div>
 
           <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancelar</button>
-            <button type="submit" className="px-6 py-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-violet-200 transition-all flex items-center gap-2">
+            <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancelar</button>
+            <button type="submit" className="btn-primary flex items-center gap-2">
               <Repeat className="w-4 h-4" />
               Programar y Repetir
             </button>
@@ -453,7 +611,7 @@ export default function CalendarioMantenimiento() {
         </form>
       )}
 
-      {/* Selector de Mes/Año con estilo */}
+      {/* Selector de Mes/Año */}
       <div className="flex items-center justify-center gap-4 bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
         <button onClick={() => setMes(m => m === 1 ? 12 : m - 1)} className="p-2 hover:bg-violet-50 rounded-lg transition-colors group">
           <ChevronLeft className="w-5 h-5 text-slate-400 group-hover:text-violet-600" />
@@ -510,31 +668,24 @@ export default function CalendarioMantenimiento() {
                 mantenimientosFiltrados.map(m => {
                   const tienda = tiendas.find(t => t.id === m.tienda_id)
                   const proveedor = proveedores.find(p => p.id === m.proveedor_id)
-                  const colores = COLORES_SERVICIO[m.tipo_servicio] || COLORES_SERVICIO[TIPOS_SERVICIO[0]]
-                  
                   return (
-                    <tr key={m.id} className="hover:bg-slate-50 transition-colors">
+                    <tr key={m.id}>
                       <td className="py-3 px-4 whitespace-nowrap text-slate-600">{new Date(m.fecha_programada).toLocaleDateString('es-PA')}</td>
                       <td className="py-3 px-4 font-medium text-slate-800">{tienda?.nombre || 'N/A'}</td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${colores.bg} ${colores.text} border ${colores.border}`}>
-                          <div className={`w-1.5 h-1.5 rounded-full ${colores.dot}`} />
-                          {m.tipo_servicio}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                      <td className="text-slate-600 max-w-xs truncate" title={m.tipo_servicio}>{m.tipo_servicio}</td>
+                      <td>
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
                           {FRECUENCIAS.find(f => f.value === m.frecuencia)?.label}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-right font-bold text-slate-800">{formatMoney(m.monto_estimado)}</td>
-                      <td className="py-3 px-4 text-center">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
-                          <Clock className="w-3 h-3" />
+                      <td className="text-right font-bold text-slate-800">{formatMoney(m.monto_estimado)}</td>
+                      <td className="text-center">
+                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                          <Clock className="w-3 h-3 inline mr-1" />
                           Pendiente
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-center">
+                      <td className="text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button 
                             onClick={() => completarMantenimiento(m)}
