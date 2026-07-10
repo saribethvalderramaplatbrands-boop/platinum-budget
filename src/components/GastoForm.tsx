@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, Check, Building2 } from 'lucide-react'
+import { Plus, Check } from 'lucide-react'
 import { useTiendas, useProveedores } from '../hooks/useSupabase'
 
 interface GastoFormProps {
@@ -15,7 +15,7 @@ const PERIODOS = [
 const CLASIFICACIONES = [
   'INFRAESTRUCTURA', 'PLOMERIA', 'ALARMA ROBO', 'ALARMA INCENDIO',
   'EXTINTORES', 'EQUIPO', 'REFRIGERACION', 'EBANISTERIA',
-  'GAS', 'LETRERO', 'ACERO INOXIDABLE'
+  'GAS', 'LETRERO', 'ACERO INOXIDABLE', 'TRAMPAS DE GRASA', 'TRANSPORTE', 'OTROS'
 ]
 
 export default function GastoForm({ onSubmit, onCancel }: GastoFormProps) {
@@ -62,6 +62,19 @@ export default function GastoForm({ onSubmit, onCancel }: GastoFormProps) {
       gerente_regional: tienda?.gerente_regional || '',
     }))
     setTiendaSearch('')
+  }
+
+  // NUEVO: Auto-clasificación según proveedor
+  const handleProveedorChange = (proveedorId: string) => {
+    const proveedor = proveedores.find(p => p.id === proveedorId)
+    const clasificacionProveedor = proveedor?.clasificacion?.nombre || CLASIFICACIONES[0]
+    
+    setFormData(prev => ({
+      ...prev,
+      proveedor_id: proveedorId,
+      clasificacion: clasificacionProveedor,
+    }))
+    setProvSearch('')
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -132,14 +145,14 @@ export default function GastoForm({ onSubmit, onCancel }: GastoFormProps) {
           {provSearch && (
             <div className="max-h-40 overflow-y-auto border border-slate-200 rounded-xl mb-2 bg-white shadow-sm">
               {filteredProveedores.map(p => (
-                <button key={p.id} type="button" onClick={() => { setFormData(prev => ({ ...prev, proveedor_id: p.id })); setProvSearch('') }} className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm transition-colors">
+                <button key={p.id} type="button" onClick={() => handleProveedorChange(p.id)} className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm transition-colors">
                   {p.codigo} - {p.nombre}
                 </button>
               ))}
               {filteredProveedores.length === 0 && <p className="px-3 py-2 text-sm text-slate-400">No se encontraron proveedores</p>}
             </div>
           )}
-          <select value={formData.proveedor_id} onChange={e => setFormData(prev => ({ ...prev, proveedor_id: e.target.value }))} className="input-field">
+          <select value={formData.proveedor_id} onChange={e => handleProveedorChange(e.target.value)} className="input-field">
             <option value="">Seleccionar proveedor...</option>
             {proveedores.map(p => <option key={p.id} value={p.id}>{p.codigo} - {p.nombre}</option>)}
           </select>
@@ -150,6 +163,11 @@ export default function GastoForm({ onSubmit, onCancel }: GastoFormProps) {
           <select required value={formData.clasificacion} onChange={e => setFormData(prev => ({ ...prev, clasificacion: e.target.value }))} className="input-field">
             {CLASIFICACIONES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
+          {formData.proveedor_id && (
+            <p className="text-xs text-emerald-600 mt-1 font-medium">
+              Auto-clasificado según proveedor
+            </p>
+          )}
         </div>
 
         <div>
