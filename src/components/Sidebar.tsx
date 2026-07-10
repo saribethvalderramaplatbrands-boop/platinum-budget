@@ -12,6 +12,7 @@ const menuItems = [
   { path: '/presupuesto', label: 'Presupuesto', icon: PieChart, color: 'violet' },
   { path: '/amortizaciones', label: 'Amortizaciones', icon: FileSpreadsheet, color: 'orange' },
   { path: '/cierre-mes', label: 'Cierre de Mes', icon: CalendarCheck, color: 'rose' },
+  { path: '/mantenimientos', label: 'Mantenimientos', icon: Wrench, color: 'violet' },
   { path: '/planificador', label: 'Planificador', icon: TrendingUp, color: 'cyan' },
 ]
 
