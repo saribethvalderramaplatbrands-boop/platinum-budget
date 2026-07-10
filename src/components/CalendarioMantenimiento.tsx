@@ -12,7 +12,9 @@ import {
   Wrench,
   Building2,
   DollarSign,
-  Repeat
+  Repeat,
+  AlertTriangle,
+  Sparkles
 } from 'lucide-react'
 
 const MESES = [
@@ -28,6 +30,45 @@ const TIPOS_SERVICIO = [
   'Mantenimiento de bombas de agua'
 ]
 
+// Colores por tipo de servicio
+const COLORES_SERVICIO: Record<string, { bg: string; border: string; text: string; dot: string; gradient: string }> = {
+  'Mantenimiento de equipos de refrigeración y A/A': {
+    bg: 'bg-blue-50',
+    border: 'border-blue-200',
+    text: 'text-blue-700',
+    dot: 'bg-blue-500',
+    gradient: 'from-blue-400 to-blue-600'
+  },
+  'Mantenimiento de trampas de grasa': {
+    bg: 'bg-amber-50',
+    border: 'border-amber-200',
+    text: 'text-amber-700',
+    dot: 'bg-amber-500',
+    gradient: 'from-amber-400 to-amber-600'
+  },
+  'Mantenimiento de extintores': {
+    bg: 'bg-red-50',
+    border: 'border-red-200',
+    text: 'text-red-700',
+    dot: 'bg-red-500',
+    gradient: 'from-red-400 to-red-600'
+  },
+  'Mantenimiento de Sistema de inyección y extracción': {
+    bg: 'bg-emerald-50',
+    border: 'border-emerald-200',
+    text: 'text-emerald-700',
+    dot: 'bg-emerald-500',
+    gradient: 'from-emerald-400 to-emerald-600'
+  },
+  'Mantenimiento de bombas de agua': {
+    bg: 'bg-violet-50',
+    border: 'border-violet-200',
+    text: 'text-violet-700',
+    dot: 'bg-violet-500',
+    gradient: 'from-violet-400 to-violet-600'
+  }
+}
+
 const FRECUENCIAS = [
   { value: 'mensual', label: 'Mensual' },
   { value: 'bimestral', label: 'Bimestral' },
@@ -35,6 +76,8 @@ const FRECUENCIAS = [
   { value: 'semestral', label: 'Semestral' },
   { value: 'anual', label: 'Anual' }
 ]
+
+const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 
 const formatMoney = (amount: number) => {
   return '$' + (amount || 0).toLocaleString('es-PA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -65,7 +108,6 @@ export default function CalendarioMantenimiento() {
   const [showForm, setShowForm] = useState(false)
   const [viewMode, setViewMode] = useState<'calendario' | 'lista'>('calendario')
 
-  // Formulario
   const [formData, setFormData] = useState({
     tienda_id: '',
     fecha_programada: '',
@@ -130,7 +172,8 @@ export default function CalendarioMantenimiento() {
   }
 
   const completarMantenimiento = async (mantenimiento: Mantenimiento) => {
-    // 1. Registrar como gasto en gastos_diarios
+    if (!confirm('¿Completar este mantenimiento y registrar el gasto?')) return
+
     const { data: gastoData, error: gastoError } = await supabase
       .from('gastos_diarios')
       .insert([{
@@ -150,7 +193,6 @@ export default function CalendarioMantenimiento() {
       return
     }
 
-    // 2. Marcar mantenimiento como completado
     const { error: updateError } = await supabase
       .from('mantenimientos_preventivos')
       .update({ 
@@ -164,7 +206,6 @@ export default function CalendarioMantenimiento() {
       return
     }
 
-    // El trigger automático creará el siguiente mantenimiento
     fetchMantenimientos()
     alert('✅ Mantenimiento completado y gasto registrado. Se ha programado el siguiente automáticamente.')
   }
@@ -184,52 +225,72 @@ export default function CalendarioMantenimiento() {
     }
   }
 
-  // Filtrar por mes/año seleccionado
   const mantenimientosFiltrados = mantenimientos.filter(m => {
     const fecha = new Date(m.fecha_programada)
     return fecha.getMonth() + 1 === mes && fecha.getFullYear() === año
   })
 
-  const getDiasEnMes = (año: number, mes: number) => {
-    return new Date(año, mes, 0).getDate()
-  }
-
-  const getPrimerDiaMes = (año: number, mes: number) => {
-    return new Date(año, mes - 1, 1).getDay()
-  }
+  const getDiasEnMes = (año: number, mes: number) => new Date(año, mes, 0).getDate()
+  const getPrimerDiaMes = (año: number, mes: number) => new Date(año, mes - 1, 1).getDay()
 
   const renderCalendario = () => {
     const diasEnMes = getDiasEnMes(año, mes)
     const primerDia = getPrimerDiaMes(año, mes)
     const dias = []
 
-    // Espacios vacíos antes del primer día
     for (let i = 0; i < primerDia; i++) {
-      dias.push(<div key={`empty-${i}`} className="h-24 bg-slate-50/50 rounded-lg" />)
+      dias.push(
+        <div key={`empty-${i}`} className="h-32 bg-slate-100/50 rounded-xl border border-slate-200/50" />
+      )
     }
 
-    // Días del mes
     for (let dia = 1; dia <= diasEnMes; dia++) {
       const mantenimientosDia = mantenimientosFiltrados.filter(m => {
         const fecha = new Date(m.fecha_programada)
         return fecha.getDate() === dia
       })
 
+      const isToday = dia === new Date().getDate() && mes === new Date().getMonth() + 1 && año === new Date().getFullYear()
+
       dias.push(
-        <div key={dia} className="h-24 bg-white border border-slate-200 rounded-lg p-1.5 overflow-y-auto hover:shadow-md transition-shadow">
-          <div className="text-xs font-bold text-slate-400 mb-1">{dia}</div>
+        <div key={dia} className={`
+          h-32 rounded-xl border p-2 overflow-y-auto transition-all duration-200
+          ${isToday 
+            ? 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-300 shadow-md shadow-blue-100' 
+            : mantenimientosDia.length > 0 
+              ? 'bg-white border-slate-200 shadow-sm hover:shadow-md' 
+              : 'bg-white/60 border-slate-200/60 hover:bg-white hover:shadow-sm'
+          }
+        `}>
+          <div className={`
+            flex items-center justify-between mb-1.5
+            ${isToday ? 'text-blue-600' : 'text-slate-400'}
+          `}>
+            <span className={`text-sm font-bold ${isToday ? 'text-blue-600' : ''}`}>{dia}</span>
+            {isToday && <Sparkles className="w-3 h-3 text-blue-400" />}
+          </div>
+          
           {mantenimientosDia.map(m => {
             const tienda = tiendas.find(t => t.id === m.tienda_id)
+            const colores = COLORES_SERVICIO[m.tipo_servicio] || COLORES_SERVICIO[TIPOS_SERVICIO[0]]
+            
             return (
               <div 
                 key={m.id} 
-                className="text-[10px] p-1 rounded mb-1 cursor-pointer hover:opacity-80 transition-opacity bg-blue-50 text-blue-700 border border-blue-200"
+                className={`
+                  text-[10px] p-1.5 rounded-lg mb-1.5 cursor-pointer 
+                  transition-all duration-200 hover:scale-105 hover:shadow-md
+                  ${colores.bg} ${colores.border} border ${colores.text}
+                `}
                 onClick={() => completarMantenimiento(m)}
                 title="Click para completar"
               >
-                <div className="font-semibold truncate">{tienda?.nombre || 'Tienda'}</div>
-                <div className="truncate">{m.tipo_servicio.split(' ').slice(0, 3).join(' ')}...</div>
-                <div className="text-blue-500 font-bold">{formatMoney(m.monto_estimado)}</div>
+                <div className="flex items-center gap-1 mb-0.5">
+                  <div className={`w-1.5 h-1.5 rounded-full ${colores.dot}`} />
+                  <span className="font-bold truncate">{tienda?.nombre || 'Tienda'}</span>
+                </div>
+                <div className="truncate opacity-80">{m.tipo_servicio.split(' ').slice(0, 2).join(' ')}...</div>
+                <div className="font-bold mt-0.5">{formatMoney(m.monto_estimado)}</div>
               </div>
             )
           })}
@@ -240,41 +301,93 @@ export default function CalendarioMantenimiento() {
     return dias
   }
 
+  const totalMantenimientosMes = mantenimientosFiltrados.length
+  const totalMontoMes = mantenimientosFiltrados.reduce((sum, m) => sum + m.monto_estimado, 0)
+
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-violet-500 to-violet-600 rounded-lg shadow-lg shadow-violet-500/20">
-            <Calendar className="w-5 h-5 text-white" />
+      {/* Header con gradiente */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 p-6 text-white shadow-lg shadow-violet-200">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
+        
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl shadow-lg">
+              <Wrench className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold">Mantenimientos Preventivos</h2>
+              <p className="text-sm text-violet-100">Calendario mensual de servicios programados</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-slate-800">Mantenimientos Preventivos</h2>
-            <p className="text-sm text-slate-500">Calendario mensual de servicios programados</p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setViewMode(viewMode === 'calendario' ? 'lista' : 'calendario')}
+              className="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg text-sm font-medium hover:bg-white/30 transition-colors"
+            >
+              {viewMode === 'calendario' ? 'Ver Lista' : 'Ver Calendario'}
+            </button>
+            <button
+              onClick={() => setShowForm(!showForm)}
+              className="px-4 py-2 bg-white text-violet-600 rounded-lg text-sm font-bold hover:bg-violet-50 transition-colors flex items-center gap-2 shadow-lg"
+            >
+              <Plus className="w-4 h-4" />
+              Nuevo
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setViewMode(viewMode === 'calendario' ? 'lista' : 'calendario')}
-            className="btn-secondary text-sm"
-          >
-            {viewMode === 'calendario' ? 'Ver Lista' : 'Ver Calendario'}
-          </button>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="btn-primary flex items-center gap-2 text-sm"
-          >
-            <Plus className="w-4 h-4" />
-            Nuevo
-          </button>
+      </div>
+
+      {/* Stats cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-lg shadow-blue-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-blue-100 font-medium">Mantenimientos</p>
+              <p className="text-2xl font-bold">{totalMantenimientosMes}</p>
+            </div>
+            <div className="p-2 bg-white/20 rounded-lg">
+              <Calendar className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-xs text-blue-100 mt-1">Programados este mes</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl p-4 text-white shadow-lg shadow-emerald-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-emerald-100 font-medium">Monto Total</p>
+              <p className="text-2xl font-bold">{formatMoney(totalMontoMes)}</p>
+            </div>
+            <div className="p-2 bg-white/20 rounded-lg">
+              <DollarSign className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-xs text-emerald-100 mt-1">Presupuesto mensual</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-4 text-white shadow-lg shadow-amber-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-amber-100 font-medium">Pendientes</p>
+              <p className="text-2xl font-bold">{mantenimientosFiltrados.filter(m => m.estatus === 'Pendiente').length}</p>
+            </div>
+            <div className="p-2 bg-white/20 rounded-lg">
+              <Clock className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-xs text-amber-100 mt-1">Por completar</p>
         </div>
       </div>
 
       {/* Formulario */}
       {showForm && (
-        <form onSubmit={handleSubmit} className="card-solid space-y-4 animate-fade-in">
+        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 shadow-lg p-6 space-y-4 animate-fade-in">
           <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
-            <Wrench className="w-5 h-5 text-violet-500" />
+            <div className="p-2 bg-violet-100 rounded-lg">
+              <Wrench className="w-5 h-5 text-violet-600" />
+            </div>
             Programar Mantenimiento
           </h3>
           
@@ -307,7 +420,7 @@ export default function CalendarioMantenimiento() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Fecha Tope (hasta cuándo se repite) *</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">Fecha Tope *</label>
               <input type="date" required value={formData.fecha_tope} onChange={e => setFormData({...formData, fecha_tope: e.target.value})} className="input-field" />
             </div>
 
@@ -331,8 +444,8 @@ export default function CalendarioMantenimiento() {
           </div>
 
           <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
-            <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancelar</button>
-            <button type="submit" className="btn-primary flex items-center gap-2">
+            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Cancelar</button>
+            <button type="submit" className="px-6 py-2 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-lg font-medium hover:shadow-lg hover:shadow-violet-200 transition-all flex items-center gap-2">
               <Repeat className="w-4 h-4" />
               Programar y Repetir
             </button>
@@ -340,46 +453,52 @@ export default function CalendarioMantenimiento() {
         </form>
       )}
 
-      {/* Selector de Mes/Año */}
-      <div className="flex items-center gap-4 justify-center">
-        <button onClick={() => setMes(m => m === 1 ? 12 : m - 1)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-          <ChevronLeft className="w-5 h-5 text-slate-600" />
+      {/* Selector de Mes/Año con estilo */}
+      <div className="flex items-center justify-center gap-4 bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
+        <button onClick={() => setMes(m => m === 1 ? 12 : m - 1)} className="p-2 hover:bg-violet-50 rounded-lg transition-colors group">
+          <ChevronLeft className="w-5 h-5 text-slate-400 group-hover:text-violet-600" />
         </button>
-        <div className="text-center">
+        <div className="text-center min-w-[200px]">
           <h3 className="text-xl font-bold text-slate-800">{MESES[mes - 1]} {año}</h3>
-          <p className="text-sm text-slate-500">{mantenimientosFiltrados.length} mantenimientos programados</p>
+          <p className="text-sm text-slate-500">{totalMantenimientosMes} programados</p>
         </div>
-        <button onClick={() => setMes(m => m === 12 ? 1 : m + 1)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-          <ChevronRight className="w-5 h-5 text-slate-600" />
+        <button onClick={() => setMes(m => m === 12 ? 1 : m + 1)} className="p-2 hover:bg-violet-50 rounded-lg transition-colors group">
+          <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-violet-600" />
         </button>
       </div>
 
       {/* Vista Calendario */}
       {viewMode === 'calendario' && (
-        <div className="grid grid-cols-7 gap-2">
-          {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map(dia => (
-            <div key={dia} className="text-center text-xs font-bold text-slate-500 py-2">{dia}</div>
-          ))}
-          {renderCalendario()}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-lg p-4">
+          <div className="grid grid-cols-7 gap-2 mb-2">
+            {DIAS_SEMANA.map(dia => (
+              <div key={dia} className="text-center text-xs font-bold text-slate-500 py-2 uppercase tracking-wider">
+                {dia}
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-2">
+            {renderCalendario()}
+          </div>
         </div>
       )}
 
       {/* Vista Lista */}
       {viewMode === 'lista' && (
-        <div className="card-solid overflow-hidden">
-          <table className="table-modern">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden">
+          <table className="w-full text-sm">
             <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Tienda</th>
-                <th>Servicio</th>
-                <th>Frecuencia</th>
-                <th className="text-right">Monto</th>
-                <th className="text-center">Estatus</th>
-                <th className="text-center">Acciones</th>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">Fecha</th>
+                <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">Tienda</th>
+                <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">Servicio</th>
+                <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">Frecuencia</th>
+                <th className="text-right py-3 px-4 text-xs font-bold text-slate-500 uppercase">Monto</th>
+                <th className="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">Estatus</th>
+                <th className="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">Acciones</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100">
               {mantenimientosFiltrados.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="text-center py-12 text-slate-400">
@@ -391,24 +510,31 @@ export default function CalendarioMantenimiento() {
                 mantenimientosFiltrados.map(m => {
                   const tienda = tiendas.find(t => t.id === m.tienda_id)
                   const proveedor = proveedores.find(p => p.id === m.proveedor_id)
+                  const colores = COLORES_SERVICIO[m.tipo_servicio] || COLORES_SERVICIO[TIPOS_SERVICIO[0]]
+                  
                   return (
-                    <tr key={m.id}>
-                      <td className="whitespace-nowrap text-slate-600">{new Date(m.fecha_programada).toLocaleDateString('es-PA')}</td>
-                      <td className="font-medium text-slate-800">{tienda?.nombre || 'N/A'}</td>
-                      <td className="text-slate-600 max-w-xs truncate" title={m.tipo_servicio}>{m.tipo_servicio}</td>
-                      <td>
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
+                    <tr key={m.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="py-3 px-4 whitespace-nowrap text-slate-600">{new Date(m.fecha_programada).toLocaleDateString('es-PA')}</td>
+                      <td className="py-3 px-4 font-medium text-slate-800">{tienda?.nombre || 'N/A'}</td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${colores.bg} ${colores.text} border ${colores.border}`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${colores.dot}`} />
+                          {m.tipo_servicio}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
                           {FRECUENCIAS.find(f => f.value === m.frecuencia)?.label}
                         </span>
                       </td>
-                      <td className="text-right font-bold text-slate-800">{formatMoney(m.monto_estimado)}</td>
-                      <td className="text-center">
-                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
-                          <Clock className="w-3 h-3 inline mr-1" />
+                      <td className="py-3 px-4 text-right font-bold text-slate-800">{formatMoney(m.monto_estimado)}</td>
+                      <td className="py-3 px-4 text-center">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                          <Clock className="w-3 h-3" />
                           Pendiente
                         </span>
                       </td>
-                      <td className="text-center">
+                      <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button 
                             onClick={() => completarMantenimiento(m)}
@@ -434,6 +560,25 @@ export default function CalendarioMantenimiento() {
           </table>
         </div>
       )}
+
+      {/* Leyenda de colores */}
+      <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
+        <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-500" />
+          Tipos de Servicio
+        </h4>
+        <div className="flex flex-wrap gap-3">
+          {TIPOS_SERVICIO.map(tipo => {
+            const colores = COLORES_SERVICIO[tipo]
+            return (
+              <div key={tipo} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium ${colores.bg} ${colores.text} border ${colores.border}`}>
+                <div className={`w-2 h-2 rounded-full ${colores.dot}`} />
+                {tipo}
+              </div>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
