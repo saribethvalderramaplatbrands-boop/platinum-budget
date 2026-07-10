@@ -160,7 +160,6 @@ export default function CalendarioMantenimiento() {
     const { data, error } = await supabase
       .from('mantenimientos_preventivos')
       .select('*')
-      .eq('estatus', 'Pendiente')
       .order('fecha_programada', { ascending: true })
 
     if (error) {
@@ -234,7 +233,7 @@ export default function CalendarioMantenimiento() {
     const tienda = tiendas.find(t => t.id === formData.tienda_id)
 
     try {
-      const { error: mantError } = await supabase
+      const { data: mantData, error: mantError } = await supabase
         .from('mantenimientos_preventivos')
         .insert([{
           tienda_id: formData.tienda_id,
@@ -247,13 +246,14 @@ export default function CalendarioMantenimiento() {
           fecha_tope: formData.fecha_tope,
           estatus: 'Pendiente'
         }])
+        .select()
 
       if (mantError) {
         alert('Error al programar mantenimiento: ' + mantError.message)
         return
       }
 
-      const { error: gastoError } = await supabase
+      const { data: gastoData, error: gastoError } = await supabase
         .from('gastos_diarios')
         .insert([{
           tienda_id: formData.tienda_id,
@@ -269,10 +269,19 @@ export default function CalendarioMantenimiento() {
           gerente_area: tienda?.gerente_area || '',
           gerente_regional: tienda?.gerente_regional || ''
         }])
+        .select()
 
       if (gastoError) {
-        console.error('Error registrando gasto:', gastoError)
-        alert('⚠️ Mantenimiento programado pero error al registrar gasto: ' + gastoError.message)
+        alert('❌ Error al registrar gasto: ' + gastoError.message)
+        console.error('Detalle del error:', gastoError)
+        return
+      }
+
+      if (mantData?.[0]?.id && gastoData?.[0]?.id) {
+        await supabase
+          .from('mantenimientos_preventivos')
+          .update({ gasto_registrado_id: gastoData[0].id })
+          .eq('id', mantData[0].id)
       }
 
       setShowForm(false)
@@ -300,6 +309,11 @@ export default function CalendarioMantenimiento() {
   }
 
   const completarMantenimiento = async (mantenimiento: Mantenimiento) => {
+    if (mantenimiento.gasto_registrado_id) {
+      alert('ℹ️ Este mantenimiento ya tiene el gasto registrado.\n\n💰 Monto: ' + formatMoney(mantenimiento.monto_estimado) + '\n📅 Fecha: ' + new Date(mantenimiento.fecha_programada).toLocaleDateString('es-PA'))
+      return
+    }
+
     if (!confirm('¿Completar este mantenimiento y registrar el gasto?')) return
 
     const { data: gastoData, error: gastoError } = await supabase
@@ -324,7 +338,6 @@ export default function CalendarioMantenimiento() {
     const { error: updateError } = await supabase
       .from('mantenimientos_preventivos')
       .update({ 
-        estatus: 'Completado',
         gasto_registrado_id: gastoData?.[0]?.id
       })
       .eq('id', mantenimiento.id)
@@ -335,7 +348,7 @@ export default function CalendarioMantenimiento() {
     }
 
     fetchMantenimientos()
-    alert('✅ Mantenimiento completado y gasto registrado. Se ha programado el siguiente automáticamente.')
+    alert('✅ Gasto registrado. El mantenimiento sigue visible en el calendario.')
   }
 
   const cancelarMantenimiento = async (id: string) => {
@@ -401,6 +414,7 @@ export default function CalendarioMantenimiento() {
           {mantenimientosDia.map(m => {
             const tienda = tiendas.find(t => t.id === m.tienda_id)
             const colores = COLORES_SERVICIO[m.tipo_servicio] || COLORES_SERVICIO[TIPOS_SERVICIO[0]]
+            const yaRegistrado = !!m.gasto_registrado_id
             
             return (
               <div 
@@ -409,13 +423,15 @@ export default function CalendarioMantenimiento() {
                   text-[10px] p-1.5 rounded-lg mb-1.5 cursor-pointer 
                   transition-all duration-200 hover:scale-105 hover:shadow-md
                   ${colores.bg} ${colores.border} border ${colores.text}
+                  ${yaRegistrado ? 'opacity-60' : ''}
                 `}
                 onClick={() => completarMantenimiento(m)}
-                title="Click para completar"
+                title={yaRegistrado ? 'Gasto ya registrado - Click para ver info' : 'Click para completar'}
               >
                 <div className="flex items-center gap-1 mb-0.5">
                   <div className={`w-1.5 h-1.5 rounded-full ${colores.dot}`} />
                   <span className="font-bold truncate">{tienda?.nombre || 'Tienda'}</span>
+                  {yaRegistrado && <CheckCircle2 className="w-3 h-3 text-emerald-500" />}
                 </div>
                 <div className="truncate opacity-80">{m.tipo_servicio.split(' ').slice(0, 2).join(' ')}...</div>
                 <div className="font-bold mt-0.5">{formatMoney(m.monto_estimado)}</div>
@@ -709,10 +725,16 @@ export default function CalendarioMantenimiento() {
                 mantenimientosFiltrados.map(m => {
                   const tienda = tiendas.find(t => t.id === m.tienda_id)
                   const proveedor = proveedores.find(p => p.id === m.proveedor_id)
+                  const yaRegistrado = !!m.gasto_registrado_id
                   return (
-                    <tr key={m.id}>
+                    <tr key={m.id} className={yaRegistrado ? 'bg-emerald-50/30' : ''}>
                       <td className="py-3 px-4 whitespace-nowrap text-slate-600">{new Date(m.fecha_programada).toLocaleDateString('es-PA')}</td>
-                      <td className="py-3 px-4 font-medium text-slate-800">{tienda?.nombre || 'N/A'}</td>
+                      <td className="py-3 px-4 font-medium text-slate-800">
+                        <div className="flex items-center gap-2">
+                          {tienda?.nombre || 'N/A'}
+                          {yaRegistrado && <CheckCircle2 className="w-4 h-4 text-emerald-500" />}
+                        </div>
+                      </td>
                       <td className="py-3 px-4 text-slate-600 max-w-xs truncate" title={m.tipo_servicio}>{m.tipo_servicio}</td>
                       <td className="py-3 px-4">
                         <span className="px-2 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
@@ -721,17 +743,28 @@ export default function CalendarioMantenimiento() {
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-slate-800">{formatMoney(m.monto_estimado)}</td>
                       <td className="py-3 px-4 text-center">
-                        <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
-                          <Clock className="w-3 h-3 inline mr-1" />
-                          Pendiente
-                        </span>
+                        {yaRegistrado ? (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3 inline mr-1" />
+                            Registrado
+                          </span>
+                        ) : (
+                          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
+                            <Clock className="w-3 h-3 inline mr-1" />
+                            Pendiente
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button 
                             onClick={() => completarMantenimiento(m)}
-                            className="p-1.5 bg-emerald-100 text-emerald-600 rounded-lg hover:bg-emerald-200 transition-colors"
-                            title="Completar y registrar gasto"
+                            className={`p-1.5 rounded-lg transition-colors ${
+                              yaRegistrado 
+                                ? 'bg-slate-100 text-slate-400 cursor-default' 
+                                : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200'
+                            }`}
+                            title={yaRegistrado ? 'Gasto ya registrado' : 'Completar y registrar gasto'}
                           >
                             <CheckCircle2 className="w-4 h-4" />
                           </button>
