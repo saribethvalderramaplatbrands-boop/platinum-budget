@@ -31,7 +31,6 @@ const TIPOS_SERVICIO = [
   'Mantenimiento de bombas de agua'
 ]
 
-// Colores por tipo de servicio
 const COLORES_SERVICIO: Record<string, { bg: string; border: string; text: string; dot: string; gradient: string }> = {
   'Mantenimiento de equipos de refrigeración y A/A': {
     bg: 'bg-blue-50',
@@ -109,12 +108,10 @@ export default function CalendarioMantenimiento() {
   const [showForm, setShowForm] = useState(false)
   const [viewMode, setViewMode] = useState<'calendario' | 'lista'>('calendario')
 
-  // Búsqueda de tiendas
   const [tiendaSearch, setTiendaSearch] = useState('')
   const [showTiendaResults, setShowTiendaResults] = useState(false)
   const tiendaRef = useRef<HTMLDivElement>(null)
 
-  // Búsqueda de proveedores
   const [provSearch, setProvSearch] = useState('')
   const [showProvResults, setShowProvResults] = useState(false)
   const [selectedProvIndex, setSelectedProvIndex] = useState(-1)
@@ -131,7 +128,6 @@ export default function CalendarioMantenimiento() {
     fecha_tope: ''
   })
 
-  // Filtrar tiendas
   const filteredTiendas = tiendaSearch 
     ? tiendas.filter(t => 
         t.nombre.toLowerCase().includes(tiendaSearch.toLowerCase()) ||
@@ -139,7 +135,6 @@ export default function CalendarioMantenimiento() {
       )
     : []
 
-  // Filtrar proveedores
   const filteredProveedores = provSearch
     ? proveedores.filter(p => 
         p.nombre.toLowerCase().includes(provSearch.toLowerCase()) ||
@@ -147,7 +142,6 @@ export default function CalendarioMantenimiento() {
       )
     : []
 
-  // Cerrar dropdowns al hacer click fuera
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (tiendaRef.current && !tiendaRef.current.contains(event.target as Node)) {
@@ -162,29 +156,22 @@ export default function CalendarioMantenimiento() {
   }, [])
 
   const fetchMantenimientos = async () => {
-  console.log('=== FETCHING MANTENIMIENTOS ===')
-  setLoading(true)
-  
-  const { data, error } = await supabase
-    .from('mantenimientos_preventivos')
-    .select('*')
-    .eq('estatus', 'Pendiente')
-    .order('fecha_programada', { ascending: true })
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('mantenimientos_preventivos')
+      .select('*')
+      .eq('estatus', 'Pendiente')
+      .order('fecha_programada', { ascending: true })
 
-  console.log('Respuesta Supabase:', { data, error })
-  
-  if (error) {
-    console.error('Error:', error)
+    if (error) {
+      console.error('Error:', error)
+      setLoading(false)
+      return
+    }
+
+    setMantenimientos(data || [])
     setLoading(false)
-    return
   }
-
-  console.log('Mantenimientos cargados:', data?.length || 0)
-  console.log('Primeros 3:', data?.slice(0, 3))
-  
-  setMantenimientos(data || [])
-  setLoading(false)
-}
 
   useEffect(() => {
     fetchMantenimientos()
@@ -205,7 +192,6 @@ export default function CalendarioMantenimiento() {
     setSelectedProvIndex(-1)
   }
 
-  // Navegación con teclado para proveedores
   const handleProvKeyDown = (e: React.KeyboardEvent) => {
     if (!showProvResults || filteredProveedores.length === 0) return
 
@@ -226,102 +212,99 @@ export default function CalendarioMantenimiento() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault()
-  
-  // Validaciones
-  if (!formData.tienda_id) {
-    alert('Error: Debes seleccionar una tienda')
-    return
-  }
-  if (!formData.fecha_programada) {
-    alert('Error: Debes seleccionar una fecha programada')
-    return
-  }
-  if (!formData.fecha_tope) {
-    alert('Error: Debes seleccionar una fecha tope')
-    return
-  }
-  if (!formData.monto_estimado || parseFloat(formData.monto_estimado) <= 0) {
-    alert('Error: El monto estimado debe ser mayor a 0')
-    return
-  }
-
-  const tienda = tiendas.find(t => t.id === formData.tienda_id)
-  const proveedor = proveedores.find(p => p.id === formData.proveedor_id)
-
-  try {
-    // 1. Crear el mantenimiento preventivo
-    const { data: mantData, error: mantError } = await supabase
-      .from('mantenimientos_preventivos')
-      .insert([{
-        tienda_id: formData.tienda_id,
-        fecha_programada: formData.fecha_programada,
-        tipo_servicio: formData.tipo_servicio,
-        frecuencia: formData.frecuencia,
-        proveedor_id: formData.proveedor_id || null,
-        monto_estimado: parseFloat(formData.monto_estimado),
-        descripcion: formData.descripcion,
-        fecha_tope: formData.fecha_tope,
-        estatus: 'Pendiente'
-      }])
-      .select()
-
-    if (mantError) {
-      alert('Error al programar mantenimiento: ' + mantError.message)
+    e.preventDefault()
+    
+    if (!formData.tienda_id) {
+      alert('Error: Debes seleccionar una tienda')
+      return
+    }
+    if (!formData.fecha_programada) {
+      alert('Error: Debes seleccionar una fecha programada')
+      return
+    }
+    if (!formData.fecha_tope) {
+      alert('Error: Debes seleccionar una fecha tope')
+      return
+    }
+    if (!formData.monto_estimado || parseFloat(formData.monto_estimado) <= 0) {
+      alert('Error: El monto estimado debe ser mayor a 0')
       return
     }
 
-    // 2. REGISTRAR EL GASTO AUTOMÁTICAMENTE
-    const { data: gastoData, error: gastoError } = await supabase
-      .from('gastos_diarios')
-      .insert([{
-        tienda_id: formData.tienda_id,
-        fecha: formData.fecha_programada, // Usa la misma fecha del mantenimiento
-        periodo: MESES[new Date(formData.fecha_programada).getMonth()],
-        descripcion: 'MANTENIMIENTO PREVENTIVO: ' + formData.tipo_servicio + (formData.descripcion ? ' - ' + formData.descripcion : ''),
-        monto: parseFloat(formData.monto_estimado),
-        clasificacion: 'Servicios Fijos',
-        proveedor_id: formData.proveedor_id || null,
-        estatus: 'Completado',
-        orden_compra: null,
-        factura: null,
-        gerente_area: tienda?.gerente_area || '',
-        gerente_regional: tienda?.gerente_regional || ''
-      }])
-      .select()
+    const tienda = tiendas.find(t => t.id === formData.tienda_id)
 
-    if (gastoError) {
-      console.error('Error registrando gasto:', gastoError)
-      alert('⚠️ Mantenimiento programado pero error al registrar gasto: ' + gastoError.message)
-    } else {
-      console.log('Gasto registrado automáticamente:', gastoData)
+    try {
+      const { data: mantData, error: mantError } = await supabase
+        .from('mantenimientos_preventivos')
+        .insert([{
+          tienda_id: formData.tienda_id,
+          fecha_programada: formData.fecha_programada,
+          tipo_servicio: formData.tipo_servicio,
+          frecuencia: formData.frecuencia,
+          proveedor_id: formData.proveedor_id || null,
+          monto_estimado: parseFloat(formData.monto_estimado),
+          descripcion: formData.descripcion,
+          fecha_tope: formData.fecha_tope,
+          estatus: 'Pendiente'
+        }])
+        .select()
+
+      if (mantError) {
+        alert('Error al programar mantenimiento: ' + mantError.message)
+        return
+      }
+
+      const { data: gastoData, error: gastoError } = await supabase
+        .from('gastos_diarios')
+        .insert([{
+          tienda_id: formData.tienda_id,
+          fecha: formData.fecha_programada,
+          periodo: MESES[new Date(formData.fecha_programada).getMonth()],
+          descripcion: 'MANTENIMIENTO PREVENTIVO: ' + formData.tipo_servicio + (formData.descripcion ? ' - ' + formData.descripcion : ''),
+          monto: parseFloat(formData.monto_estimado),
+          clasificacion: 'Servicios Fijos',
+          proveedor_id: formData.proveedor_id || null,
+          estatus: 'Completado',
+          orden_compra: null,
+          factura: null,
+          gerente_area: tienda?.gerente_area || '',
+          gerente_regional: tienda?.gerente_regional || ''
+        }])
+        .select()
+
+      if (gastoError) {
+        console.error('Error registrando gasto:', gastoError)
+        alert('⚠️ Mantenimiento programado pero error al registrar gasto: ' + gastoError.message)
+      } else {
+        console.log('Gasto registrado automáticamente:', gastoData)
+      }
+
+      setShowForm(false)
+      setFormData({
+        tienda_id: '',
+        fecha_programada: '',
+        tipo_servicio: TIPOS_SERVICIO[0],
+        frecuencia: 'mensual',
+        proveedor_id: '',
+        monto_estimado: '',
+        descripcion: '',
+        fecha_tope: ''
+      })
+      setTiendaSearch('')
+      setProvSearch('')
+      
+      await fetchMantenimientos()
+      
+      alert('✅ Mantenimiento programado y gasto registrado automáticamente!\n\n💰 Monto: ' + formatMoney(parseFloat(formData.monto_estimado)) + '\n📍 Tienda: ' + (tienda?.nombre || 'N/A') + '\n🔧 Servicio: ' + formData.tipo_servicio)
+
+    } catch (err) {
+      console.error('Error inesperado:', err)
+      alert('Error inesperado: ' + (err as Error).message)
     }
-
-    // 3. Resetear formulario
-    setShowForm(false)
-    setFormData({
-      tienda_id: '',
-      fecha_programada: '',
-      tipo_servicio: TIPOS_SERVICIO[0],
-      frecuencia: 'mensual',
-      proveedor_id: '',
-      monto_estimado: '',
-      descripcion: '',
-      fecha_tope: ''
-    })
-    setTiendaSearch('')
-    setProvSearch('')
-    
-    // 4. Refrescar lista
-    await fetchMantenimientos()
-    
-    alert('✅ Mantenimiento programado y gasto registrado automáticamente!\n\n💰 Monto: ' + formatMoney(parseFloat(formData.monto_estimado)) + '\n📍 Tienda: ' + (tienda?.nombre || 'N/A') + '\n🔧 Servicio: ' + formData.tipo_servicio)
-
-  } catch (err) {
-    console.error('Error inesperado:', err)
-    alert('Error inesperado: ' + (err as Error).message)
   }
-}
+
+  const completarMantenimiento = async (mantenimiento: Mantenimiento) => {
+    if (!confirm('¿Completar este mantenimiento y registrar el gasto?')) return
 
     const { data: gastoData, error: gastoError } = await supabase
       .from('gastos_diarios')
@@ -374,14 +357,10 @@ export default function CalendarioMantenimiento() {
     }
   }
 
- const mantenimientosFiltrados = mantenimientos.filter(m => {
-  // Extraer mes y año directamente del string YYYY-MM-DD
-  const [year, month, day] = m.fecha_programada.split('-').map(Number)
-  const mesMatch = month === mes
-  const añoMatch = year === año
-  console.log('Filtrando:', m.fecha_programada, 'mes:', month, 'año:', year, 'match:', mesMatch && añoMatch)
-  return mesMatch && añoMatch
-})
+  const mantenimientosFiltrados = mantenimientos.filter(m => {
+    const [year, month] = m.fecha_programada.split('-').map(Number)
+    return month === mes && year === año
+  })
 
   const getDiasEnMes = (año: number, mes: number) => new Date(año, mes, 0).getDate()
   const getPrimerDiaMes = (año: number, mes: number) => new Date(año, mes - 1, 1).getDay()
@@ -399,9 +378,9 @@ export default function CalendarioMantenimiento() {
 
     for (let dia = 1; dia <= diasEnMes; dia++) {
       const mantenimientosDia = mantenimientosFiltrados.filter(m => {
-  const [year, month, day] = m.fecha_programada.split('-').map(Number)
-  return day === dia
-})
+        const day = parseInt(m.fecha_programada.split('-')[2])
+        return day === dia
+      })
 
       const isToday = dia === new Date().getDate() && mes === new Date().getMonth() + 1 && año === new Date().getFullYear()
 
@@ -459,7 +438,6 @@ export default function CalendarioMantenimiento() {
 
   return (
     <div className="space-y-6 animate-fade-in">
-      {/* Header con gradiente */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 p-6 text-white shadow-lg shadow-violet-200">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
@@ -492,7 +470,6 @@ export default function CalendarioMantenimiento() {
         </div>
       </div>
 
-      {/* Stats cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-4 text-white shadow-lg shadow-blue-200">
           <div className="flex items-center justify-between">
@@ -534,7 +511,6 @@ export default function CalendarioMantenimiento() {
         </div>
       </div>
 
-      {/* Formulario con búsqueda inteligente */}
       {showForm && (
         <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 shadow-lg p-6 space-y-4 animate-fade-in">
           <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
@@ -545,7 +521,6 @@ export default function CalendarioMantenimiento() {
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Tienda con búsqueda inteligente */}
             <div ref={tiendaRef}>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Tienda *</label>
               <div className="relative">
@@ -614,7 +589,6 @@ export default function CalendarioMantenimiento() {
               <input type="number" step="0.01" required value={formData.monto_estimado} onChange={e => setFormData(prev => ({...prev, monto_estimado: e.target.value}))} className="input-field" placeholder="0.00" />
             </div>
 
-            {/* Proveedor con búsqueda inteligente */}
             <div ref={provRef}>
               <label className="block text-sm font-medium text-slate-700 mb-1.5">Proveedor</label>
               <div className="relative">
@@ -685,7 +659,6 @@ export default function CalendarioMantenimiento() {
         </form>
       )}
 
-      {/* Selector de Mes/Año */}
       <div className="flex items-center justify-center gap-4 bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
         <button onClick={() => setMes(m => m === 1 ? 12 : m - 1)} className="p-2 hover:bg-violet-50 rounded-lg transition-colors group">
           <ChevronLeft className="w-5 h-5 text-slate-400 group-hover:text-violet-600" />
@@ -699,7 +672,6 @@ export default function CalendarioMantenimiento() {
         </button>
       </div>
 
-      {/* Vista Calendario */}
       {viewMode === 'calendario' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-lg p-4">
           <div className="grid grid-cols-7 gap-2 mb-2">
@@ -715,7 +687,6 @@ export default function CalendarioMantenimiento() {
         </div>
       )}
 
-      {/* Vista Lista */}
       {viewMode === 'lista' && (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-lg overflow-hidden">
           <table className="w-full text-sm">
@@ -741,25 +712,24 @@ export default function CalendarioMantenimiento() {
               ) : (
                 mantenimientosFiltrados.map(m => {
                   const tienda = tiendas.find(t => t.id === m.tienda_id)
-                  const proveedor = proveedores.find(p => p.id === m.proveedor_id)
                   return (
                     <tr key={m.id}>
                       <td className="py-3 px-4 whitespace-nowrap text-slate-600">{new Date(m.fecha_programada).toLocaleDateString('es-PA')}</td>
                       <td className="py-3 px-4 font-medium text-slate-800">{tienda?.nombre || 'N/A'}</td>
-                      <td className="text-slate-600 max-w-xs truncate" title={m.tipo_servicio}>{m.tipo_servicio}</td>
-                      <td>
+                      <td className="py-3 px-4 text-slate-600 max-w-xs truncate" title={m.tipo_servicio}>{m.tipo_servicio}</td>
+                      <td className="py-3 px-4">
                         <span className="px-2 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
                           {FRECUENCIAS.find(f => f.value === m.frecuencia)?.label}
                         </span>
                       </td>
-                      <td className="text-right font-bold text-slate-800">{formatMoney(m.monto_estimado)}</td>
-                      <td className="text-center">
+                      <td className="py-3 px-4 text-right font-bold text-slate-800">{formatMoney(m.monto_estimado)}</td>
+                      <td className="py-3 px-4 text-center">
                         <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
                           <Clock className="w-3 h-3 inline mr-1" />
                           Pendiente
                         </span>
                       </td>
-                      <td className="text-center">
+                      <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-2">
                           <button 
                             onClick={() => completarMantenimiento(m)}
@@ -786,7 +756,6 @@ export default function CalendarioMantenimiento() {
         </div>
       )}
 
-      {/* Leyenda de colores */}
       <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
         <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 text-amber-500" />
