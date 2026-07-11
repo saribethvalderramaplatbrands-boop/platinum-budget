@@ -41,10 +41,11 @@ const formatMoney = (amount: number) => {
 }
 
 // Grafico de barras simple con SVG
-function GraficoBarras({ data, año }: { data: any[], año: number }) {
+function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: number, amortizaciones: any[] }) {
   if (!data.length) return null
 
   // Agrupar por mes - sumar presupuesto y gasto de todas las tiendas
+  // Incluir amortizaciones en el gasto para que coincida con el dashboard
   const mesesMap = new Map<number, { presupuesto: number; gasto: number; mes: number }>()
 
   data.forEach(d => {
@@ -59,6 +60,17 @@ function GraficoBarras({ data, año }: { data: any[], año: number }) {
         gasto: d.gasto_real || 0,
         mes: mesNum
       })
+    }
+  })
+
+  // Sumar amortizaciones por mes al gasto
+  amortizaciones.forEach(a => {
+    const mesNum = MESES.indexOf(a.periodo) + 1
+    if (mesNum > 0) {
+      const existente = mesesMap.get(mesNum)
+      if (existente) {
+        existente.gasto += (a.monto || 0)
+      }
     }
   })
 
@@ -166,14 +178,14 @@ function GraficoBarras({ data, año }: { data: any[], año: number }) {
             )
           })}
 
-          {/* Leyenda */}
-          <g transform={`translate(${totalWidth - 140}, 10)`}>
+          {/* Leyenda - posicionada arriba a la derecha, fuera del area de barras */}
+          <g transform={`translate(${totalWidth - 200}, 5)`}>
             <rect x={0} y={0} width={12} height={12} rx={3} fill="#3b82f6" opacity={0.3} />
-            <text x={18} y={10} fontSize="11" fill="#64748b">Presupuesto</text>
-            <rect x={0} y={20} width={12} height={12} rx={3} fill="#10b981" />
-            <text x={18} y={30} fontSize="11" fill="#64748b">Gasto</text>
-            <rect x={80} y={20} width={12} height={12} rx={3} fill="#ef4444" />
-            <text x={98} y={30} fontSize="11" fill="#64748b">Sobre</text>
+            <text x={18} y={10} fontSize="11" fill="#64748b" fontWeight="500">Presupuesto</text>
+            <rect x={95} y={0} width={12} height={12} rx={3} fill="#10b981" />
+            <text x={113} y={10} fontSize="11" fill="#64748b" fontWeight="500">Gasto</text>
+            <rect x={160} y={0} width={12} height={12} rx={3} fill="#ef4444" />
+            <text x={178} y={10} fontSize="11" fill="#64748b" fontWeight="500">Sobre</text>
           </g>
         </svg>
       </div>
@@ -475,7 +487,7 @@ export default function Dashboard() {
 
       {/* Grafico de barras mensual */}
       {!loadingAnual && datosAnual.length > 0 && (
-        <GraficoBarras data={datosAnual} año={año} />
+        <GraficoBarras data={datosAnual} año={año} amortizaciones={amortizaciones} />
       )}
 
       {/* Card de Amortizaciones */}
