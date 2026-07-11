@@ -44,11 +44,14 @@ const formatMoney = (amount: number) => {
 function GraficoBarras({ data, año }: { data: any[], año: number }) {
   if (!data.length) return null
 
-  const maxVal = Math.max(...data.map(d => Math.max(d.presupuesto_asignado || 0, d.gasto_real || 0)))
+  // Asegurar que los datos esten ordenados por mes y mapear correctamente
+  const sortedData = [...data].sort((a, b) => (a.mes || 0) - (b.mes || 0))
+
+  const maxVal = Math.max(...sortedData.map(d => Math.max(d.presupuesto_asignado || 0, d.gasto_real || 0)))
   const chartHeight = 200
   const barWidth = 60
   const gap = 20
-  const totalWidth = data.length * (barWidth + gap) + gap
+  const totalWidth = sortedData.length * (barWidth + gap) + gap
 
   return (
     <div className="card-solid overflow-hidden">
@@ -77,13 +80,16 @@ function GraficoBarras({ data, año }: { data: any[], año: number }) {
             />
           ))}
 
-          {data.map((d, i) => {
+          {sortedData.map((d, i) => {
             const x = gap + i * (barWidth + gap)
             const presupuestoH = maxVal > 0 ? (d.presupuesto_asignado / maxVal) * chartHeight : 0
             const gastoH = maxVal > 0 ? (d.gasto_real / maxVal) * chartHeight : 0
+            // El mes viene como numero 1-12, restamos 1 para el array
+            const mesIndex = (typeof d.mes === 'number' ? d.mes : parseInt(d.mes) || 1) - 1
+            const mesLabel = MESES[mesIndex] || 'Mes ' + d.mes
 
             return (
-              <g key={d.mes}>
+              <g key={`${d.mes}-${i}`}>
                 {/* Barra presupuesto (fondo) */}
                 <rect
                   x={x}
@@ -111,7 +117,7 @@ function GraficoBarras({ data, año }: { data: any[], año: number }) {
                   fontSize="10"
                   fill="#64748b"
                 >
-                  {MESES[d.mes - 1]?.substring(0, 3)}
+                  {mesLabel.substring(0, 3)}
                 </text>
                 {/* Valor presupuesto */}
                 <text
