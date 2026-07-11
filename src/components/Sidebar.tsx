@@ -1,9 +1,12 @@
 import { NavLink } from 'react-router-dom'
-import { X, LayoutDashboard, Receipt, PieChart, FileSpreadsheet, CalendarCheck, TrendingUp, Wrench } from 'lucide-react'
+import { X, LayoutDashboard, Receipt, PieChart, FileSpreadsheet, CalendarCheck, TrendingUp, Wrench, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useState } from 'react'
 
 interface SidebarProps {
   isOpen: boolean
   onClose: () => void
+  isCollapsed: boolean
+  onToggleCollapse: () => void
 }
 
 const menuItems = [
@@ -16,7 +19,7 @@ const menuItems = [
   { path: '/planificador', label: 'Planificador', icon: TrendingUp, color: 'cyan' },
 ]
 
-export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: SidebarProps) {
   return (
     <>
       {isOpen && (
@@ -27,12 +30,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       )}
 
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50 w-72 sidebar-modern
-        transform transition-transform duration-300 ease-out
+        fixed lg:static inset-y-0 left-0 z-50 
+        ${isCollapsed ? 'w-20' : 'w-72'} 
+        sidebar-modern
+        transform transition-all duration-300 ease-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        flex flex-col
       `}>
-        <div className="p-5 flex items-center justify-between lg:hidden">
-          <div className="flex items-center gap-2">
+        {/* Header */}
+        <div className="p-5 flex items-center justify-between lg:justify-center">
+          <div className={`flex items-center gap-2 ${isCollapsed ? 'hidden lg:hidden' : ''}`}>
             <img 
               src="/platinum-logo.png" 
               alt="Platinum Brands" 
@@ -43,16 +50,31 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             />
             <span className="font-bold text-slate-800">Platinum Budget</span>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
+          <button 
+            onClick={onClose} 
+            className="p-2 rounded-lg hover:bg-slate-100 transition-colors lg:hidden"
+          >
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
 
-        <nav className="p-4 space-y-1">
-          <div className="px-4 py-3 mb-2">
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Menú Principal</p>
+        {/* Toggle button (solo desktop) */}
+        <button
+          onClick={onToggleCollapse}
+          className="hidden lg:flex mx-auto mb-4 p-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
+          title={isCollapsed ? 'Expandir' : 'Colapsar'}
+        >
+          {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+        </button>
+
+        {/* Nav */}
+        <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
+          <div className={`px-4 py-3 mb-2 ${isCollapsed ? 'text-center' : ''}`}>
+            <p className={`text-[10px] font-bold text-slate-400 uppercase tracking-widest ${isCollapsed ? 'hidden' : ''}`}>
+              Menú Principal
+            </p>
           </div>
-          
+
           {menuItems.map(item => {
             const Icon = item.icon
             return (
@@ -64,6 +86,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 {({ isActive }) => (
                   <div className={`
                     sidebar-nav-item
+                    ${isCollapsed ? 'justify-center px-2' : ''}
                     ${isActive 
                       ? 'sidebar-nav-item-active' 
                       : 'text-slate-600 hover:text-slate-900'
@@ -78,8 +101,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     `}>
                       <Icon className="w-4 h-4" />
                     </div>
-                    <span>{item.label}</span>
-                    {isActive && (
+                    {!isCollapsed && <span>{item.label}</span>}
+                    {!isCollapsed && isActive && (
                       <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500" />
                     )}
                   </div>
@@ -89,7 +112,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           })}
         </nav>
 
-        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-100">
+        {/* Footer */}
+        <div className={`p-4 border-t border-slate-100 ${isCollapsed ? 'hidden' : ''}`}>
           <div className="flex items-center justify-center gap-3 opacity-50">
             <img src="/dq-logo.png" alt="DQ" className="h-4 w-auto object-contain" />
             <img src="/kfc-logo.png" alt="KFC" className="h-4 w-auto object-contain" />
