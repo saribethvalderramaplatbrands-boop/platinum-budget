@@ -22,6 +22,7 @@ const menuItems = [
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: SidebarProps) {
   return (
     <>
+      {/* Overlay para mobile */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 lg:hidden"
@@ -29,47 +30,35 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         />
       )}
 
+      {/* Sidebar - sticky en desktop, fixed en mobile */}
       <aside className={`
-        fixed lg:static inset-y-0 left-0 z-50 
+        fixed lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:overflow-x-hidden
+        inset-y-0 left-0 z-50 
         ${isCollapsed ? 'w-20' : 'w-72'} 
         sidebar-modern
         transform transition-all duration-300 ease-out
         ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        flex flex-col
+        flex flex-col shrink-0
       `}>
-        {/* Header */}
-        <div className="p-5 flex items-center justify-between lg:justify-center">
-          <div className={`flex items-center gap-2 ${isCollapsed ? 'hidden lg:hidden' : ''}`}>
-            <img 
-              src="/platinum-logo.png" 
-              alt="Platinum Brands" 
-              className="h-6 w-auto object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none'
-              }}
-            />
-            <span className="font-bold text-slate-800">Platinum Budget</span>
-          </div>
-          <button 
-            onClick={onClose} 
-            className="p-2 rounded-lg hover:bg-slate-100 transition-colors lg:hidden"
-          >
-            <X className="w-5 h-5 text-slate-500" />
-          </button>
-        </div>
-
-        {/* Toggle button (solo desktop) */}
+        {/* Toggle button (solo desktop, arriba) */}
         <button
           onClick={onToggleCollapse}
-          className="hidden lg:flex mx-auto mb-4 p-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
+          className="hidden lg:flex mx-auto mt-4 mb-2 p-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
           title={isCollapsed ? 'Expandir' : 'Colapsar'}
         >
           {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
         </button>
 
+        {/* Close button (solo mobile) */}
+        <div className="p-4 flex justify-end lg:hidden">
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
+            <X className="w-5 h-5 text-slate-500" />
+          </button>
+        </div>
+
         {/* Nav */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
-          <div className={`px-4 py-3 mb-2 ${isCollapsed ? 'text-center' : ''}`}>
+          <div className={`px-4 py-2 mb-2 ${isCollapsed ? 'text-center' : ''}`}>
             <p className={`text-[10px] font-bold text-slate-400 uppercase tracking-widest ${isCollapsed ? 'hidden' : ''}`}>
               Menú Principal
             </p>
