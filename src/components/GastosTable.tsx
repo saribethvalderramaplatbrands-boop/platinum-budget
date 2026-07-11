@@ -57,7 +57,7 @@ export default function GastosTable() {
   } = useGastos()
   const { tiendas } = useTiendas()
   const { proveedores } = useProveedores()
-  
+
   const [filters, setFilters] = useState({
     clasificacion: '',
     proveedor_id: '',
@@ -100,7 +100,6 @@ export default function GastosTable() {
     fetchGastos({}, 0)
   }
 
-  // NUEVO: Exportar a Excel
   const handleExport = async () => {
     setExporting(true)
     try {
@@ -113,21 +112,20 @@ export default function GastosTable() {
       if (filters.search) activeFilters.search = filters.search
 
       const data = await exportGastos(activeFilters)
-      
+
       if (data.length === 0) {
         alert('No hay registros para exportar con los filtros actuales')
         setExporting(false)
         return
       }
 
-      // Preparar datos para Excel
       const excelData = data.map((g: any) => ({
         'Fecha': new Date(g.fecha).toLocaleDateString('es-PA'),
         'Periodo': g.periodo,
         'Tienda': getTiendaName(g.tienda_id),
-        'Descripción': g.descripcion,
+        'Descripcion': g.descripcion,
         'Proveedor': getProveedorName(g.proveedor_id),
-        'Clasificación': g.clasificacion,
+        'Clasificacion': g.clasificacion,
         'Monto': g.monto,
         'Estatus': g.estatus,
         'Orden Compra': g.orden_compra || '',
@@ -139,23 +137,21 @@ export default function GastosTable() {
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, ws, 'Gastos Diarios')
 
-      // Ajustar anchos de columna
       const colWidths = [
-        { wch: 12 },  // Fecha
-        { wch: 12 },  // Periodo
-        { wch: 25 },  // Tienda
-        { wch: 40 },  // Descripción
-        { wch: 25 },  // Proveedor
-        { wch: 18 },  // Clasificación
-        { wch: 15 },  // Monto
-        { wch: 18 },  // Estatus
-        { wch: 15 },  // OC
-        { wch: 15 },  // Factura
-        { wch: 12 },  // Creado
+        { wch: 12 },
+        { wch: 12 },
+        { wch: 25 },
+        { wch: 40 },
+        { wch: 25 },
+        { wch: 18 },
+        { wch: 15 },
+        { wch: 18 },
+        { wch: 15 },
+        { wch: 15 },
+        { wch: 12 },
       ]
       ws['!cols'] = colWidths
 
-      // Nombre del archivo
       const periodo = filters.periodo || 'Todos'
       const fecha = new Date().toISOString().split('T')[0]
       const fileName = `Gastos_Diarios_${periodo}_${fecha}.xlsx`
@@ -189,7 +185,7 @@ export default function GastosTable() {
   }
 
   const handleDelete = async (id: string) => {
-    if (confirm('¿Estás seguro de que quieres eliminar este registro?')) {
+    if (confirm('Estas seguro de que quieres eliminar este registro?')) {
       await deleteGasto(id)
       setMenuOpen(null)
     }
@@ -256,13 +252,12 @@ export default function GastosTable() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {/* Barra de búsqueda, filtros y exportar */}
       <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Buscar en descripción, OC o factura..."
+            placeholder="Buscar en descripcion, OC o factura..."
             value={filters.search}
             onChange={e => setFilters(prev => ({ ...prev, search: e.target.value }))}
             onKeyDown={e => e.key === 'Enter' && applyFilters()}
@@ -284,7 +279,6 @@ export default function GastosTable() {
             <Filter className="w-4 h-4" />
             Filtros {showFilters ? '▲' : '▼'}
           </button>
-          {/* NUEVO: Botón Exportar */}
           <button
             onClick={handleExport}
             disabled={exporting}
@@ -308,7 +302,7 @@ export default function GastosTable() {
               <option value="">Todos los periodos</option>
               {PERIODOS.map(p => <option key={p} value={p}>{p}</option>)}
             </select>
-            
+
             <select
               value={filters.tienda_id}
               onChange={e => setFilters(prev => ({ ...prev, tienda_id: e.target.value }))}
@@ -319,7 +313,7 @@ export default function GastosTable() {
                 <option key={t.id} value={t.id}>{t.codigo} - {t.nombre}</option>
               ))}
             </select>
-            
+
             <select
               value={filters.proveedor_id}
               onChange={e => setFilters(prev => ({ ...prev, proveedor_id: e.target.value }))}
@@ -330,7 +324,7 @@ export default function GastosTable() {
                 <option key={p.id} value={p.id}>{p.codigo} - {p.nombre}</option>
               ))}
             </select>
-            
+
             <select
               value={filters.clasificacion}
               onChange={e => setFilters(prev => ({ ...prev, clasificacion: e.target.value }))}
@@ -341,7 +335,7 @@ export default function GastosTable() {
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
-            
+
             <select
               value={filters.estatus}
               onChange={e => setFilters(prev => ({ ...prev, estatus: e.target.value }))}
@@ -364,7 +358,6 @@ export default function GastosTable() {
         </div>
       )}
 
-      {/* Info de resultados */}
       <div className="flex items-center justify-between text-sm text-slate-500">
         <span>
           Mostrando <strong className="text-slate-700">{fromItem}-{toItem}</strong> de <strong className="text-slate-700">{totalCount}</strong> registros
@@ -372,7 +365,6 @@ export default function GastosTable() {
         </span>
       </div>
 
-      {/* Tabla con colores */}
       <div className="overflow-x-auto card-solid p-0 shadow-lg">
         <table className="w-full">
           <thead>
@@ -380,9 +372,9 @@ export default function GastosTable() {
               <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Fecha</th>
               <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Periodo</th>
               <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Tienda</th>
-              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Descripción</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Descripcion</th>
               <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Proveedor</th>
-              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Clasificación</th>
+              <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Clasificacion</th>
               <th className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">Monto</th>
               <th className="px-4 py-3 text-center text-xs font-bold text-slate-600 uppercase tracking-wider">Estatus</th>
               <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">OC / Factura</th>
@@ -414,7 +406,7 @@ export default function GastosTable() {
                     title="Doble clic para editar"
                   >
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600 font-medium">{formatDate(gasto.fecha)}</td>
-                    
+
                     <td className="px-4 py-3 whitespace-nowrap">
                       {isEditing ? (
                         <select
@@ -428,34 +420,34 @@ export default function GastosTable() {
                         <span className="text-sm text-slate-600 font-medium bg-slate-100 px-2 py-1 rounded-md">{gasto.periodo}</span>
                       )}
                     </td>
-                    
+
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-semibold text-slate-700">{getTiendaName(gasto.tienda_id)}</td>
-                    
+
                     <td className="px-4 py-3 max-w-xs">
                       <p className="text-sm text-slate-700 font-medium truncate" title={gasto.descripcion}>
                         {gasto.descripcion}
                       </p>
                     </td>
-                    
+
                     <td className="px-4 py-3 whitespace-nowrap text-xs text-slate-500">{getProveedorName(gasto.proveedor_id)}</td>
-                    
+
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold border ${clasifStyle.bg} ${clasifStyle.text} ${clasifStyle.border}`}>
                         {gasto.clasificacion}
                       </span>
                     </td>
-                    
+
                     <td className="px-4 py-3 text-right whitespace-nowrap">
                       <span className="text-sm font-bold text-slate-800">{formatMoney(gasto.monto)}</span>
                     </td>
-                    
+
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border ${ESTATUS_COLORS[gasto.estatus as keyof typeof ESTATUS_COLORS]}`}>
                         <StatusIcon className="w-3.5 h-3.5" />
                         {gasto.estatus}
                       </span>
                     </td>
-                    
+
                     <td className="px-4 py-3 whitespace-nowrap text-xs">
                       {isEditing ? (
                         <div className="space-y-2">
@@ -465,7 +457,7 @@ export default function GastosTable() {
                               type="text"
                               value={editData.orden_compra}
                               onChange={e => setEditData(prev => ({ ...prev, orden_compra: e.target.value }))}
-                              placeholder="Número OC"
+                              placeholder="Numero OC"
                               className="input-field text-xs py-1 px-2"
                               autoFocus
                             />
@@ -476,7 +468,7 @@ export default function GastosTable() {
                               type="text"
                               value={editData.factura}
                               onChange={e => setEditData(prev => ({ ...prev, factura: e.target.value }))}
-                              placeholder="Número Factura"
+                              placeholder="Numero Factura"
                               className="input-field text-xs py-1 px-2"
                             />
                           </div>
@@ -520,7 +512,7 @@ export default function GastosTable() {
                         </div>
                       )}
                     </td>
-                    
+
                     <td className="px-4 py-3 whitespace-nowrap text-center relative">
                       <button
                         onClick={() => setMenuOpen(isMenuOpen ? null : gasto.id)}
@@ -528,7 +520,7 @@ export default function GastosTable() {
                       >
                         <MoreVertical className="w-4 h-4 text-slate-400" />
                       </button>
-                      
+
                       {isMenuOpen && (
                         <div className="absolute right-2 top-full mt-1 w-40 bg-white rounded-xl shadow-xl border border-slate-100 z-50 py-1 overflow-hidden">
                           <button
@@ -556,19 +548,18 @@ export default function GastosTable() {
         </table>
       </div>
 
-      {/* Paginación */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between bg-white rounded-xl border border-slate-200 px-4 py-3 shadow-sm">
           <div className="text-sm text-slate-500">
-            Página <span className="font-bold text-slate-700">{page + 1}</span> de <span className="font-bold text-slate-700">{totalPages}</span>
+            Pagina <span className="font-bold text-slate-700">{page + 1}</span> de <span className="font-bold text-slate-700">{totalPages}</span>
           </div>
-          
+
           <div className="flex items-center gap-1">
             <button
               onClick={() => goToPage(0)}
               disabled={page === 0}
               className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Primera página"
+              title="Primera pagina"
             >
               <ChevronFirst className="w-4 h-4 text-slate-600" />
             </button>
@@ -580,7 +571,7 @@ export default function GastosTable() {
             >
               <ChevronLeft className="w-4 h-4 text-slate-600" />
             </button>
-            
+
             <div className="flex items-center gap-1 mx-2">
               {getPageNumbers().map((p, i) => (
                 p === '...' ? (
@@ -600,7 +591,7 @@ export default function GastosTable() {
                 )
               ))}
             </div>
-            
+
             <button
               onClick={nextPage}
               disabled={page >= totalPages - 1}
@@ -613,7 +604,7 @@ export default function GastosTable() {
               onClick={() => goToPage(totalPages - 1)}
               disabled={page >= totalPages - 1}
               className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Última página"
+              title="Ultima pagina"
             >
               <ChevronLast className="w-4 h-4 text-slate-600" />
             </button>
