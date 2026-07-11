@@ -73,11 +73,11 @@ const COLORES_SERVICIO: Record<string, { bg: string; border: string; text: strin
 }
 
 const FRECUENCIAS = [
-  { value: 'mensual', label: 'Mensual' },
-  { value: 'bimestral', label: 'Bimestral' },
-  { value: 'trimestral', label: 'Trimestral' },
-  { value: 'semestral', label: 'Semestral' },
-  { value: 'anual', label: 'Anual' }
+  { value: 'mensual', label: 'Mensual', meses: 1 },
+  { value: 'bimestral', label: 'Bimestral', meses: 2 },
+  { value: 'trimestral', label: 'Trimestral', meses: 3 },
+  { value: 'semestral', label: 'Semestral', meses: 6 },
+  { value: 'anual', label: 'Anual', meses: 12 }
 ]
 
 const DIAS_SEMANA = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
@@ -94,6 +94,36 @@ const formatFechaLocal = (fechaStr: string) => {
 const getMesFromString = (fechaStr: string) => {
   const month = parseInt(fechaStr.split('-')[1])
   return MESES[month - 1]
+}
+
+// Función para generar fechas repetidas según frecuencia
+const generarFechasRepeticion = (fechaInicio: string, fechaTope: string, frecuenciaMeses: number): string[] => {
+  const fechas: string[] = []
+  const [yearInicio, monthInicio, dayInicio] = fechaInicio.split('-').map(Number)
+  const [yearTope, monthTope, dayTope] = fechaTope.split('-').map(Number)
+  
+  const fechaActual = new Date(yearInicio, monthInicio - 1, dayInicio)
+  const fechaLimite = new Date(yearTope, monthTope - 1, dayTope)
+  
+  // Incluir la fecha inicial
+  fechas.push(fechaInicio)
+  
+  // Generar fechas siguientes
+  let contador = 1
+  while (true) {
+    const nuevaFecha = new Date(yearInicio, monthInicio - 1 + (contador * frecuenciaMeses), dayInicio)
+    
+    if (nuevaFecha > fechaLimite) break
+    
+    const year = nuevaFecha.getFullYear()
+    const month = (nuevaFecha.getMonth() + 1).toString().padStart(2, '0')
+    const day = dayInicio.toString().padStart(2, '0')
+    
+    fechas.push(`${year}-${month}-${day}`)
+    contador++
+  }
+  
+  return fechas
 }
 
 interface Mantenimiento {
@@ -264,58 +294,80 @@ export default function CalendarioMantenimiento() {
     }
 
     const tienda = tiendas.find(t => t.id === formData.tienda_id)
-    const mesIndex = parseInt(formData.fecha_programada.split('-')[1]) - 1
+    const frecuenciaConfig = FRECUENCIAS.find(f => f.value === formData.frecuencia)
+    
+    if (!frecuenciaConfig) {
+      alert('Error: Frecuencia no válida')
+      return
+    }
+
+    // Generar todas las fechas según la frecuencia
+    const fechasGeneradas = generarFechasRepeticion(
+      formData.fecha_programada,
+      formData.fecha_tope,
+      frecuenciaConfig.meses
+    )
+
+    console.log('Fechas generadas:', fechasGeneradas)
 
     try {
-      const { data: mantData, error: mantError } = await supabase
-        .from('mantenimientos_preventivos')
-        .insert([{
-          tienda_id: formData.tienda_id,
-          fecha_programada: formData.fecha_programada,
-          tipo_servicio: formData.tipo_servicio,
-          frecuencia: formData.frecuencia,
-          proveedor_id: formData.proveedor_id || null,
-          monto_estimado: parseFloat(formData.monto_estimado),
-          descripcion: formData.descripcion,
-          fecha_tope: formData.fecha_tope,
-          estatus: 'Pendiente'
-        }])
-        .select()
+      let totalGastos = 0
 
-      if (mantError) {
-        alert('Error al programar mantenimiento: ' + mantError.message)
-        return
-      }
+      // Crear mantenimiento y gasto para CADA fecha generada
+      for (const fecha of fechasGeneradas) {
+        const mesIndex = parseInt(fecha.split('-')[1]) - 1
 
-      const { data: gastoData, error: gastoError } = await supabase
-        .from('gastos_diarios')
-        .insert([{
-          tienda_id: formData.tienda_id,
-          fecha: formData.fecha_programada,
-          periodo: MESES[mesIndex],
-          descripcion: 'MANTENIMIENTO PREVENTIVO: ' + formData.tipo_servicio + (formData.descripcion ? ' - ' + formData.descripcion : ''),
-          monto: parseFloat(formData.monto_estimado),
-          clasificacion: 'Servicios Fijos',
-          proveedor_id: formData.proveedor_id || null,
-          estatus: 'Completado',
-          orden_compra: null,
-          factura: null,
-          gerente_area: tienda?.gerente_area || '',
-          gerente_regional: tienda?.gerente_regional || ''
-        }])
-        .select()
-
-      if (gastoError) {
-        alert('❌ Error al registrar gasto: ' + gastoError.message)
-        console.error('Detalle del error:', gastoError)
-        return
-      }
-
-      if (mantData?.[0]?.id && gastoData?.[0]?.id) {
-        await supabase
+        // 1. Crear mantenimiento
+        const { data: mantData, error: mantError } = await supabase
           .from('mantenimientos_preventivos')
-          .update({ gasto_registrado_id: gastoData[0].id })
-          .eq('id', mantData[0].id)
+          .insert([{
+            tienda_id: formData.tienda_id,
+            fecha_programada: fecha,
+            tipo_servicio: formData.tipo_servicio,
+            frecuencia: formData.frecuencia,
+            proveedor_id: formData.proveedor_id || null,
+            monto_estimado: parseFloat(formData.monto_estimado),
+            descripcion: formData.descripcion,
+            fecha_tope: formData.fecha_tope,
+            estatus: 'Pendiente'
+          }])
+          .select()
+
+        if (mantError) {
+          console.error('Error creando mantenimiento para fecha', fecha, ':', mantError)
+          continue
+        }
+
+        // 2. Crear gasto automáticamente
+        const { data: gastoData, error: gastoError } = await supabase
+          .from('gastos_diarios')
+          .insert([{
+            tienda_id: formData.tienda_id,
+            fecha: fecha,
+            periodo: MESES[mesIndex],
+            descripcion: 'MANTENIMIENTO PREVENTIVO: ' + formData.tipo_servicio + (formData.descripcion ? ' - ' + formData.descripcion : ''),
+            monto: parseFloat(formData.monto_estimado),
+            clasificacion: 'Servicios Fijos',
+            proveedor_id: formData.proveedor_id || null,
+            estatus: 'Completado',
+            orden_compra: null,
+            factura: null,
+            gerente_area: tienda?.gerente_area || '',
+            gerente_regional: tienda?.gerente_regional || ''
+          }])
+          .select()
+
+        if (gastoError) {
+          console.error('Error creando gasto para fecha', fecha, ':', gastoError)
+        } else if (mantData?.[0]?.id && gastoData?.[0]?.id) {
+          // 3. Actualizar mantenimiento con el ID del gasto
+          await supabase
+            .from('mantenimientos_preventivos')
+            .update({ gasto_registrado_id: gastoData[0].id })
+            .eq('id', mantData[0].id)
+          
+          totalGastos++
+        }
       }
 
       setShowForm(false)
@@ -334,7 +386,7 @@ export default function CalendarioMantenimiento() {
       
       await fetchMantenimientos()
       
-      alert('✅ Mantenimiento programado y gasto registrado automáticamente!')
+      alert(`✅ ${fechasGeneradas.length} mantenimientos programados y ${totalGastos} gastos registrados automáticamente!`)
 
     } catch (err) {
       console.error('Error inesperado:', err)
@@ -461,7 +513,6 @@ export default function CalendarioMantenimiento() {
     }
 
     try {
-      // 1. Si tiene gasto registrado, eliminar el gasto PRIMERO
       if (mantenimiento.gasto_registrado_id) {
         console.log('Eliminando gasto relacionado:', mantenimiento.gasto_registrado_id)
         
@@ -473,13 +524,11 @@ export default function CalendarioMantenimiento() {
         if (gastoError) {
           console.error('Error eliminando gasto:', gastoError)
           alert('⚠️ Error al eliminar el gasto relacionado: ' + gastoError.message)
-          // Preguntamos si quiere continuar
           if (!confirm('¿Continuar y eliminar solo el mantenimiento?')) return
         } else {
           console.log('✅ Gasto eliminado correctamente')
         }
       } else {
-        // Si no tiene gasto_registrado_id, buscar y eliminar por descripción y tienda
         console.log('Buscando gasto por descripción y tienda...')
         
         const { data: gastosData, error: searchError } = await supabase
@@ -505,7 +554,6 @@ export default function CalendarioMantenimiento() {
         }
       }
 
-      // 2. Eliminar el mantenimiento
       const { error: mantError } = await supabase
         .from('mantenimientos_preventivos')
         .delete()
@@ -518,7 +566,6 @@ export default function CalendarioMantenimiento() {
 
       console.log('✅ Mantenimiento eliminado correctamente')
       
-      // 3. Refrescar todo
       await fetchMantenimientos()
       
       alert('✅ Mantenimiento y gasto eliminados correctamente')
@@ -921,7 +968,7 @@ export default function CalendarioMantenimiento() {
               setEditingMantenimiento(null)
             }} className="btn-secondary">Cancelar</button>
             <button type="submit" className="btn-primary flex items-center gap-2">
-              <Pencil className="w-4 h-4" />
+              <Repeat className="w-4 h-4" />
               {editingMantenimiento ? 'Actualizar' : 'Programar y Repetir'}
             </button>
           </div>
