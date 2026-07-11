@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useTiendas } from '../hooks/useSupabase'
 import { supabase } from '../lib/supabase'
-import { Table, Search, X, ArrowDown, ArrowUp, Filter, Building2, Eye } from 'lucide-react'
+import { Table, Search, X, ArrowDown, ArrowUp, Filter, Building2, Eye, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react'
 
 const MESES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -79,7 +79,7 @@ function TiendaModal({
         }}
         onClick={onClose}
       />
-      
+
       <div 
         style={{
           position: 'relative',
@@ -95,25 +95,28 @@ function TiendaModal({
         }}
         onClick={e => e.stopPropagation()}
       >
-        <div style={{ padding: '20px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(to right, #f8fafc, #ffffff)', borderRadius: '16px 16px 0 0', flexShrink: 0 }}>
+        <div style={{ padding: '20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)', borderRadius: '16px 16px 0 0', flexShrink: 0 }}>
           <div>
-            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b' }}>{tienda.codigo} - {tienda.tienda}</h3>
-            <p style={{ fontSize: '14px', color: '#64748b' }}>{MESES[tienda.mes - 1]} {tienda.año} | {tienda.unidad_negocio}</p>
+            <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#ffffff' }}>{tienda.codigo} - {tienda.tienda}</h3>
+            <p style={{ fontSize: '14px', color: '#94a3b8' }}>{MESES[tienda.mes - 1]} {tienda.año} | {tienda.unidad_negocio}</p>
           </div>
-          <button onClick={onClose} style={{ padding: '8px', borderRadius: '12px', border: 'none', background: 'transparent', cursor: 'pointer' }}>
-            <X style={{ width: '20px', height: '20px', color: '#64748b' }} />
+          <button onClick={onClose} style={{ padding: '8px', borderRadius: '12px', border: 'none', background: 'rgba(255,255,255,0.1)', cursor: 'pointer', transition: 'background 0.2s' }}>
+            <X style={{ width: '20px', height: '20px', color: '#ffffff' }} />
           </button>
         </div>
 
-        <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', borderBottom: '1px solid #f1f5f9', backgroundColor: '#f8fafc80', flexShrink: 0 }}>
+        <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', borderBottom: '1px solid #e2e8f0', background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)', flexShrink: 0 }}>
           {[
-            { label: 'Presupuesto', value: formatMoney(tienda.presupuesto_asignado), color: '#1e293b' },
-            { label: 'Amortizado', value: formatMoney(tienda.amortizado), color: '#ea580c' },
-            { label: 'Gasto Real', value: formatMoney(tienda.gasto_real), color: '#dc2626' },
-            { label: 'Saldo', value: formatMoney(tienda.saldo), color: tienda.saldo < 0 ? '#dc2626' : '#059669' },
+            { label: 'Presupuesto', value: formatMoney(tienda.presupuesto_asignado), color: '#1e293b', icon: <TrendingUp style={{ width: '16px', height: '16px' }} /> },
+            { label: 'Amortizado', value: formatMoney(tienda.amortizado), color: '#ea580c', icon: <AlertTriangle style={{ width: '16px', height: '16px' }} /> },
+            { label: 'Gasto Real', value: formatMoney(tienda.gasto_real), color: '#dc2626', icon: <TrendingDown style={{ width: '16px', height: '16px' }} /> },
+            { label: 'Saldo', value: formatMoney(tienda.saldo), color: tienda.saldo < 0 ? '#dc2626' : '#059669', icon: <TrendingUp style={{ width: '16px', height: '16px' }} /> },
           ].map((stat, i) => (
-            <div key={i} style={{ padding: '12px', backgroundColor: 'white', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
-              <p style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>{stat.label}</p>
+            <div key={i} style={{ padding: '12px', backgroundColor: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                <span style={{ color: stat.color }}>{stat.icon}</span>
+                <p style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>{stat.label}</p>
+              </div>
               <p style={{ fontSize: '18px', fontWeight: 'bold', color: stat.color }}>{stat.value}</p>
             </div>
           ))}
@@ -121,10 +124,10 @@ function TiendaModal({
 
         <div style={{ padding: '20px', overflowY: 'auto' }}>
           <h4 style={{ fontWeight: 'bold', color: '#1e293b', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Eye style={{ width: '16px', height: '16px', color: '#94a3b8' }} />
+            <Eye style={{ width: '16px', height: '16px', color: '#3b82f6' }} />
             Desglose de Gastos
           </h4>
-          
+
           {loading ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
               <div className="animate-spin" style={{ width: '24px', height: '24px', border: '2px solid #3b82f6', borderTopColor: 'transparent', borderRadius: '50%' }} />
@@ -139,30 +142,30 @@ function TiendaModal({
               <div style={{ overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
                 <table style={{ width: '100%', fontSize: '14px', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #e2e8f0' }}>
+                    <tr style={{ borderBottom: '1px solid #e2e8f0', background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)' }}>
                       {['Fecha', 'Descripción', 'Clasif.', 'Proveedor', 'Monto'].map((h, i) => (
-                        <th key={i} style={{ textAlign: i === 4 ? 'right' : 'left', padding: '8px 12px', fontSize: '12px', fontWeight: 600, color: '#64748b', textTransform: 'uppercase', whiteSpace: 'nowrap', backgroundColor: 'white' }}>
+                        <th key={i} style={{ textAlign: i === 4 ? 'right' : 'left', padding: '10px 12px', fontSize: '12px', fontWeight: 600, color: '#475569', textTransform: 'uppercase', whiteSpace: 'nowrap', backgroundColor: 'transparent' }}>
                           {h}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {gastos.map(g => (
-                      <tr key={g.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '8px 12px', whiteSpace: 'nowrap', color: '#475569' }}>{new Date(g.fecha).toLocaleDateString('es-PA')}</td>
-                        <td style={{ padding: '8px 12px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#334155' }} title={g.descripcion}>{g.descripcion}</td>
-                        <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
-                          <span style={{ padding: '4px 8px', borderRadius: '9999px', fontSize: '12px', backgroundColor: '#f1f5f9', color: '#475569', fontWeight: 500 }}>{g.clasificacion}</span>
+                    {gastos.map((g, idx) => (
+                      <tr key={g.id} style={{ borderBottom: '1px solid #f1f5f9', backgroundColor: idx % 2 === 0 ? 'white' : '#f8fafc' }}>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap', color: '#475569' }}>{new Date(g.fecha).toLocaleDateString('es-PA')}</td>
+                        <td style={{ padding: '10px 12px', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#334155' }} title={g.descripcion}>{g.descripcion}</td>
+                        <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                          <span style={{ padding: '4px 10px', borderRadius: '9999px', fontSize: '12px', backgroundColor: '#dbeafe', color: '#1d4ed8', fontWeight: 500 }}>{g.clasificacion}</span>
                         </td>
-                        <td style={{ padding: '8px 12px', fontSize: '12px', color: '#64748b', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={g.proveedor}>{g.proveedor}</td>
-                        <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 'bold', color: '#1e293b', whiteSpace: 'nowrap' }}>{formatMoney(g.monto)}</td>
+                        <td style={{ padding: '10px 12px', fontSize: '12px', color: '#64748b', maxWidth: '150px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={g.proveedor}>{g.proveedor}</td>
+                        <td style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 'bold', color: '#1e293b', whiteSpace: 'nowrap' }}>{formatMoney(g.monto)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              <div style={{ marginTop: '12px', padding: '12px', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #f1f5f9', textAlign: 'right' }}>
+              <div style={{ marginTop: '12px', padding: '12px', background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)', borderRadius: '12px', border: '1px solid #fecaca', textAlign: 'right' }}>
                 <p style={{ fontSize: '14px', color: '#475569' }}>
                   Total gastos: <span style={{ fontWeight: 'bold', color: '#dc2626', fontSize: '18px' }}>{formatMoney(gastos.reduce((sum, g) => sum + g.monto, 0))}</span>
                 </p>
@@ -268,37 +271,38 @@ export default function PresupuestoView() {
   }, [sortBy, sortDesc])
 
   const fetchDetalleGastos = async (tiendaId: string, mesNum: number) => {
-  setLoadingDetalle(true)
-  const { data, error } = await supabase
-    .from('gastos_diarios')
-    .select(`
-      *,
-      proveedores:proveedor_id(
-        codigo, 
-        nombre,
-        clasificacion:clasificacion_id(nombre)
-      )
-    `)
-    .eq('tienda_id', tiendaId)
-    .eq('periodo', MESES[mesNum - 1])
-    .order('fecha', { ascending: false })
+    setLoadingDetalle(true)
+    const { data, error } = await supabase
+      .from('gastos_diarios')
+      .select(`
+        *,
+        proveedores:proveedor_id(
+          codigo, 
+          nombre,
+          clasificacion:clasificacion_id(nombre)
+        )
+      `)
+      .eq('tienda_id', tiendaId)
+      .eq('periodo', MESES[mesNum - 1])
+      .order('fecha', { ascending: false })
 
-  if (error) {
-    console.error('Error fetching detalle:', error)
+    if (error) {
+      console.error('Error fetching detalle:', error)
+      setLoadingDetalle(false)
+      return
+    }
+
+    setDetalleGastos((data || []).map((g: any) => ({
+      id: g.id,
+      fecha: g.fecha,
+      descripcion: g.descripcion,
+      monto: g.monto,
+      clasificacion: g.proveedores?.clasificacion?.nombre || g.clasificacion,
+      proveedor: g.proveedores ? `${g.proveedores.codigo} - ${g.proveedores.nombre}` : '-',
+    })))
     setLoadingDetalle(false)
-    return
   }
 
-  setDetalleGastos((data || []).map((g: any) => ({
-    id: g.id,
-    fecha: g.fecha,
-    descripcion: g.descripcion,
-    monto: g.monto,
-    clasificacion: g.proveedores?.clasificacion?.nombre || g.clasificacion,
-    proveedor: g.proveedores ? `${g.proveedores.codigo} - ${g.proveedores.nombre}` : '-',
-  })))
-  setLoadingDetalle(false)
-}
   const handleRowDoubleClick = (row: PresupuestoRow) => {
     setSelectedTienda(row)
     fetchDetalleGastos(row.tienda_id, row.mes)
@@ -331,42 +335,42 @@ export default function PresupuestoView() {
         <p className="text-sm text-slate-500 mt-1">Consulta y filtra el presupuesto detallado</p>
       </div>
 
-      <div className="card-solid">
+      <div className="card-solid" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)', border: '1px solid #e2e8f0' }}>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Año</label>
-            <input type="number" value={año} onChange={e => setAño(parseInt(e.target.value))} className="input-field" />
+            <input type="number" value={año} onChange={e => setAño(parseInt(e.target.value))} className="input-field" style={{ background: 'white', border: '1px solid #cbd5e1' }} />
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Mes</label>
-            <select value={mes || ''} onChange={e => setMes(e.target.value ? parseInt(e.target.value) : null)} className="input-field">
+            <select value={mes || ''} onChange={e => setMes(e.target.value ? parseInt(e.target.value) : null)} className="input-field" style={{ background: 'white', border: '1px solid #cbd5e1' }}>
               <option value="">Todos los meses</option>
               {MESES.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Unidad de Negocio</label>
-            <select value={unidadNegocio} onChange={e => setUnidadNegocio(e.target.value)} className="input-field">
+            <select value={unidadNegocio} onChange={e => setUnidadNegocio(e.target.value)} className="input-field" style={{ background: 'white', border: '1px solid #cbd5e1' }}>
               <option value="">Todas</option>
               {unidadesNegocio.map(u => <option key={u} value={u}>{u}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Gerente de Área</label>
-            <select value={gerenteArea} onChange={e => setGerenteArea(e.target.value)} className="input-field">
+            <select value={gerenteArea} onChange={e => setGerenteArea(e.target.value)} className="input-field" style={{ background: 'white', border: '1px solid #cbd5e1' }}>
               <option value="">Todos</option>
               {gerentesArea.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1.5">Gerente Regional</label>
-            <select value={gerenteRegional} onChange={e => setGerenteRegional(e.target.value)} className="input-field">
+            <select value={gerenteRegional} onChange={e => setGerenteRegional(e.target.value)} className="input-field" style={{ background: 'white', border: '1px solid #cbd5e1' }}>
               <option value="">Todos</option>
               {gerentesRegional.map(g => <option key={g} value={g}>{g}</option>)}
             </select>
           </div>
           <div className="flex items-end gap-2">
-            <button onClick={fetchPresupuestos} className="btn-primary flex items-center gap-2">
+            <button onClick={fetchPresupuestos} className="btn-primary flex items-center gap-2" style={{ background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)' }}>
               <Table className="w-4 h-4" />
               Consultar
             </button>
@@ -389,25 +393,25 @@ export default function PresupuestoView() {
       {presupuestos.length > 0 && (
         <div className={`grid grid-cols-1 gap-4 ${hayDQ && hayKFC ? 'sm:grid-cols-2' : ''}`}>
           {hayDQ && (
-            <div className="card-dq">
+            <div className="card-dq" style={{ background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', border: '1px solid #bfdbfe', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.1)' }}>
               <div className="flex items-center gap-3 mb-3">
                 <img src="/dq-logo.png" alt="DQ" className="h-8 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                 <p className="text-sm font-bold text-blue-700">Dairy Queen</p>
               </div>
               <div className="grid grid-cols-4 gap-2 text-sm">
-                <div className="p-2 bg-white/60 rounded-lg text-center">
+                <div className="p-2 bg-white/80 rounded-lg text-center" style={{ border: '1px solid #e2e8f0' }}>
                   <span className="text-xs text-slate-500 block">Presup</span>
                   <p className="font-bold text-slate-800">{formatMoney(dqTotal)}</p>
                 </div>
-                <div className="p-2 bg-white/60 rounded-lg text-center">
+                <div className="p-2 bg-white/80 rounded-lg text-center" style={{ border: '1px solid #e2e8f0' }}>
                   <span className="text-xs text-slate-500 block">Gasto</span>
                   <p className="font-bold text-red-600">{formatMoney(dqGasto)}</p>
                 </div>
-                <div className="p-2 bg-white/60 rounded-lg text-center">
+                <div className="p-2 bg-white/80 rounded-lg text-center" style={{ border: '1px solid #e2e8f0' }}>
                   <span className="text-xs text-slate-500 block">Amort</span>
                   <p className="font-bold text-orange-600">{formatMoney(dqAmort)}</p>
                 </div>
-                <div className="p-2 bg-white/60 rounded-lg text-center">
+                <div className="p-2 bg-white/80 rounded-lg text-center" style={{ border: '1px solid #e2e8f0' }}>
                   <span className="text-xs text-slate-500 block">Saldo</span>
                   <p className={`font-bold ${dqSaldo < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{formatMoney(dqSaldo)}</p>
                 </div>
@@ -415,25 +419,25 @@ export default function PresupuestoView() {
             </div>
           )}
           {hayKFC && (
-            <div className="card-kfc">
+            <div className="card-kfc" style={{ background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)', border: '1px solid #fecaca', boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.1)' }}>
               <div className="flex items-center gap-3 mb-3">
                 <img src="/kfc-logo.png" alt="KFC" className="h-8 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                 <p className="text-sm font-bold text-red-700">Kentucky Fried Chicken</p>
               </div>
               <div className="grid grid-cols-4 gap-2 text-sm">
-                <div className="p-2 bg-white/60 rounded-lg text-center">
+                <div className="p-2 bg-white/80 rounded-lg text-center" style={{ border: '1px solid #e2e8f0' }}>
                   <span className="text-xs text-slate-500 block">Presup</span>
                   <p className="font-bold text-slate-800">{formatMoney(kfcTotal)}</p>
                 </div>
-                <div className="p-2 bg-white/60 rounded-lg text-center">
+                <div className="p-2 bg-white/80 rounded-lg text-center" style={{ border: '1px solid #e2e8f0' }}>
                   <span className="text-xs text-slate-500 block">Gasto</span>
                   <p className="font-bold text-red-600">{formatMoney(kfcGasto)}</p>
                 </div>
-                <div className="p-2 bg-white/60 rounded-lg text-center">
+                <div className="p-2 bg-white/80 rounded-lg text-center" style={{ border: '1px solid #e2e8f0' }}>
                   <span className="text-xs text-slate-500 block">Amort</span>
                   <p className="font-bold text-orange-600">{formatMoney(kfcAmort)}</p>
                 </div>
-                <div className="p-2 bg-white/60 rounded-lg text-center">
+                <div className="p-2 bg-white/80 rounded-lg text-center" style={{ border: '1px solid #e2e8f0' }}>
                   <span className="text-xs text-slate-500 block">Saldo</span>
                   <p className={`font-bold ${kfcSaldo < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{formatMoney(kfcSaldo)}</p>
                 </div>
@@ -443,9 +447,9 @@ export default function PresupuestoView() {
         </div>
       )}
 
-      <div className="card-solid overflow-hidden">
-        <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2">
-          <Building2 className="w-5 h-5 text-slate-500" />
+      <div className="card-solid overflow-hidden" style={{ background: 'white', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <h3 className="font-bold text-lg text-slate-800 mb-4 flex items-center gap-2" style={{ padding: '16px 20px', background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)', borderBottom: '1px solid #e2e8f0' }}>
+          <Building2 className="w-5 h-5 text-blue-600" />
           Detalle por Tienda
         </h3>
         {isLoading ? (
@@ -460,28 +464,37 @@ export default function PresupuestoView() {
             <p className="text-sm mt-1">Aplica filtros y consulta</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="table-modern">
+          <div className="overflow-x-auto" style={{ padding: '0 20px 20px' }}>
+            <table className="table-modern" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0' }}>
               <thead>
-                <tr>
-                  <th>Tienda</th>
-                  <th className="text-center">Mes</th>
-                  <th className="text-right">Presupuesto</th>
-                  <th className="text-right">Amortizado</th>
-                  <th className="text-right">Gasto</th>
-                  <th className="text-right">Saldo</th>
-                  <th className="text-center">%</th>
+                <tr style={{ background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', color: 'white', fontSize: '13px', fontWeight: 600, borderRadius: '8px 0 0 0' }}>Tienda</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', color: 'white', fontSize: '13px', fontWeight: 600 }}>Mes</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right', color: 'white', fontSize: '13px', fontWeight: 600 }}>Presupuesto</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right', color: 'white', fontSize: '13px', fontWeight: 600 }}>Amortizado</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right', color: 'white', fontSize: '13px', fontWeight: 600 }}>Gasto</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right', color: 'white', fontSize: '13px', fontWeight: 600 }}>Saldo</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', color: 'white', fontSize: '13px', fontWeight: 600, borderRadius: '0 8px 0 0' }}>%</th>
                 </tr>
               </thead>
               <tbody>
-                {presupuestos.map(p => {
+                {presupuestos.map((p, idx) => {
                   const pct = p.presupuesto_asignado > 0 ? ((p.gasto_real + p.amortizado) / p.presupuesto_asignado) * 100 : 0
                   const alertClass = getAlertClass(p.saldo, p.presupuesto_asignado)
+                  const isEven = idx % 2 === 0
                   return (
-                    <tr key={`${p.tienda_id}-${p.mes}`} className={`cursor-pointer transition-colors ${alertClass}`} onDoubleClick={() => handleRowDoubleClick(p)} title="Doble clic para ver detalle">
-                      <td className="font-bold text-slate-800">
+                    <tr key={`${p.tienda_id}-${p.mes}`} 
+                      className={`cursor-pointer transition-all duration-200 hover:shadow-md ${alertClass}`} 
+                      onDoubleClick={() => handleRowDoubleClick(p)} 
+                      title="Doble clic para ver detalle"
+                      style={{ 
+                        backgroundColor: isEven ? 'white' : '#f8fafc',
+                        borderBottom: '1px solid #e2e8f0'
+                      }}
+                    >
+                      <td className="font-bold" style={{ padding: '12px 16px', color: '#1e293b' }}>
                         <div className="flex items-center gap-2">
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold ${
+                          <span className={`inline-flex items-center px-2 py-1 rounded-md text-[11px] font-bold ${
                             p.unidad_negocio?.includes('Dairy') ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
                           }`}>
                             {p.unidad_negocio?.includes('Dairy') ? 'DQ' : 'KFC'}
@@ -489,19 +502,19 @@ export default function PresupuestoView() {
                           {p.tienda}
                         </div>
                       </td>
-                      <td className="text-center text-slate-500">{MESES[p.mes - 1]}</td>
-                      <td className="text-right font-bold text-slate-700">{formatMoney(p.presupuesto_asignado)}</td>
-                      <td className="text-right font-bold text-orange-600">{formatMoney(p.amortizado)}</td>
-                      <td className="text-right font-bold text-red-600">{formatMoney(p.gasto_real)}</td>
-                      <td className={`text-right font-bold ${p.saldo < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                      <td style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>{MESES[p.mes - 1]}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#334155' }}>{formatMoney(p.presupuesto_asignado)}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#ea580c' }}>{formatMoney(p.amortizado)}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>{formatMoney(p.gasto_real)}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 'bold', color: p.saldo < 0 ? '#dc2626' : '#059669' }}>
                         {formatMoney(p.saldo)}
                       </td>
-                      <td className="text-center">
-                        <div className="flex items-center gap-2">
-                          <div className="w-12 bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                            <div className={`h-1.5 rounded-full ${pct > 100 ? 'bg-red-500' : pct > 90 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                        <div className="flex items-center gap-2 justify-center">
+                          <div className="w-14 bg-slate-100 rounded-full h-2 overflow-hidden" style={{ border: '1px solid #e2e8f0' }}>
+                            <div className={`h-2 rounded-full transition-all duration-500 ${pct > 100 ? 'bg-red-500' : pct > 90 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
                           </div>
-                          <span className="text-xs font-medium text-slate-500">{pct.toFixed(0)}%</span>
+                          <span className="text-xs font-bold" style={{ color: pct > 100 ? '#dc2626' : pct > 90 ? '#d97706' : '#059669', minWidth: '28px' }}>{pct.toFixed(0)}%</span>
                         </div>
                       </td>
                     </tr>
