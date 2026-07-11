@@ -349,7 +349,8 @@ export default function Dashboard() {
       top5.push({ nombre: 'Otros', pct: otrosMonto / total, monto: otrosMonto, color: '#94a3b8' })
     }
 
-    return top5
+    // Re-ordenar todo incluyendo Otros, de mayor a menor
+    return top5.sort((a, b) => b.monto - a.monto)
   }, [totalGasto])
 
   // Exportar Dashboard a Excel
@@ -549,10 +550,6 @@ export default function Dashboard() {
             <h3 className="font-bold text-slate-800">Gasto por Clasificación</h3>
             <p className="text-xs text-slate-500">Top 5 + Otros · {periodoActual}</p>
           </div>
-          <div className="ml-auto text-right">
-            <p className="text-xs text-slate-400">Total</p>
-            <p className="font-bold text-slate-700">{formatMoney(totalGasto)}</p>
-          </div>
         </div>
 
         <div className="space-y-3">
@@ -560,8 +557,8 @@ export default function Dashboard() {
             const pct = totalGasto > 0 ? (item.monto / totalGasto) * 100 : 0
             return (
               <div key={item.nombre} className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: item.color + '20' }}>
-                  <span className="text-xs font-bold" style={{ color: item.color }}>{index + 1}</span>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-100">
+                  <span className="text-xs font-bold text-slate-600">{index + 1}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-1">
