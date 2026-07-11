@@ -18,7 +18,8 @@ import {
   Search,
   Filter,
   Pencil,
-  Trash2
+  Trash2,
+  Layers
 } from 'lucide-react'
 
 const MESES = [
@@ -96,7 +97,6 @@ const getMesFromString = (fechaStr: string) => {
   return MESES[month - 1]
 }
 
-// Función para generar fechas repetidas según frecuencia
 const generarFechasRepeticion = (fechaInicio: string, fechaTope: string, frecuenciaMeses: number): string[] => {
   const fechas: string[] = []
   const [yearInicio, monthInicio, dayInicio] = fechaInicio.split('-').map(Number)
@@ -105,10 +105,8 @@ const generarFechasRepeticion = (fechaInicio: string, fechaTope: string, frecuen
   const fechaActual = new Date(yearInicio, monthInicio - 1, dayInicio)
   const fechaLimite = new Date(yearTope, monthTope - 1, dayTope)
   
-  // Incluir la fecha inicial
   fechas.push(fechaInicio)
   
-  // Generar fechas siguientes
   let contador = 1
   while (true) {
     const nuevaFecha = new Date(yearInicio, monthInicio - 1 + (contador * frecuenciaMeses), dayInicio)
@@ -138,6 +136,7 @@ interface Mantenimiento {
   estatus: 'Pendiente' | 'Completado' | 'Cancelado'
   fecha_tope: string
   gasto_registrado_id: string | null
+  serie_id: string | null
 }
 
 export default function CalendarioMantenimiento() {
@@ -152,6 +151,11 @@ export default function CalendarioMantenimiento() {
   const [viewMode, setViewMode] = useState<'calendario' | 'lista'>('calendario')
 
   const [editingMantenimiento, setEditingMantenimiento] = useState<Mantenimiento | null>(null)
+  const [editMode, setEditMode] = useState<'solo' | 'serie'>('solo')
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteMantenimiento, setDeleteMantenimiento] = useState<Mantenimiento | null>(null)
+  const [deleteMode, setDeleteMode] = useState<'solo' | 'serie'>('solo')
 
   const [filtroProveedor, setFiltroProveedor] = useState('')
   const [filtroMes, setFiltroMes] = useState('')
@@ -301,7 +305,6 @@ export default function CalendarioMantenimiento() {
       return
     }
 
-    // Generar todas las fechas según la frecuencia
     const fechasGeneradas = generarFechasRepeticion(
       formData.fecha_programada,
       formData.fecha_tope,
@@ -310,14 +313,16 @@ export default function CalendarioMantenimiento() {
 
     console.log('Fechas generadas:', fechasGeneradas)
 
+    // Generar un ID de serie único para agrupar todos los mantenimientos
+    const serieId = crypto.randomUUID()
+
     try {
       let totalGastos = 0
 
-      // Crear mantenimiento y gasto para CADA fecha generada
       for (const fecha of fechasGeneradas) {
         const mesIndex = parseInt(fecha.split('-')[1]) - 1
 
-        // 1. Crear mantenimiento
+        // 1. Crear mantenimiento con serie_id
         const { data: mantData, error: mantError } = await supabase
           .from('mantenimientos_preventivos')
           .insert([{
@@ -329,7 +334,8 @@ export default function CalendarioMantenimiento() {
             monto_estimado: parseFloat(formData.monto_estimado),
             descripcion: formData.descripcion,
             fecha_tope: formData.fecha_tope,
-            estatus: 'Pendiente'
+            estatus: 'Pendiente',
+            serie_id: serieId
           }])
           .select()
 
@@ -360,7 +366,6 @@ export default function CalendarioMantenimiento() {
         if (gastoError) {
           console.error('Error creando gasto para fecha', fecha, ':', gastoError)
         } else if (mantData?.[0]?.id && gastoData?.[0]?.id) {
-          // 3. Actualizar mantenimiento con el ID del gasto
           await supabase
             .from('mantenimientos_preventivos')
             .update({ gasto_registrado_id: gastoData[0].id })
@@ -399,6 +404,7 @@ export default function CalendarioMantenimiento() {
     const proveedor = proveedores.find(p => p.id === mantenimiento.proveedor_id)
     
     setEditingMantenimiento(mantenimiento)
+    setEditMode('solo') // Por defecto solo este mes
     setFormData({
       tienda_id: mantenimiento.tienda_id,
       fecha_programada: mantenimiento.fecha_programada,
@@ -435,51 +441,102 @@ export default function CalendarioMantenimiento() {
     const mesIndex = parseInt(formData.fecha_programada.split('-')[1]) - 1
 
     try {
-      const { error: mantError } = await supabase
-        .from('mantenimientos_preventivos')
-        .update({
-          tienda_id: formData.tienda_id,
-          fecha_programada: formData.fecha_programada,
-          tipo_servicio: formData.tipo_servicio,
-          frecuencia: formData.frecuencia,
-          proveedor_id: formData.proveedor_id || null,
-          monto_estimado: parseFloat(formData.monto_estimado),
-          descripcion: formData.descripcion,
-          fecha_tope: formData.fecha_tope
-        })
-        .eq('id', editingMantenimiento.id)
-
-      if (mantError) {
-        alert('Error actualizando mantenimiento: ' + mantError.message)
-        return
-      }
-
-      if (editingMantenimiento.gasto_registrado_id) {
-        const { error: gastoError } = await supabase
-          .from('gastos_diarios')
+      if (editMode === 'serie' && editingMantenimiento.serie_id) {
+        // Actualizar TODOS los mantenimientos de la serie
+        const { error: mantError } = await supabase
+          .from('mantenimientos_preventivos')
           .update({
             tienda_id: formData.tienda_id,
-            fecha: formData.fecha_programada,
-            periodo: MESES[mesIndex],
-            descripcion: 'MANTENIMIENTO PREVENTIVO: ' + formData.tipo_servicio + (formData.descripcion ? ' - ' + formData.descripcion : ''),
-            monto: parseFloat(formData.monto_estimado),
-            clasificacion: 'Servicios Fijos',
+            tipo_servicio: formData.tipo_servicio,
+            frecuencia: formData.frecuencia,
             proveedor_id: formData.proveedor_id || null,
-            gerente_area: tienda?.gerente_area || '',
-            gerente_regional: tienda?.gerente_regional || ''
+            monto_estimado: parseFloat(formData.monto_estimado),
+            descripcion: formData.descripcion,
+            fecha_tope: formData.fecha_tope
           })
-          .eq('id', editingMantenimiento.gasto_registrado_id)
+          .eq('serie_id', editingMantenimiento.serie_id)
 
-        if (gastoError) {
-          alert('⚠️ Mantenimiento actualizado pero error al actualizar gasto: ' + gastoError.message)
-          console.error('Error gasto:', gastoError)
-        } else {
-          console.log('✅ Gasto actualizado correctamente')
+        if (mantError) {
+          alert('Error actualizando serie: ' + mantError.message)
+          return
         }
+
+        // Actualizar TODOS los gastos relacionados a la serie
+        const { data: serieMants } = await supabase
+          .from('mantenimientos_preventivos')
+          .select('gasto_registrado_id')
+          .eq('serie_id', editingMantenimiento.serie_id)
+          .not('gasto_registrado_id', 'is', null)
+
+        if (serieMants) {
+          for (const mant of serieMants) {
+            if (mant.gasto_registrado_id) {
+              await supabase
+                .from('gastos_diarios')
+                .update({
+                  tienda_id: formData.tienda_id,
+                  descripcion: 'MANTENIMIENTO PREVENTIVO: ' + formData.tipo_servicio + (formData.descripcion ? ' - ' + formData.descripcion : ''),
+                  monto: parseFloat(formData.monto_estimado),
+                  clasificacion: 'Servicios Fijos',
+                  proveedor_id: formData.proveedor_id || null,
+                  gerente_area: tienda?.gerente_area || '',
+                  gerente_regional: tienda?.gerente_regional || ''
+                })
+                .eq('id', mant.gasto_registrado_id)
+            }
+          }
+        }
+
+        alert('✅ Serie completa actualizada correctamente')
+
+      } else {
+        // Actualizar SOLO este mantenimiento
+        const { error: mantError } = await supabase
+          .from('mantenimientos_preventivos')
+          .update({
+            tienda_id: formData.tienda_id,
+            fecha_programada: formData.fecha_programada,
+            tipo_servicio: formData.tipo_servicio,
+            frecuencia: formData.frecuencia,
+            proveedor_id: formData.proveedor_id || null,
+            monto_estimado: parseFloat(formData.monto_estimado),
+            descripcion: formData.descripcion,
+            fecha_tope: formData.fecha_tope
+          })
+          .eq('id', editingMantenimiento.id)
+
+        if (mantError) {
+          alert('Error actualizando mantenimiento: ' + mantError.message)
+          return
+        }
+
+        if (editingMantenimiento.gasto_registrado_id) {
+          const { error: gastoError } = await supabase
+            .from('gastos_diarios')
+            .update({
+              tienda_id: formData.tienda_id,
+              fecha: formData.fecha_programada,
+              periodo: MESES[mesIndex],
+              descripcion: 'MANTENIMIENTO PREVENTIVO: ' + formData.tipo_servicio + (formData.descripcion ? ' - ' + formData.descripcion : ''),
+              monto: parseFloat(formData.monto_estimado),
+              clasificacion: 'Servicios Fijos',
+              proveedor_id: formData.proveedor_id || null,
+              gerente_area: tienda?.gerente_area || '',
+              gerente_regional: tienda?.gerente_regional || ''
+            })
+            .eq('id', editingMantenimiento.gasto_registrado_id)
+
+          if (gastoError) {
+            alert('⚠️ Mantenimiento actualizado pero error al actualizar gasto: ' + gastoError.message)
+          }
+        }
+
+        alert('✅ Mantenimiento actualizado correctamente')
       }
 
       setShowForm(false)
       setEditingMantenimiento(null)
+      setEditMode('solo')
       setFormData({
         tienda_id: '',
         fecha_programada: '',
@@ -494,7 +551,6 @@ export default function CalendarioMantenimiento() {
       setProvSearch('')
       
       await fetchMantenimientos()
-      alert('✅ Mantenimiento y gasto actualizados correctamente')
 
     } catch (err) {
       console.error('Error inesperado:', err)
@@ -502,73 +558,74 @@ export default function CalendarioMantenimiento() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('¿Eliminar este mantenimiento permanentemente?')) return
+  const openDeleteModal = (mantenimiento: Mantenimiento) => {
+    setDeleteMantenimiento(mantenimiento)
+    setDeleteMode('solo')
+    setShowDeleteModal(true)
+  }
 
-    const mantenimiento = mantenimientos.find(m => m.id === id)
-    
-    if (!mantenimiento) {
-      alert('Error: No se encontró el mantenimiento')
-      return
-    }
+  const handleDeleteConfirm = async () => {
+    if (!deleteMantenimiento) return
 
     try {
-      if (mantenimiento.gasto_registrado_id) {
-        console.log('Eliminando gasto relacionado:', mantenimiento.gasto_registrado_id)
-        
-        const { error: gastoError } = await supabase
-          .from('gastos_diarios')
-          .delete()
-          .eq('id', mantenimiento.gasto_registrado_id)
-        
-        if (gastoError) {
-          console.error('Error eliminando gasto:', gastoError)
-          alert('⚠️ Error al eliminar el gasto relacionado: ' + gastoError.message)
-          if (!confirm('¿Continuar y eliminar solo el mantenimiento?')) return
-        } else {
-          console.log('✅ Gasto eliminado correctamente')
-        }
-      } else {
-        console.log('Buscando gasto por descripción y tienda...')
-        
-        const { data: gastosData, error: searchError } = await supabase
-          .from('gastos_diarios')
-          .select('id')
-          .eq('tienda_id', mantenimiento.tienda_id)
-          .ilike('descripcion', '%MANTENIMIENTO PREVENTIVO%')
-          .eq('clasificacion', 'Servicios Fijos')
-          .order('fecha', { ascending: false })
-          .limit(1)
+      if (deleteMode === 'serie' && deleteMantenimiento.serie_id) {
+        // Eliminar TODA la serie
+        const { data: serieMants } = await supabase
+          .from('mantenimientos_preventivos')
+          .select('gasto_registrado_id')
+          .eq('serie_id', deleteMantenimiento.serie_id)
 
-        if (!searchError && gastosData && gastosData.length > 0) {
-          const { error: deleteError } = await supabase
-            .from('gastos_diarios')
-            .delete()
-            .eq('id', gastosData[0].id)
-          
-          if (deleteError) {
-            console.error('Error eliminando gasto encontrado:', deleteError)
-          } else {
-            console.log('✅ Gasto encontrado y eliminado:', gastosData[0].id)
+        if (serieMants) {
+          // Eliminar todos los gastos
+          for (const mant of serieMants) {
+            if (mant.gasto_registrado_id) {
+              await supabase
+                .from('gastos_diarios')
+                .delete()
+                .eq('id', mant.gasto_registrado_id)
+            }
           }
         }
+
+        // Eliminar todos los mantenimientos de la serie
+        const { error: mantError } = await supabase
+          .from('mantenimientos_preventivos')
+          .delete()
+          .eq('serie_id', deleteMantenimiento.serie_id)
+
+        if (mantError) {
+          alert('Error eliminando serie: ' + mantError.message)
+          return
+        }
+
+        alert('✅ Serie completa eliminada correctamente')
+
+      } else {
+        // Eliminar SOLO este mantenimiento
+        if (deleteMantenimiento.gasto_registrado_id) {
+          await supabase
+            .from('gastos_diarios')
+            .delete()
+            .eq('id', deleteMantenimiento.gasto_registrado_id)
+        }
+
+        const { error: mantError } = await supabase
+          .from('mantenimientos_preventivos')
+          .delete()
+          .eq('id', deleteMantenimiento.id)
+
+        if (mantError) {
+          alert('Error eliminando mantenimiento: ' + mantError.message)
+          return
+        }
+
+        alert('✅ Mantenimiento eliminado correctamente')
       }
 
-      const { error: mantError } = await supabase
-        .from('mantenimientos_preventivos')
-        .delete()
-        .eq('id', id)
-
-      if (mantError) {
-        alert('Error eliminando mantenimiento: ' + mantError.message)
-        return
-      }
-
-      console.log('✅ Mantenimiento eliminado correctamente')
-      
+      setShowDeleteModal(false)
+      setDeleteMantenimiento(null)
+      setDeleteMode('solo')
       await fetchMantenimientos()
-      
-      alert('✅ Mantenimiento y gasto eliminados correctamente')
 
     } catch (err) {
       console.error('Error inesperado:', err)
@@ -736,6 +793,83 @@ export default function CalendarioMantenimiento() {
 
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Modal de eliminación */}
+      {showDeleteModal && deleteMantenimiento && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl">
+            <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <AlertTriangle className="w-6 h-6 text-amber-500" />
+              ¿Eliminar mantenimiento?
+            </h3>
+            
+            <div className="space-y-3 mb-6">
+              <p className="text-slate-600">
+                <strong>Tienda:</strong> {tiendas.find(t => t.id === deleteMantenimiento.tienda_id)?.nombre}
+              </p>
+              <p className="text-slate-600">
+                <strong>Fecha:</strong> {formatFechaLocal(deleteMantenimiento.fecha_programada)}
+              </p>
+              <p className="text-slate-600">
+                <strong>Monto:</strong> {formatMoney(deleteMantenimiento.monto_estimado)}
+              </p>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              <label className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-50 transition-colors">
+                <input 
+                  type="radio" 
+                  name="deleteMode" 
+                  value="solo" 
+                  checked={deleteMode === 'solo'}
+                  onChange={() => setDeleteMode('solo')}
+                  className="w-4 h-4 text-violet-600"
+                />
+                <div>
+                  <p className="font-medium text-slate-800">Solo este mes</p>
+                  <p className="text-sm text-slate-500">Eliminar solo el mantenimiento de {formatFechaLocal(deleteMantenimiento.fecha_programada)}</p>
+                </div>
+              </label>
+
+              {deleteMantenimiento.serie_id && (
+                <label className="flex items-center gap-3 p-3 rounded-xl border border-red-200 bg-red-50 cursor-pointer hover:bg-red-100 transition-colors">
+                  <input 
+                    type="radio" 
+                    name="deleteMode" 
+                    value="serie" 
+                    checked={deleteMode === 'serie'}
+                    onChange={() => setDeleteMode('serie')}
+                    className="w-4 h-4 text-red-600"
+                  />
+                  <div>
+                    <p className="font-medium text-red-800">Toda la serie</p>
+                    <p className="text-sm text-red-600">Eliminar TODOS los mantenimientos de esta frecuencia</p>
+                  </div>
+                </label>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setShowDeleteModal(false)}
+                className="flex-1 py-2 px-4 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={handleDeleteConfirm}
+                className={`flex-1 py-2 px-4 rounded-lg font-medium text-white transition-colors ${
+                  deleteMode === 'serie' 
+                    ? 'bg-red-600 hover:bg-red-700' 
+                    : 'bg-violet-600 hover:bg-violet-700'
+                }`}
+              >
+                {deleteMode === 'serie' ? 'Eliminar Serie' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-indigo-600 p-6 text-white shadow-lg shadow-violet-200">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
@@ -760,6 +894,7 @@ export default function CalendarioMantenimiento() {
             <button
               onClick={() => {
                 setEditingMantenimiento(null)
+                setEditMode('solo')
                 setFormData({
                   tienda_id: '',
                   fecha_programada: '',
@@ -832,6 +967,40 @@ export default function CalendarioMantenimiento() {
             </div>
             {editingMantenimiento ? 'Editar Mantenimiento' : 'Programar Mantenimiento'}
           </h3>
+          
+          {/* Selector de modo de edición (solo aparece al editar) */}
+          {editingMantenimiento && editingMantenimiento.serie_id && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <p className="text-sm font-medium text-amber-800 mb-2 flex items-center gap-2">
+                <Layers className="w-4 h-4" />
+                Este mantenimiento pertenece a una serie
+              </p>
+              <div className="flex gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="editMode" 
+                    value="solo" 
+                    checked={editMode === 'solo'}
+                    onChange={() => setEditMode('solo')}
+                    className="w-4 h-4 text-violet-600"
+                  />
+                  <span className="text-sm text-slate-700">Solo este mes</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="editMode" 
+                    value="serie" 
+                    checked={editMode === 'serie'}
+                    onChange={() => setEditMode('serie')}
+                    className="w-4 h-4 text-violet-600"
+                  />
+                  <span className="text-sm text-slate-700">Toda la serie</span>
+                </label>
+              </div>
+            </div>
+          )}
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div ref={tiendaRef}>
@@ -966,10 +1135,14 @@ export default function CalendarioMantenimiento() {
             <button type="button" onClick={() => {
               setShowForm(false)
               setEditingMantenimiento(null)
+              setEditMode('solo')
             }} className="btn-secondary">Cancelar</button>
             <button type="submit" className="btn-primary flex items-center gap-2">
-              <Repeat className="w-4 h-4" />
-              {editingMantenimiento ? 'Actualizar' : 'Programar y Repetir'}
+              <Pencil className="w-4 h-4" />
+              {editingMantenimiento 
+                ? (editMode === 'serie' ? 'Actualizar Serie' : 'Actualizar') 
+                : 'Programar y Repetir'
+              }
             </button>
           </div>
         </form>
@@ -1142,6 +1315,7 @@ export default function CalendarioMantenimiento() {
                     const tienda = tiendas.find(t => t.id === m.tienda_id)
                     const proveedor = proveedores.find(p => p.id === m.proveedor_id)
                     const yaRegistrado = !!m.gasto_registrado_id
+                    const esSerie = !!m.serie_id
                     return (
                       <tr 
                         key={m.id} 
@@ -1149,7 +1323,16 @@ export default function CalendarioMantenimiento() {
                         onDoubleClick={() => handleEdit(m)}
                         title="Doble clic para editar"
                       >
-                        <td className="py-3 px-4 whitespace-nowrap text-slate-600">{formatFechaLocal(m.fecha_programada)}</td>
+                        <td className="py-3 px-4 whitespace-nowrap text-slate-600">
+                          <div className="flex items-center gap-2">
+                            {formatFechaLocal(m.fecha_programada)}
+                            {esSerie && (
+                              <span className="px-1.5 py-0.5 bg-violet-100 text-violet-600 rounded text-[10px] font-bold" title="Pertenece a una serie">
+                                S
+                              </span>
+                            )}
+                          </div>
+                        </td>
                         <td className="py-3 px-4 font-medium text-slate-800">
                           <div className="flex items-center gap-2">
                             {tienda?.nombre || 'N/A'}
@@ -1179,7 +1362,7 @@ export default function CalendarioMantenimiento() {
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation()
-                                handleDelete(m.id)
+                                openDeleteModal(m)
                               }}
                               className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
                               title="Eliminar"
