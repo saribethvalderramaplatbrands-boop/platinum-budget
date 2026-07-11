@@ -535,74 +535,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Grafico de barras mensual */}
-      {!loadingAnual && datosAnual.length > 0 && (
-        <GraficoBarras data={datosAnual} año={año} amortizaciones={amortizaciones} />
-      )}
-
-      {/* Gasto por Clasificacion - Top 5 + Otros */}
-      <div className="card-solid overflow-hidden">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="p-2 bg-violet-100 rounded-lg">
-            <Tag className="w-5 h-5 text-violet-600" />
-          </div>
-          <div>
-            <h3 className="font-bold text-slate-800">Gasto por Clasificación</h3>
-            <p className="text-xs text-slate-500">Top 5 + Otros · {periodoActual}</p>
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          {datosClasificacion.map((item, index) => {
-            const pct = totalGasto > 0 ? (item.monto / totalGasto) * 100 : 0
-            return (
-              <div key={item.nombre} className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-100">
-                  <span className="text-xs font-bold text-slate-600">{index + 1}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-slate-700 truncate">{item.nombre}</span>
-                    <span className="text-sm font-bold text-slate-800">{formatMoney(item.monto)}</span>
-                  </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                    <div 
-                      className="h-2.5 rounded-full transition-all duration-700"
-                      style={{ 
-                        width: `${pct}%`, 
-                        backgroundColor: item.color 
-                      }}
-                    />
-                  </div>
-                </div>
-                <span className="text-xs font-medium text-slate-500 w-10 text-right shrink-0">{pct.toFixed(1)}%</span>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Card de Amortizaciones */}
-      <div className="card bg-gradient-to-r from-orange-50 to-amber-50 border-orange-100">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl shadow-lg shadow-orange-500/20">
-              <Receipt className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-orange-700">Amortizaciones {periodoActual}</p>
-              <p className="text-2xl font-bold text-orange-800">{formatMoney(totalAmortizaciones)}</p>
-              <p className="text-xs text-orange-500 font-medium">{amortizacionesMes.length} registros</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-orange-600 font-medium">Impacto en gasto</p>
-            <p className="text-lg font-bold text-orange-700">
-              {totalPresupuesto > 0 ? ((totalAmortizaciones / totalPresupuesto) * 100).toFixed(1) : 0}%
-            </p>
-          </div>
-        </div>
-      </div>
+      
 
       {/* Cards DQ y KFC */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -679,6 +612,77 @@ export default function Dashboard() {
                 {kfcSaldo < 0 ? 'Sobrepasado' : kfcPct >= 90 ? 'Alerta' : 'En línea'}
               </span>
             </div>
+
+{/* Grafico de barras mensual */}
+      {!loadingAnual && datosAnual.length > 0 && (
+        <GraficoBarras data={datosAnual} año={año} amortizaciones={amortizaciones} />
+      )}
+
+      {/* Gasto por Clasificacion - Top 5 + Otros */}
+      <div className="card-solid overflow-hidden">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-violet-100 rounded-lg">
+            <Tag className="w-5 h-5 text-violet-600" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-800">Gasto por Clasificación</h3>
+            <p className="text-xs text-slate-500">Top 5 + Otros · {periodoActual}</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          {datosClasificacion.map((item, index) => {
+            const pct = totalGasto > 0 ? (item.monto / totalGasto) * 100 : 0
+            return (
+              <div key={item.nombre} className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-100">
+                  <span className="text-xs font-bold text-slate-600">{index + 1}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-slate-700 truncate">{item.nombre}</span>
+                    <span className="text-sm font-bold text-slate-800">{formatMoney(item.monto)}</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                    <div 
+                      className="h-2.5 rounded-full transition-all duration-700"
+                      style={{ 
+                        width: `${pct}%`, 
+                        backgroundColor: item.color 
+                      }}
+                    />
+                  </div>
+                </div>
+                <span className="text-xs font-medium text-slate-500 w-10 text-right shrink-0">{pct.toFixed(1)}%</span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Card de Amortizaciones */}
+      <div className="card bg-gradient-to-r from-orange-50 to-amber-50 border-orange-100">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-orange-500 to-amber-500 rounded-xl shadow-lg shadow-orange-500/20">
+              <Receipt className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-orange-700">Amortizaciones {periodoActual}</p>
+              <p className="text-2xl font-bold text-orange-800">{formatMoney(totalAmortizaciones)}</p>
+              <p className="text-xs text-orange-500 font-medium">{amortizacionesMes.length} registros</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-orange-600 font-medium">Impacto en gasto</p>
+            <p className="text-lg font-bold text-orange-700">
+              {totalPresupuesto > 0 ? ((totalAmortizaciones / totalPresupuesto) * 100).toFixed(1) : 0}%
+            </p>
+          </div>
+        </div>
+      </div>
+
+      
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="text-center p-3 bg-white/60 backdrop-blur-sm rounded-xl border border-red-100">
