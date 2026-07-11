@@ -86,13 +86,11 @@ const formatMoney = (amount: number) => {
   return '$' + (amount || 0).toLocaleString('es-PA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
-// Función para formatear fecha SIN problemas de zona horaria
 const formatFechaLocal = (fechaStr: string) => {
   const [year, month, day] = fechaStr.split('-').map(Number)
   return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`
 }
 
-// Función para obtener el nombre del mes desde string YYYY-MM-DD
 const getMesFromString = (fechaStr: string) => {
   const month = parseInt(fechaStr.split('-')[1])
   return MESES[month - 1]
@@ -123,15 +121,12 @@ export default function CalendarioMantenimiento() {
   const [showForm, setShowForm] = useState(false)
   const [viewMode, setViewMode] = useState<'calendario' | 'lista'>('calendario')
 
-  // Estado para edición
   const [editingMantenimiento, setEditingMantenimiento] = useState<Mantenimiento | null>(null)
 
-  // Filtros para vista lista
   const [filtroProveedor, setFiltroProveedor] = useState('')
   const [filtroMes, setFiltroMes] = useState('')
   const [showFiltros, setShowFiltros] = useState(false)
 
-  // Búsqueda rápida de proveedor en filtros
   const [filtroProvSearch, setFiltroProvSearch] = useState('')
   const [showFiltroProvResults, setShowFiltroProvResults] = useState(false)
   const filtroProvRef = useRef<HTMLDivElement>(null)
@@ -170,7 +165,6 @@ export default function CalendarioMantenimiento() {
       )
     : []
 
-  // Proveedores filtrados para el filtro rápido
   const filteredProveedoresFiltro = filtroProvSearch
     ? proveedores.filter(p => 
         p.nombre.toLowerCase().includes(filtroProvSearch.toLowerCase()) ||
@@ -385,46 +379,92 @@ export default function CalendarioMantenimiento() {
       return
     }
 
-    const { error } = await supabase
-      .from('mantenimientos_preventivos')
-      .update({
-        tienda_id: formData.tienda_id,
-        fecha_programada: formData.fecha_programada,
-        tipo_servicio: formData.tipo_servicio,
-        frecuencia: formData.frecuencia,
-        proveedor_id: formData.proveedor_id || null,
-        monto_estimado: parseFloat(formData.monto_estimado),
-        descripcion: formData.descripcion,
-        fecha_tope: formData.fecha_tope
+    const tienda = tiendas.find(t => t.id === formData.tienda_id)
+    const mesIndex = parseInt(formData.fecha_programada.split('-')[1]) - 1
+
+    try {
+      const { error: mantError } = await supabase
+        .from('mantenimientos_preventivos')
+        .update({
+          tienda_id: formData.tienda_id,
+          fecha_programada: formData.fecha_programada,
+          tipo_servicio: formData.tipo_servicio,
+          frecuencia: formData.frecuencia,
+          proveedor_id: formData.proveedor_id || null,
+          monto_estimado: parseFloat(formData.monto_estimado),
+          descripcion: formData.descripcion,
+          fecha_tope: formData.fecha_tope
+        })
+        .eq('id', editingMantenimiento.id)
+
+      if (mantError) {
+        alert('Error actualizando mantenimiento: ' + mantError.message)
+        return
+      }
+
+      if (editingMantenimiento.gasto_registrado_id) {
+        const { error: gastoError } = await supabase
+          .from('gastos_diarios')
+          .update({
+            tienda_id: formData.tienda_id,
+            fecha: formData.fecha_programada,
+            periodo: MESES[mesIndex],
+            descripcion: 'MANTENIMIENTO PREVENTIVO: ' + formData.tipo_servicio + (formData.descripcion ? ' - ' + formData.descripcion : ''),
+            monto: parseFloat(formData.monto_estimado),
+            clasificacion: 'Servicios Fijos',
+            proveedor_id: formData.proveedor_id || null,
+            gerente_area: tienda?.gerente_area || '',
+            gerente_regional: tienda?.gerente_regional || ''
+          })
+          .eq('id', editingMantenimiento.gasto_registrado_id)
+
+        if (gastoError) {
+          alert('⚠️ Mantenimiento actualizado pero error al actualizar gasto: ' + gastoError.message)
+          console.error('Error gasto:', gastoError)
+        } else {
+          console.log('✅ Gasto actualizado correctamente')
+        }
+      }
+
+      setShowForm(false)
+      setEditingMantenimiento(null)
+      setFormData({
+        tienda_id: '',
+        fecha_programada: '',
+        tipo_servicio: TIPOS_SERVICIO[0],
+        frecuencia: 'mensual',
+        proveedor_id: '',
+        monto_estimado: '',
+        descripcion: '',
+        fecha_tope: ''
       })
-      .eq('id', editingMantenimiento.id)
+      setTiendaSearch('')
+      setProvSearch('')
+      
+      await fetchMantenimientos()
+      alert('✅ Mantenimiento y gasto actualizados correctamente')
 
-    if (error) {
-      alert('Error actualizando: ' + error.message)
-      return
+    } catch (err) {
+      console.error('Error inesperado:', err)
+      alert('Error inesperado: ' + (err as Error).message)
     }
-
-    setShowForm(false)
-    setEditingMantenimiento(null)
-    setFormData({
-      tienda_id: '',
-      fecha_programada: '',
-      tipo_servicio: TIPOS_SERVICIO[0],
-      frecuencia: 'mensual',
-      proveedor_id: '',
-      monto_estimado: '',
-      descripcion: '',
-      fecha_tope: ''
-    })
-    setTiendaSearch('')
-    setProvSearch('')
-    
-    await fetchMantenimientos()
-    alert('✅ Mantenimiento actualizado correctamente')
   }
 
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar este mantenimiento permanentemente?')) return
+
+    const mantenimiento = mantenimientos.find(m => m.id === id)
+    
+    if (mantenimiento?.gasto_registrado_id) {
+      const { error: gastoError } = await supabase
+        .from('gastos_diarios')
+        .delete()
+        .eq('id', mantenimiento.gasto_registrado_id)
+      
+      if (gastoError) {
+        console.error('Error eliminando gasto:', gastoError)
+      }
+    }
 
     const { error } = await supabase
       .from('mantenimientos_preventivos')
@@ -868,7 +908,6 @@ export default function CalendarioMantenimiento() {
 
       {viewMode === 'lista' && (
         <div className="space-y-4">
-          {/* Filtros de lista con búsqueda rápida de proveedor */}
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-bold text-slate-700 flex items-center gap-2">
