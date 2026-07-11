@@ -144,7 +144,6 @@ export function useGastos() {
     setLoading(false)
   }, [serverFilters])
 
-  // NUEVO: Exportar todos los registros filtrados (sin paginacion)
   const exportGastos = useCallback(async (filters?: {
     clasificacion?: string;
     proveedor_id?: string;
@@ -155,7 +154,6 @@ export function useGastos() {
   }) => {
     const activeFilters = filters || serverFilters
     let query = buildQuery(activeFilters)
-    // Sin range = trae todos los que coincidan con los filtros
     const { data, error } = await query
     if (error) {
       console.error('Error exporting gastos:', error)
@@ -164,13 +162,12 @@ export function useGastos() {
     return data || []
   }, [serverFilters])
 
-  // Cargar mes actual por defecto al montar
   useEffect(() => {
     const mesActual = MESES[new Date().getMonth()]
     const defaultFilters = { periodo: mesActual }
     setServerFilters(defaultFilters)
     fetchGastos(defaultFilters, 0)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   const nextPage = () => {
     if (page < totalPages - 1) fetchGastos(serverFilters, page + 1)
@@ -258,6 +255,34 @@ export function useResumen(año?: number, mes?: number) {
   }
 
   return { resumen, loading, refetch: fetchResumen }
+}
+
+// NUEVO: Resumen anual para grafico
+export function useResumenAnual(año: number) {
+  const [datos, setDatos] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchResumenAnual()
+  }, [año])
+
+  const fetchResumenAnual = async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('resumen_mensual')
+      .select('*')
+      .eq('año', año)
+      .order('mes')
+
+    if (error) {
+      console.error('Error fetching resumen anual:', error)
+    } else {
+      setDatos(data || [])
+    }
+    setLoading(false)
+  }
+
+  return { datos, loading, refetch: fetchResumenAnual }
 }
 
 export function useAmortizaciones() {
