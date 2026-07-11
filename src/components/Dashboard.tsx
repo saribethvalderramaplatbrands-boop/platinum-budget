@@ -202,14 +202,19 @@ function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: numb
 
 export default function Dashboard() {
   const [año, setAño] = useState(2026)
-  const [mes, setMes] = useState(new Date().getMonth() + 1)
-  const { resumen, loading } = useResumen(año, mes)
+  const [mes, setMes] = useState<number | 'todos'>(new Date().getMonth() + 1)
+  const { resumen, loading } = useResumen(año, mes === 'todos' ? undefined : mes)
   const { amortizaciones } = useAmortizaciones()
   const { datos: datosAnual, loading: loadingAnual } = useResumenAnual(año)
 
-  const periodoActual = MESES[mes - 1]
+  const periodoActual = mes === 'todos' ? 'Año ' + año : MESES[mes - 1]
 
-  const amortizacionesMes = amortizaciones.filter(a => a.periodo === periodoActual)
+  const amortizacionesMes = mes === 'todos' 
+    ? amortizaciones.filter(a => {
+        const mesNum = MESES.indexOf(a.periodo) + 1
+        return mesNum >= 1 && mesNum <= 12
+      })
+    : amortizaciones.filter(a => a.periodo === periodoActual)
   const totalAmortizaciones = amortizacionesMes.reduce((sum, a) => sum + (a.monto || 0), 0)
 
   const resumenConAmortizaciones: TiendaConAmortizacion[] = useMemo(() => {
@@ -338,9 +343,13 @@ export default function Dashboard() {
             <Calendar className="w-4 h-4 text-slate-400" />
             <select 
               value={mes} 
-              onChange={e => setMes(parseInt(e.target.value))}
+              onChange={e => {
+                const val = e.target.value
+                setMes(val === 'todos' ? 'todos' : parseInt(val))
+              }}
               className="bg-transparent text-sm font-semibold outline-none cursor-pointer text-slate-700"
             >
+              <option value="todos">Todos los meses</option>
               {MESES.map((m, i) => (
                 <option key={i + 1} value={i + 1}>{m}</option>
               ))}
