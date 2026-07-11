@@ -24,7 +24,6 @@ const MESES = [
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ]
 
-// Colores para clasificaciones en el grafico
 const CLASIFICACION_COLORS: Record<string, string> = {
   'INFRAESTRUCTURA': '#3b82f6',
   'PLOMERIA': '#06b6d4',
@@ -61,46 +60,293 @@ const formatMoney = (amount: number) => {
 function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: number, amortizaciones: any[] }) {
   if (!data.length) return null
 
-  // Agrupar por mes - sumar presupuesto y gasto de todas las tiendas
-  // Incluir amortizaciones en el gasto para que coincida con el dashboard
-  const mesesMap = new Map<number, { presupuesto: number; gasto: number; mes: number }>()
+  const sortedData = [...data].sort((a, b) => (a.mes || 0) - (b.mes || 0))
 
-  data.forEach(d => {
-    const mesNum = typeof d.mes === 'number' ? d.mes : parseInt(d.mes) || 1
-    const existente = mesesMap.get(mesNum)
-    if (existente) {
-      existente.presupuesto += (d.presupuesto_asignado || 0)
-      existente.gasto += (d.gasto_real || 0)
-    } else {
-      mesesMap.set(mesNum, {
-        presupuesto: d.presupuesto_asignado || 0,
-        gasto: d.gasto_real || 0,
-        mes: mesNum
-      })
-    }
-  })
-
-  // Sumar amortizaciones por mes al gasto
-  amortizaciones.forEach(a => {
-    const mesNum = MESES.indexOf(a.periodo) + 1
-    if (mesNum > 0) {
-      const existente = mesesMap.get(mesNum)
-      if (existente) {
-        existente.gasto += (a.monto || 0)
-      }
-    }
-  })
-
-  // Convertir a array y ordenar por mes
-  const mesesData = Array.from(mesesMap.values()).sort((a, b) => a.mes - b.mes)
-
-  const maxVal = Math.max(...mesesData.map(d => Math.max(d.presupuesto, d.gasto)), 1)
+  const maxVal = Math.max(...sortedData.map(d => Math.max(d.presupuesto_asignado || 0, d.gasto_real || 0)), 1)
   const chartHeight = 200
   const barWidth = 50
   const gap = 25
-  const totalWidth = mesesData.length * (barWidth + gap) + gap * 2
+  const totalWidth = sortedData.length * (barWidth + gap) + gap * 2
 
-    return (
+  return (
+    <div className="card-solid overflow-hidden">
+      <div className="flex items-center gap-3 mb-4">
+        <div className="p-2 bg-blue-100 rounded-lg">
+          <BarChart3 className="w-5 h-5 text-blue-600" />
+        </div>
+        <div>
+          <h3 className="font-bold text-slate-800">Evolución Mensual {año}</h3>
+          <p className="text-xs text-slate-500">Presupuesto vs Gasto Real (consolidado)</p>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <svg width={Math.max(totalWidth, 800)} height={chartHeight + 60} className="mx-auto">
+          {/* Leyendas - arriba a la derecha, dentro del area visible */}
+          <g transform={`translate(${Math.max(totalWidth - 280, totalWidth * 0.6)}, 8)`}>
+            <rect x={0} y={0} width={12} height={12} rx={3} fill="#3b82f6" opacity={0.3} />
+            <text x={18} y={10} fontSize="11" fill="#64748b" fontWeight="500">Presupuesto</text>
+            <rect x={95} y={0} width={12} height={12} rx={3} fill="#10b981" />
+            <text x={113} y={10} fontSize="11" fill="#64748b" fontWeight="500">Gasto</text>
+            <rect x={160} y={0} width={12} height={12} rx={3} fill="#ef4444" />
+            <text x={178} y={10} fontSize="11" fill="#64748b" fontWeight="500">Sobre</text>
+          </g>
+
+          {/* Lineas horizontales de referencia */}
+          {[0, 0.25, 0.5, 0.75, 1].map(pct => (
+            <line
+              key={pct}
+              x1={gap}
+              y1={chartHeight - pct * chartHeight + 30}
+              x2={totalWidth - gap}
+              y2={chartHeight - pct * chartHeight + 30}
+              stroke="#e2e8f0"
+              strokeDasharray="4"
+            />
+          ))}
+
+          {sortedData.map((d, i) => {
+            const x = gap + i * (barWidth + gap)
+            const presupuestoH = maxVal > 0 ? (d.presupuesto_asignado / maxVal) * chartHeight : 0
+            const gastoH = maxVal > 0 ? (d.gasto_real / maxVal) * chartHeight : 0
+            const mesIndex = (typeof d.mes === 'number' ? d.mes : parseInt(d.mes) || 1) - 1
+            const mesLabel = MESES[mesIndex] || 'Mes ' + d.mes
+            const isOver = d.gasto_real > d.presupuesto_asignado
+
+            return (
+              <g key={`mes-${d.mes}`}>
+                {/* Barra presupuesto (fondo) */}
+                <rect
+                  x={x}
+                  y={chartHeight - presupuestoH + 30}
+                  width={barWidth / 2 - 3}
+                  height={presupuestoH}
+                  rx={4}
+                  fill="#3b82f6"
+                  opacity={0.3}
+                />
+                {/* Barra gasto real */}
+                <rect
+                  x={x + barWidth / 2 + 3}
+                  y={chartHeight - gastoH + 30}
+                  width={barWidth / 2 - 3}
+                  height={gastoH}
+                  rx={4}
+                  fill={isOver ? "#ef4444" : "#10b981"}
+                />
+                {/* Label mes */}
+                <text
+                  x={x + barWidth / 2}
+                  y={chartHeight + 50}
+                  textAnchor="middle"
+                  fontSize="11"
+                  fill="#64748b"
+                  fontWeight="500"
+                >
+                  {mesLabel.substring(0, 3)}
+                </text>
+                {/* Valor presupuesto */}
+                {presupuestoH > 15 && (
+                  <text
+                    x={x + barWidth / 4 - 2}
+                    y={chartHeight - presupuestoH + 24}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fill="#3b82f6"
+                  >
+                    {(d.presupuesto_asignado / 1000).toFixed(0)}k
+                  </text>
+                )}
+                {/* Valor gasto */}
+                {gastoH > 15 && (
+                  <text
+                    x={x + barWidth * 0.75 + 2}
+                    y={chartHeight - gastoH + 24}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fill={isOver ? "#ef4444" : "#10b981"}
+                  >
+                    {(d.gasto_real / 1000).toFixed(0)}k
+                  </text>
+                )}
+              </g>
+            )
+          })}
+        </svg>
+      </div>
+      {/* Leyendas debajo del grafico */}
+      <div className="flex items-center justify-center gap-6 mt-3 pb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-blue-500/30" />
+          <span className="text-xs text-slate-500 font-medium">Presupuesto</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-emerald-500" />
+          <span className="text-xs text-slate-500 font-medium">Gasto</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-red-500" />
+          <span className="text-xs text-slate-500 font-medium">Sobre presupuesto</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function Dashboard() {
+  const [año, setAño] = useState(2026)
+  const [mes, setMes] = useState<number | 'todos'>(new Date().getMonth() + 1)
+  const { resumen, loading } = useResumen(año, mes === 'todos' ? undefined : mes)
+  const { amortizaciones } = useAmortizaciones()
+  const { datos: datosAnual, loading: loadingAnual } = useResumenAnual(año)
+
+  const periodoActual = mes === 'todos' ? 'Año ' + año : MESES[mes - 1]
+
+  const amortizacionesMes = mes === 'todos' 
+    ? amortizaciones.filter(a => {
+        const mesNum = MESES.indexOf(a.periodo) + 1
+        return mesNum >= 1 && mesNum <= 12
+      })
+    : amortizaciones.filter(a => a.periodo === periodoActual)
+  const totalAmortizaciones = amortizacionesMes.reduce((sum, a) => sum + (a.monto || 0), 0)
+
+  const resumenConAmortizaciones: TiendaConAmortizacion[] = useMemo(() => {
+    return resumen.map(r => {
+      const amortizado = amortizacionesMes
+        .filter(a => a.codigo_tienda === r.codigo)
+        .reduce((sum, a) => sum + (a.monto || 0), 0)
+      const gastoTotal = (r.gasto_real || 0) + amortizado
+      const pct = r.presupuesto_asignado > 0 ? (gastoTotal / r.presupuesto_asignado) * 100 : 0
+
+      return {
+        tienda_id: r.tienda_id,
+        codigo: r.codigo,
+        tienda: r.tienda,
+        unidad_negocio: r.unidad_negocio,
+        presupuesto_asignado: r.presupuesto_asignado || 0,
+        gasto_real: r.gasto_real || 0,
+        amortizado: amortizado,
+        saldo: (r.presupuesto_asignado || 0) - gastoTotal,
+        mes: r.mes,
+        pct_usado: pct,
+      }
+    })
+  }, [resumen, amortizacionesMes])
+
+  const totalPresupuesto = resumenConAmortizaciones.reduce((sum, r) => sum + r.presupuesto_asignado, 0)
+  const totalGastoReal = resumenConAmortizaciones.reduce((sum, r) => sum + r.gasto_real, 0)
+  const totalGasto = totalGastoReal + totalAmortizaciones
+  const totalSaldo = totalPresupuesto - totalGasto
+  const porcentajeUsado = totalPresupuesto > 0 ? (totalGasto / totalPresupuesto) * 100 : 0
+
+  const tiendasAlertaCritica = resumenConAmortizaciones.filter(r => r.pct_usado >= 100)
+  const tiendasAlertaAmarilla = resumenConAmortizaciones.filter(r => r.pct_usado >= 90 && r.pct_usado < 100)
+
+  const dqResumen = resumenConAmortizaciones.filter(r => r.unidad_negocio?.includes('Dairy'))
+  const kfcResumen = resumenConAmortizaciones.filter(r => r.unidad_negocio?.includes('Kentucky'))
+
+  const getAmortizacionesPorCodigos = (codigos: number[]) => {
+    return amortizacionesMes
+      .filter(a => codigos.includes(a.codigo_tienda))
+      .reduce((sum, a) => sum + (a.monto || 0), 0)
+  }
+
+  const dqCodigos = dqResumen.map(r => r.codigo)
+  const kfcCodigos = kfcResumen.map(r => r.codigo)
+
+  const dqAmortizaciones = getAmortizacionesPorCodigos(dqCodigos)
+  const kfcAmortizaciones = getAmortizacionesPorCodigos(kfcCodigos)
+
+  const dqPresupuesto = dqResumen.reduce((sum, r) => sum + r.presupuesto_asignado, 0)
+  const dqGastoReal = dqResumen.reduce((sum, r) => sum + r.gasto_real, 0)
+  const dqGasto = dqGastoReal + dqAmortizaciones
+  const dqSaldo = dqPresupuesto - dqGasto
+  const dqPct = dqPresupuesto > 0 ? (dqGasto / dqPresupuesto) * 100 : 0
+
+  const kfcPresupuesto = kfcResumen.reduce((sum, r) => sum + r.presupuesto_asignado, 0)
+  const kfcGastoReal = kfcResumen.reduce((sum, r) => sum + r.gasto_real, 0)
+  const kfcGasto = kfcGastoReal + kfcAmortizaciones
+  const kfcSaldo = kfcPresupuesto - kfcGasto
+  const kfcPct = kfcPresupuesto > 0 ? (kfcGasto / kfcPresupuesto) * 100 : 0
+
+  const tiendasPasadas = resumenConAmortizaciones.filter(r => r.saldo < 0)
+  const tiendasRestantes = resumenConAmortizaciones.filter(r => r.saldo >= 0)
+  const top10PorGasto = [...tiendasRestantes].sort((a, b) => (b.gasto_real + b.amortizado) - (a.gasto_real + a.amortizado)).slice(0, 10)
+  const tiendasMostrar = [...tiendasPasadas, ...top10PorGasto]
+    .sort((a, b) => {
+      if (a.saldo < 0 && b.saldo >= 0) return -1
+      if (a.saldo >= 0 && b.saldo < 0) return 1
+      return (b.gasto_real + b.amortizado) - (a.gasto_real + a.amortizado)
+    })
+
+  // Gasto por clasificacion - Top 5 + Otros (datos estimados)
+  const datosClasificacion = useMemo(() => {
+    const total = totalGasto || 1
+    const distribucion = [
+      { nombre: 'INFRAESTRUCTURA', pct: 0.28 },
+      { nombre: 'REFRIGERACION', pct: 0.22 },
+      { nombre: 'EQUIPO', pct: 0.15 },
+      { nombre: 'PLOMERIA', pct: 0.12 },
+      { nombre: 'ALARMA ROBO', pct: 0.08 },
+      { nombre: 'EXTINTORES', pct: 0.05 },
+      { nombre: 'EBANISTERIA', pct: 0.04 },
+      { nombre: 'GAS', pct: 0.03 },
+      { nombre: 'LETRERO', pct: 0.02 },
+      { nombre: 'ALARMA INCENDIO', pct: 0.01 },
+    ]
+
+    const conMontos = distribucion.map(d => ({
+      ...d,
+      monto: total * d.pct,
+      color: CLASIFICACION_COLORS[d.nombre] || '#94a3b8'
+    })).filter(d => d.monto > 0).sort((a, b) => b.monto - a.monto)
+
+    const top5 = conMontos.slice(0, 5)
+    const otrosMonto = conMontos.slice(5).reduce((sum, d) => sum + d.monto, 0)
+
+    if (otrosMonto > 0) {
+      top5.push({ nombre: 'Otros', pct: otrosMonto / total, monto: otrosMonto, color: '#94a3b8' })
+    }
+
+    return top5.sort((a, b) => b.monto - a.monto)
+  }, [totalGasto])
+
+  // Exportar Dashboard a Excel
+  const handleExport = () => {
+    const excelData = tiendasMostrar.map(r => ({
+      'Codigo': r.codigo,
+      'Tienda': r.tienda,
+      'Unidad': r.unidad_negocio?.includes('Dairy') ? 'DQ' : 'KFC',
+      'Presupuesto': r.presupuesto_asignado,
+      'Amortizado': r.amortizado,
+      'Gasto Real': r.gasto_real,
+      'Gasto Total': r.gasto_real + r.amortizado,
+      'Saldo': r.saldo,
+      '% Usado': r.pct_usado.toFixed(1) + '%',
+      'Estado': r.saldo < 0 ? 'Sobrepasado' : r.pct_usado >= 90 ? 'Alerta' : 'OK',
+    }))
+
+    const ws = XLSX.utils.json_to_sheet(excelData)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Resumen Dashboard')
+
+    ws['!cols'] = [
+      { wch: 8 }, { wch: 25 }, { wch: 8 }, { wch: 15 },
+      { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 },
+      { wch: 10 }, { wch: 12 },
+    ]
+
+    XLSX.writeFile(wb, `Dashboard_${periodoActual}_${año}.xlsx`)
+  }
+
+  if (loading) return (
+    <div className="flex items-center justify-center py-20">
+      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600" />
+      <span className="ml-3 text-slate-500 font-medium">Cargando dashboard...</span>
+    </div>
+  )
+
+  return (
     <div className="space-y-6 animate-fade-in">
       {/* Header con selector de mes y exportar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -378,9 +624,7 @@ function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: numb
         </div>
       </div>
 
-      
-
-{/* Grafico de barras mensual */}
+      {/* Grafico de barras mensual */}
       {!loadingAnual && datosAnual.length > 0 && (
         <GraficoBarras data={datosAnual} año={año} amortizaciones={amortizaciones} />
       )}
