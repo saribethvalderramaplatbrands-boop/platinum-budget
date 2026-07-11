@@ -603,4 +603,23 @@ export default function GastosTable() {
             
             <button
               onClick={nextPage}
-             
+              disabled={page >= totalPages - 1}
+              className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Siguiente"
+            >
+              <ChevronRight className="w-4 h-4 text-slate-600" />
+            </button>
+            <button
+              onClick={() => goToPage(totalPages - 1)}
+              disabled={page >= totalPages - 1}
+              className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Última página"
+            >
+              <ChevronLast className="w-4 h-4 text-slate-600" />
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
