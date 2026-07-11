@@ -97,16 +97,6 @@ function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: numb
 
       <div className="overflow-x-auto">
         <svg width={Math.max(totalWidth, 800)} height={chartHeight + 60} className="mx-auto">
-          {/* Leyendas - arriba a la derecha, cerca del titulo */}
-          <g transform={`translate(${Math.max(totalWidth - 280, totalWidth * 0.6)}, -25)`}>
-            <rect x={0} y={0} width={12} height={12} rx={3} fill="#3b82f6" opacity={0.3} />
-            <text x={18} y={10} fontSize="11" fill="#64748b" fontWeight="500">Presupuesto</text>
-            <rect x={95} y={0} width={12} height={12} rx={3} fill="#10b981" />
-            <text x={113} y={10} fontSize="11" fill="#64748b" fontWeight="500">Gasto</text>
-            <rect x={160} y={0} width={12} height={12} rx={3} fill="#ef4444" />
-            <text x={178} y={10} fontSize="11" fill="#64748b" fontWeight="500">Sobre</text>
-          </g>
-
           {/* Lineas horizontales de referencia */}
           {[0, 0.25, 0.5, 0.75, 1].map(pct => (
             <line
