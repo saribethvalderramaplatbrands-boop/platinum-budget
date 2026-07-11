@@ -545,6 +545,9 @@ export default function CalendarioMantenimiento() {
     return month === mes && year === año
   })
 
+  // La lista usa el mes del selector de arriba SI no hay filtro manual
+  const mesActivoLista = filtroMes || mes.toString()
+
   const mantenimientosListaFiltrados = mantenimientos.filter(m => {
     let cumple = true
     
@@ -552,10 +555,10 @@ export default function CalendarioMantenimiento() {
       cumple = cumple && m.proveedor_id === filtroProveedor
     }
     
-    if (filtroMes) {
-      const mesMantenimiento = parseInt(m.fecha_programada.split('-')[1])
-      cumple = cumple && mesMantenimiento === parseInt(filtroMes)
-    }
+    // Usa filtroMes si existe, sino usa el mes del selector de arriba
+    const mesFiltro = filtroMes ? parseInt(filtroMes) : mes
+    const mesMantenimiento = parseInt(m.fecha_programada.split('-')[1])
+    cumple = cumple && mesMantenimiento === mesFiltro
     
     return cumple
   })
@@ -879,14 +882,22 @@ export default function CalendarioMantenimiento() {
       )}
 
       <div className="flex items-center justify-center gap-4 bg-white rounded-xl p-4 border border-slate-200 shadow-sm">
-        <button onClick={() => setMes(m => m === 1 ? 12 : m - 1)} className="p-2 hover:bg-violet-50 rounded-lg transition-colors group">
+        <button onClick={() => {
+          const newMes = mes === 1 ? 12 : mes - 1
+          setMes(newMes)
+          if (!filtroMes) setFiltroMes(newMes.toString()) // Sincroniza con lista si no hay filtro manual
+        }} className="p-2 hover:bg-violet-50 rounded-lg transition-colors group">
           <ChevronLeft className="w-5 h-5 text-slate-400 group-hover:text-violet-600" />
         </button>
         <div className="text-center min-w-[200px]">
           <h3 className="text-xl font-bold text-slate-800">{MESES[mes - 1]} {año}</h3>
           <p className="text-sm text-slate-500">{totalMantenimientosMes} programados</p>
         </div>
-        <button onClick={() => setMes(m => m === 12 ? 1 : m + 1)} className="p-2 hover:bg-violet-50 rounded-lg transition-colors group">
+        <button onClick={() => {
+          const newMes = mes === 12 ? 1 : mes + 1
+          setMes(newMes)
+          if (!filtroMes) setFiltroMes(newMes.toString()) // Sincroniza con lista si no hay filtro manual
+        }} className="p-2 hover:bg-violet-50 rounded-lg transition-colors group">
           <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-violet-600" />
         </button>
       </div>
