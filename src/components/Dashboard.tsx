@@ -543,7 +543,7 @@ export default function Dashboard() {
             />
             <div>
               <h3 className="font-bold text-lg text-slate-800">Dairy Queen</h3>
-              <p className="text-xs text-slate-500 font-medium">{MESES[mes - 1]} {año}</p>
+              <p className="text-xs text-slate-500 font-medium">{mes === 'todos' ? 'Año ' + año : MESES[mes - 1] + ' ' + año}</p>
             </div>
             <div className="ml-auto">
               <span className={`badge ${dqSaldo < 0 ? 'bg-red-100 text-red-700' : dqPct >= 90 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
@@ -596,7 +596,7 @@ export default function Dashboard() {
             />
             <div>
               <h3 className="font-bold text-lg text-slate-800">Kentucky Fried Chicken</h3>
-              <p className="text-xs text-slate-500 font-medium">{MESES[mes - 1]} {año}</p>
+              <p className="text-xs text-slate-500 font-medium">{mes === 'todos' ? 'Año ' + año : MESES[mes - 1] + ' ' + año}</p>
             </div>
             <div className="ml-auto">
               <span className={`badge ${kfcSaldo < 0 ? 'bg-red-100 text-red-700' : kfcPct >= 90 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
