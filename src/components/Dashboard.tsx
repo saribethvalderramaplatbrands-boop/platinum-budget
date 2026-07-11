@@ -44,14 +44,32 @@ const formatMoney = (amount: number) => {
 function GraficoBarras({ data, año }: { data: any[], año: number }) {
   if (!data.length) return null
 
-  // Asegurar que los datos esten ordenados por mes y mapear correctamente
-  const sortedData = [...data].sort((a, b) => (a.mes || 0) - (b.mes || 0))
+  // Agrupar por mes - sumar presupuesto y gasto de todas las tiendas
+  const mesesMap = new Map<number, { presupuesto: number; gasto: number; mes: number }>()
 
-  const maxVal = Math.max(...sortedData.map(d => Math.max(d.presupuesto_asignado || 0, d.gasto_real || 0)))
+  data.forEach(d => {
+    const mesNum = typeof d.mes === 'number' ? d.mes : parseInt(d.mes) || 1
+    const existente = mesesMap.get(mesNum)
+    if (existente) {
+      existente.presupuesto += (d.presupuesto_asignado || 0)
+      existente.gasto += (d.gasto_real || 0)
+    } else {
+      mesesMap.set(mesNum, {
+        presupuesto: d.presupuesto_asignado || 0,
+        gasto: d.gasto_real || 0,
+        mes: mesNum
+      })
+    }
+  })
+
+  // Convertir a array y ordenar por mes
+  const mesesData = Array.from(mesesMap.values()).sort((a, b) => a.mes - b.mes)
+
+  const maxVal = Math.max(...mesesData.map(d => Math.max(d.presupuesto, d.gasto)), 1)
   const chartHeight = 200
-  const barWidth = 60
-  const gap = 20
-  const totalWidth = sortedData.length * (barWidth + gap) + gap
+  const barWidth = 50
+  const gap = 25
+  const totalWidth = mesesData.length * (barWidth + gap) + gap * 2
 
   return (
     <div className="card-solid overflow-hidden">
@@ -61,13 +79,13 @@ function GraficoBarras({ data, año }: { data: any[], año: number }) {
         </div>
         <div>
           <h3 className="font-bold text-slate-800">Evolución Mensual {año}</h3>
-          <p className="text-xs text-slate-500">Presupuesto vs Gasto Real</p>
+          <p className="text-xs text-slate-500">Presupuesto vs Gasto Real (consolidado)</p>
         </div>
       </div>
 
       <div className="overflow-x-auto">
-        <svg width={totalWidth} height={chartHeight + 40} className="mx-auto">
-          {/* Lineas horizontales */}
+        <svg width={Math.max(totalWidth, 800)} height={chartHeight + 50} className="mx-auto">
+          {/* Lineas horizontales de referencia */}
           {[0, 0.25, 0.5, 0.75, 1].map(pct => (
             <line
               key={pct}
@@ -80,21 +98,21 @@ function GraficoBarras({ data, año }: { data: any[], año: number }) {
             />
           ))}
 
-          {sortedData.map((d, i) => {
+          {mesesData.map((d, i) => {
             const x = gap + i * (barWidth + gap)
-            const presupuestoH = maxVal > 0 ? (d.presupuesto_asignado / maxVal) * chartHeight : 0
-            const gastoH = maxVal > 0 ? (d.gasto_real / maxVal) * chartHeight : 0
-            // El mes viene como numero 1-12, restamos 1 para el array
-            const mesIndex = (typeof d.mes === 'number' ? d.mes : parseInt(d.mes) || 1) - 1
+            const presupuestoH = maxVal > 0 ? (d.presupuesto / maxVal) * chartHeight : 0
+            const gastoH = maxVal > 0 ? (d.gasto / maxVal) * chartHeight : 0
+            const mesIndex = d.mes - 1
             const mesLabel = MESES[mesIndex] || 'Mes ' + d.mes
+            const isOver = d.gasto > d.presupuesto
 
             return (
-              <g key={`${d.mes}-${i}`}>
+              <g key={`mes-${d.mes}`}>
                 {/* Barra presupuesto (fondo) */}
                 <rect
                   x={x}
                   y={chartHeight - presupuestoH + 20}
-                  width={barWidth / 2 - 2}
+                  width={barWidth / 2 - 3}
                   height={presupuestoH}
                   rx={4}
                   fill="#3b82f6"
@@ -102,53 +120,60 @@ function GraficoBarras({ data, año }: { data: any[], año: number }) {
                 />
                 {/* Barra gasto real */}
                 <rect
-                  x={x + barWidth / 2 + 2}
+                  x={x + barWidth / 2 + 3}
                   y={chartHeight - gastoH + 20}
-                  width={barWidth / 2 - 2}
+                  width={barWidth / 2 - 3}
                   height={gastoH}
                   rx={4}
-                  fill={d.gasto_real > d.presupuesto_asignado ? "#ef4444" : "#10b981"}
+                  fill={isOver ? "#ef4444" : "#10b981"}
                 />
                 {/* Label mes */}
                 <text
                   x={x + barWidth / 2}
-                  y={chartHeight + 35}
+                  y={chartHeight + 40}
                   textAnchor="middle"
-                  fontSize="10"
+                  fontSize="11"
                   fill="#64748b"
+                  fontWeight="500"
                 >
                   {mesLabel.substring(0, 3)}
                 </text>
                 {/* Valor presupuesto */}
-                <text
-                  x={x + barWidth / 4 - 1}
-                  y={chartHeight - presupuestoH + 15}
-                  textAnchor="middle"
-                  fontSize="9"
-                  fill="#3b82f6"
-                >
-                  {(d.presupuesto_asignado / 1000).toFixed(0)}k
-                </text>
+                {presupuestoH > 15 && (
+                  <text
+                    x={x + barWidth / 4 - 2}
+                    y={chartHeight - presupuestoH + 14}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fill="#3b82f6"
+                  >
+                    {(d.presupuesto / 1000).toFixed(0)}k
+                  </text>
+                )}
                 {/* Valor gasto */}
-                <text
-                  x={x + barWidth * 0.75 + 1}
-                  y={chartHeight - gastoH + 15}
-                  textAnchor="middle"
-                  fontSize="9"
-                  fill={d.gasto_real > d.presupuesto_asignado ? "#ef4444" : "#10b981"}
-                >
-                  {(d.gasto_real / 1000).toFixed(0)}k
-                </text>
+                {gastoH > 15 && (
+                  <text
+                    x={x + barWidth * 0.75 + 2}
+                    y={chartHeight - gastoH + 14}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fill={isOver ? "#ef4444" : "#10b981"}
+                  >
+                    {(d.gasto / 1000).toFixed(0)}k
+                  </text>
+                )}
               </g>
             )
           })}
 
           {/* Leyenda */}
-          <g transform={`translate(${totalWidth - 120}, 10)`}>
-            <rect x={0} y={0} width={10} height={10} rx={2} fill="#3b82f6" opacity={0.3} />
-            <text x={15} y={9} fontSize="10" fill="#64748b">Presupuesto</text>
-            <rect x={0} y={16} width={10} height={10} rx={2} fill="#10b981" />
-            <text x={15} y={25} fontSize="10" fill="#64748b">Gasto Real</text>
+          <g transform={`translate(${totalWidth - 140}, 10)`}>
+            <rect x={0} y={0} width={12} height={12} rx={3} fill="#3b82f6" opacity={0.3} />
+            <text x={18} y={10} fontSize="11" fill="#64748b">Presupuesto</text>
+            <rect x={0} y={20} width={12} height={12} rx={3} fill="#10b981" />
+            <text x={18} y={30} fontSize="11" fill="#64748b">Gasto</text>
+            <rect x={80} y={20} width={12} height={12} rx={3} fill="#ef4444" />
+            <text x={98} y={30} fontSize="11" fill="#64748b">Sobre</text>
           </g>
         </svg>
       </div>
