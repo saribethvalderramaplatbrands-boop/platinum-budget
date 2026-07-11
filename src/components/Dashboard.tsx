@@ -181,6 +181,21 @@ function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: numb
 
         </svg>
       </div>
+      {/* Leyendas debajo del grafico */}
+      <div className="flex items-center justify-center gap-6 mt-3 pb-3">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-blue-500/30" />
+          <span className="text-xs text-slate-500 font-medium">Presupuesto</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-emerald-500" />
+          <span className="text-xs text-slate-500 font-medium">Gasto</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-red-500" />
+          <span className="text-xs text-slate-500 font-medium">Sobre presupuesto</span>
+        </div>
+      </div>
     </div>
   )
 }
