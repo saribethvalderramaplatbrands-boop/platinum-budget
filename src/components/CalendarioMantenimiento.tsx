@@ -86,6 +86,18 @@ const formatMoney = (amount: number) => {
   return '$' + (amount || 0).toLocaleString('es-PA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+// Función para formatear fecha SIN problemas de zona horaria
+const formatFechaLocal = (fechaStr: string) => {
+  const [year, month, day] = fechaStr.split('-').map(Number)
+  return `${day.toString().padStart(2, '0')}/${month.toString().padStart(2, '0')}/${year}`
+}
+
+// Función para obtener el nombre del mes desde string YYYY-MM-DD
+const getMesFromString = (fechaStr: string) => {
+  const month = parseInt(fechaStr.split('-')[1])
+  return MESES[month - 1]
+}
+
 interface Mantenimiento {
   id: string
   tienda_id: string
@@ -118,6 +130,11 @@ export default function CalendarioMantenimiento() {
   const [filtroProveedor, setFiltroProveedor] = useState('')
   const [filtroMes, setFiltroMes] = useState('')
   const [showFiltros, setShowFiltros] = useState(false)
+
+  // Búsqueda rápida de proveedor en filtros
+  const [filtroProvSearch, setFiltroProvSearch] = useState('')
+  const [showFiltroProvResults, setShowFiltroProvResults] = useState(false)
+  const filtroProvRef = useRef<HTMLDivElement>(null)
 
   const [tiendaSearch, setTiendaSearch] = useState('')
   const [showTiendaResults, setShowTiendaResults] = useState(false)
@@ -153,6 +170,14 @@ export default function CalendarioMantenimiento() {
       )
     : []
 
+  // Proveedores filtrados para el filtro rápido
+  const filteredProveedoresFiltro = filtroProvSearch
+    ? proveedores.filter(p => 
+        p.nombre.toLowerCase().includes(filtroProvSearch.toLowerCase()) ||
+        p.codigo.toLowerCase().includes(filtroProvSearch.toLowerCase())
+      )
+    : []
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (tiendaRef.current && !tiendaRef.current.contains(event.target as Node)) {
@@ -160,6 +185,9 @@ export default function CalendarioMantenimiento() {
       }
       if (provRef.current && !provRef.current.contains(event.target as Node)) {
         setShowProvResults(false)
+      }
+      if (filtroProvRef.current && !filtroProvRef.current.contains(event.target as Node)) {
+        setShowFiltroProvResults(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -320,7 +348,6 @@ export default function CalendarioMantenimiento() {
     }
   }
 
-  // Editar mantenimiento
   const handleEdit = (mantenimiento: Mantenimiento) => {
     const tienda = tiendas.find(t => t.id === mantenimiento.tienda_id)
     const proveedor = proveedores.find(p => p.id === mantenimiento.proveedor_id)
@@ -341,7 +368,6 @@ export default function CalendarioMantenimiento() {
     setShowForm(true)
   }
 
-  // Actualizar mantenimiento
   const handleUpdate = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -397,7 +423,6 @@ export default function CalendarioMantenimiento() {
     alert('✅ Mantenimiento actualizado correctamente')
   }
 
-  // Eliminar mantenimiento
   const handleDelete = async (id: string) => {
     if (!confirm('¿Eliminar este mantenimiento permanentemente?')) return
 
@@ -417,7 +442,7 @@ export default function CalendarioMantenimiento() {
 
   const completarMantenimiento = async (mantenimiento: Mantenimiento) => {
     if (mantenimiento.gasto_registrado_id) {
-      alert('ℹ️ Este mantenimiento ya tiene el gasto registrado.\n\n💰 Monto: ' + formatMoney(mantenimiento.monto_estimado) + '\n📅 Fecha: ' + new Date(mantenimiento.fecha_programada).toLocaleDateString('es-PA'))
+      alert('ℹ️ Este mantenimiento ya tiene el gasto registrado.\n\n💰 Monto: ' + formatMoney(mantenimiento.monto_estimado) + '\n📅 Fecha: ' + formatFechaLocal(mantenimiento.fecha_programada))
       return
     }
 
@@ -429,7 +454,7 @@ export default function CalendarioMantenimiento() {
       .from('gastos_diarios')
       .insert([{
         tienda_id: mantenimiento.tienda_id,
-        fecha: new Date().toISOString().split('T')[0],
+        fecha: mantenimiento.fecha_programada,
         descripcion: mantenimiento.tipo_servicio + (mantenimiento.descripcion ? ' - ' + mantenimiento.descripcion : ''),
         monto: mantenimiento.monto_estimado,
         clasificacion: 'Servicios Fijos',
@@ -480,7 +505,6 @@ export default function CalendarioMantenimiento() {
     return month === mes && year === año
   })
 
-  // Filtros para vista lista
   const mantenimientosListaFiltrados = mantenimientos.filter(m => {
     let cumple = true
     
@@ -844,7 +868,7 @@ export default function CalendarioMantenimiento() {
 
       {viewMode === 'lista' && (
         <div className="space-y-4">
-          {/* Filtros de lista */}
+          {/* Filtros de lista con búsqueda rápida de proveedor */}
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-bold text-slate-700 flex items-center gap-2">
@@ -861,18 +885,48 @@ export default function CalendarioMantenimiento() {
             
             {showFiltros && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
+                <div ref={filtroProvRef}>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Proveedor</label>
-                  <select 
-                    value={filtroProveedor} 
-                    onChange={e => setFiltroProveedor(e.target.value)}
-                    className="input-field"
-                  >
-                    <option value="">Todos los proveedores</option>
-                    {proveedores.map(p => (
-                      <option key={p.id} value={p.id}>{p.codigo} - {p.nombre}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input 
+                      type="text" 
+                      placeholder="Buscar proveedor..." 
+                      value={filtroProvSearch}
+                      onChange={e => {
+                        setFiltroProvSearch(e.target.value)
+                        setShowFiltroProvResults(true)
+                        if (!e.target.value) setFiltroProveedor('')
+                      }}
+                      onFocus={() => setShowFiltroProvResults(true)}
+                      className="input-field pl-10"
+                    />
+                  </div>
+                  {showFiltroProvResults && filteredProveedoresFiltro.length > 0 && (
+                    <div className="absolute z-50 w-full max-w-md mt-1 max-h-48 overflow-y-auto border border-slate-200 rounded-xl bg-white shadow-lg">
+                      {filteredProveedoresFiltro.map(p => (
+                        <button 
+                          key={p.id} 
+                          type="button" 
+                          onClick={() => {
+                            setFiltroProveedor(p.id)
+                            setFiltroProvSearch(`${p.codigo} - ${p.nombre}`)
+                            setShowFiltroProvResults(false)
+                          }}
+                          className="w-full text-left px-4 py-2.5 hover:bg-blue-50 text-sm transition-colors border-b border-slate-50 last:border-0"
+                        >
+                          <span className="font-bold text-slate-700">{p.codigo}</span>
+                          <span className="text-slate-400 mx-2">-</span>
+                          <span className="text-slate-600">{p.nombre}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {showFiltroProvResults && filtroProvSearch && filteredProveedoresFiltro.length === 0 && (
+                    <div className="absolute z-50 w-full mt-1 p-3 bg-white border border-slate-200 rounded-xl shadow-lg text-sm text-slate-400">
+                      No se encontraron proveedores
+                    </div>
+                  )}
                 </div>
                 
                 <div>
@@ -905,7 +959,11 @@ export default function CalendarioMantenimiento() {
                   </span>
                 )}
                 <button 
-                  onClick={() => { setFiltroProveedor(''); setFiltroMes('') }}
+                  onClick={() => { 
+                    setFiltroProveedor(''); 
+                    setFiltroMes(''); 
+                    setFiltroProvSearch('') 
+                  }}
                   className="text-xs text-red-500 hover:text-red-700 font-medium ml-auto"
                 >
                   Limpiar filtros
@@ -947,7 +1005,7 @@ export default function CalendarioMantenimiento() {
                         onDoubleClick={() => handleEdit(m)}
                         title="Doble clic para editar"
                       >
-                        <td className="py-3 px-4 whitespace-nowrap text-slate-600">{new Date(m.fecha_programada).toLocaleDateString('es-PA')}</td>
+                        <td className="py-3 px-4 whitespace-nowrap text-slate-600">{formatFechaLocal(m.fecha_programada)}</td>
                         <td className="py-3 px-4 font-medium text-slate-800">
                           <div className="flex items-center gap-2">
                             {tienda?.nombre || 'N/A'}
