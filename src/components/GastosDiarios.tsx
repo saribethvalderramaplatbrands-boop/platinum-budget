@@ -14,7 +14,7 @@ export default function GastosDiarios() {
       alert('Error: ' + error.message)
     } else {
       setShowForm(false)
-      setRefreshKey(prev => prev + 1) // Refresca la tabla
+      setRefreshKey(prev => prev + 1)
     }
   }
 
@@ -40,7 +40,6 @@ export default function GastosDiarios() {
         </button>
       </div>
 
-      {/* Formulario o Tabla */}
       {showForm ? (
         <GastoForm 
           onSubmit={handleSubmit} 
