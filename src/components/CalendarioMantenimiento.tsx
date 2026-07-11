@@ -455,29 +455,78 @@ export default function CalendarioMantenimiento() {
 
     const mantenimiento = mantenimientos.find(m => m.id === id)
     
-    if (mantenimiento?.gasto_registrado_id) {
-      const { error: gastoError } = await supabase
-        .from('gastos_diarios')
-        .delete()
-        .eq('id', mantenimiento.gasto_registrado_id)
-      
-      if (gastoError) {
-        console.error('Error eliminando gasto:', gastoError)
-      }
-    }
-
-    const { error } = await supabase
-      .from('mantenimientos_preventivos')
-      .delete()
-      .eq('id', id)
-
-    if (error) {
-      alert('Error eliminando: ' + error.message)
+    if (!mantenimiento) {
+      alert('Error: No se encontró el mantenimiento')
       return
     }
 
-    fetchMantenimientos()
-    alert('✅ Mantenimiento eliminado')
+    try {
+      // 1. Si tiene gasto registrado, eliminar el gasto PRIMERO
+      if (mantenimiento.gasto_registrado_id) {
+        console.log('Eliminando gasto relacionado:', mantenimiento.gasto_registrado_id)
+        
+        const { error: gastoError } = await supabase
+          .from('gastos_diarios')
+          .delete()
+          .eq('id', mantenimiento.gasto_registrado_id)
+        
+        if (gastoError) {
+          console.error('Error eliminando gasto:', gastoError)
+          alert('⚠️ Error al eliminar el gasto relacionado: ' + gastoError.message)
+          // Preguntamos si quiere continuar
+          if (!confirm('¿Continuar y eliminar solo el mantenimiento?')) return
+        } else {
+          console.log('✅ Gasto eliminado correctamente')
+        }
+      } else {
+        // Si no tiene gasto_registrado_id, buscar y eliminar por descripción y tienda
+        console.log('Buscando gasto por descripción y tienda...')
+        
+        const { data: gastosData, error: searchError } = await supabase
+          .from('gastos_diarios')
+          .select('id')
+          .eq('tienda_id', mantenimiento.tienda_id)
+          .ilike('descripcion', '%MANTENIMIENTO PREVENTIVO%')
+          .eq('clasificacion', 'Servicios Fijos')
+          .order('fecha', { ascending: false })
+          .limit(1)
+
+        if (!searchError && gastosData && gastosData.length > 0) {
+          const { error: deleteError } = await supabase
+            .from('gastos_diarios')
+            .delete()
+            .eq('id', gastosData[0].id)
+          
+          if (deleteError) {
+            console.error('Error eliminando gasto encontrado:', deleteError)
+          } else {
+            console.log('✅ Gasto encontrado y eliminado:', gastosData[0].id)
+          }
+        }
+      }
+
+      // 2. Eliminar el mantenimiento
+      const { error: mantError } = await supabase
+        .from('mantenimientos_preventivos')
+        .delete()
+        .eq('id', id)
+
+      if (mantError) {
+        alert('Error eliminando mantenimiento: ' + mantError.message)
+        return
+      }
+
+      console.log('✅ Mantenimiento eliminado correctamente')
+      
+      // 3. Refrescar todo
+      await fetchMantenimientos()
+      
+      alert('✅ Mantenimiento y gasto eliminados correctamente')
+
+    } catch (err) {
+      console.error('Error inesperado:', err)
+      alert('Error inesperado: ' + (err as Error).message)
+    }
   }
 
   const completarMantenimiento = async (mantenimiento: Mantenimiento) => {
@@ -545,7 +594,6 @@ export default function CalendarioMantenimiento() {
     return month === mes && year === año
   })
 
-  // La lista usa el mes del selector de arriba SI no hay filtro manual
   const mesActivoLista = filtroMes || mes.toString()
 
   const mantenimientosListaFiltrados = mantenimientos.filter(m => {
@@ -555,7 +603,6 @@ export default function CalendarioMantenimiento() {
       cumple = cumple && m.proveedor_id === filtroProveedor
     }
     
-    // Usa filtroMes si existe, sino usa el mes del selector de arriba
     const mesFiltro = filtroMes ? parseInt(filtroMes) : mes
     const mesMantenimiento = parseInt(m.fecha_programada.split('-')[1])
     cumple = cumple && mesMantenimiento === mesFiltro
@@ -885,7 +932,7 @@ export default function CalendarioMantenimiento() {
         <button onClick={() => {
           const newMes = mes === 1 ? 12 : mes - 1
           setMes(newMes)
-          if (!filtroMes) setFiltroMes(newMes.toString()) // Sincroniza con lista si no hay filtro manual
+          if (!filtroMes) setFiltroMes(newMes.toString())
         }} className="p-2 hover:bg-violet-50 rounded-lg transition-colors group">
           <ChevronLeft className="w-5 h-5 text-slate-400 group-hover:text-violet-600" />
         </button>
@@ -896,7 +943,7 @@ export default function CalendarioMantenimiento() {
         <button onClick={() => {
           const newMes = mes === 12 ? 1 : mes + 1
           setMes(newMes)
-          if (!filtroMes) setFiltroMes(newMes.toString()) // Sincroniza con lista si no hay filtro manual
+          if (!filtroMes) setFiltroMes(newMes.toString())
         }} className="p-2 hover:bg-violet-50 rounded-lg transition-colors group">
           <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-violet-600" />
         </button>
