@@ -96,9 +96,9 @@ function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: numb
       </div>
 
       <div className="overflow-x-auto">
-        <svg width={Math.max(totalWidth, 800)} height={chartHeight + 50} className="mx-auto">
-          {/* Leyendas - arriba alineadas con el titulo */}
-          <g transform={`translate(${totalWidth - 220}, -35)`}>
+        <svg width={Math.max(totalWidth, 800)} height={chartHeight + 60} className="mx-auto">
+          {/* Leyendas - arriba a la derecha, dentro del area visible */}
+          <g transform={`translate(${totalWidth - 220}, 8)`}>
             <rect x={0} y={0} width={12} height={12} rx={3} fill="#3b82f6" opacity={0.3} />
             <text x={18} y={10} fontSize="11" fill="#64748b" fontWeight="500">Presupuesto</text>
             <rect x={95} y={0} width={12} height={12} rx={3} fill="#10b981" />
@@ -112,9 +112,9 @@ function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: numb
             <line
               key={pct}
               x1={gap}
-              y1={chartHeight - pct * chartHeight + 20}
+              y1={chartHeight - pct * chartHeight + 30}
               x2={totalWidth - gap}
-              y2={chartHeight - pct * chartHeight + 20}
+              y2={chartHeight - pct * chartHeight + 30}
               stroke="#e2e8f0"
               strokeDasharray="4"
             />
@@ -133,7 +133,7 @@ function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: numb
                 {/* Barra presupuesto (fondo) */}
                 <rect
                   x={x}
-                  y={chartHeight - presupuestoH + 20}
+                  y={chartHeight - presupuestoH + 30}
                   width={barWidth / 2 - 3}
                   height={presupuestoH}
                   rx={4}
@@ -143,7 +143,7 @@ function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: numb
                 {/* Barra gasto real */}
                 <rect
                   x={x + barWidth / 2 + 3}
-                  y={chartHeight - gastoH + 20}
+                  y={chartHeight - gastoH + 30}
                   width={barWidth / 2 - 3}
                   height={gastoH}
                   rx={4}
@@ -152,7 +152,7 @@ function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: numb
                 {/* Label mes */}
                 <text
                   x={x + barWidth / 2}
-                  y={chartHeight + 40}
+                  y={chartHeight + 50}
                   textAnchor="middle"
                   fontSize="11"
                   fill="#64748b"
@@ -164,7 +164,7 @@ function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: numb
                 {presupuestoH > 15 && (
                   <text
                     x={x + barWidth / 4 - 2}
-                    y={chartHeight - presupuestoH + 14}
+                    y={chartHeight - presupuestoH + 24}
                     textAnchor="middle"
                     fontSize="9"
                     fill="#3b82f6"
@@ -176,7 +176,7 @@ function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: numb
                 {gastoH > 15 && (
                   <text
                     x={x + barWidth * 0.75 + 2}
-                    y={chartHeight - gastoH + 14}
+                    y={chartHeight - gastoH + 24}
                     textAnchor="middle"
                     fontSize="9"
                     fill={isOver ? "#ef4444" : "#10b981"}
