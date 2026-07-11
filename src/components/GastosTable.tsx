@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { Filter, Search, AlertCircle, CheckCircle2, Clock, Save, X, Trash2, MoreVertical, Edit3, Receipt, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast } from 'lucide-react'
+import { Filter, Search, AlertCircle, CheckCircle2, Clock, Save, X, Trash2, MoreVertical, Edit3, Receipt, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Download } from 'lucide-react'
 import { useGastos, useTiendas, useProveedores } from '../hooks/useSupabase'
+import * as XLSX from 'xlsx'
 
 const PERIODOS = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
 ]
 
-// Colores por clasificación
 const CLASIFICACION_COLORS: Record<string, { bg: string; text: string; border: string }> = {
   'INFRAESTRUCTURA': { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-200' },
   'PLOMERIA': { bg: 'bg-cyan-100', text: 'text-cyan-800', border: 'border-cyan-200' },
@@ -52,7 +52,8 @@ export default function GastosTable() {
     goToPage,
     fetchGastos, 
     updateGasto, 
-    deleteGasto 
+    deleteGasto,
+    exportGastos
   } = useGastos()
   const { tiendas } = useTiendas()
   const { proveedores } = useProveedores()
@@ -74,6 +75,7 @@ export default function GastosTable() {
     periodo: '',
   })
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
+  const [exporting, setExporting] = useState(false)
 
   const applyFilters = () => {
     const activeFilters: any = {}
@@ -96,6 +98,75 @@ export default function GastosTable() {
       search: '',
     })
     fetchGastos({}, 0)
+  }
+
+  // NUEVO: Exportar a Excel
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const activeFilters: any = {}
+      if (filters.clasificacion) activeFilters.clasificacion = filters.clasificacion
+      if (filters.proveedor_id) activeFilters.proveedor_id = filters.proveedor_id
+      if (filters.periodo && filters.periodo !== 'Todos') activeFilters.periodo = filters.periodo
+      if (filters.tienda_id) activeFilters.tienda_id = filters.tienda_id
+      if (filters.estatus) activeFilters.estatus = filters.estatus
+      if (filters.search) activeFilters.search = filters.search
+
+      const data = await exportGastos(activeFilters)
+      
+      if (data.length === 0) {
+        alert('No hay registros para exportar con los filtros actuales')
+        setExporting(false)
+        return
+      }
+
+      // Preparar datos para Excel
+      const excelData = data.map((g: any) => ({
+        'Fecha': new Date(g.fecha).toLocaleDateString('es-PA'),
+        'Periodo': g.periodo,
+        'Tienda': getTiendaName(g.tienda_id),
+        'Descripción': g.descripcion,
+        'Proveedor': getProveedorName(g.proveedor_id),
+        'Clasificación': g.clasificacion,
+        'Monto': g.monto,
+        'Estatus': g.estatus,
+        'Orden Compra': g.orden_compra || '',
+        'Factura': g.factura || '',
+        'Creado': g.created_at ? new Date(g.created_at).toLocaleDateString('es-PA') : '',
+      }))
+
+      const ws = XLSX.utils.json_to_sheet(excelData)
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Gastos Diarios')
+
+      // Ajustar anchos de columna
+      const colWidths = [
+        { wch: 12 },  // Fecha
+        { wch: 12 },  // Periodo
+        { wch: 25 },  // Tienda
+        { wch: 40 },  // Descripción
+        { wch: 25 },  // Proveedor
+        { wch: 18 },  // Clasificación
+        { wch: 15 },  // Monto
+        { wch: 18 },  // Estatus
+        { wch: 15 },  // OC
+        { wch: 15 },  // Factura
+        { wch: 12 },  // Creado
+      ]
+      ws['!cols'] = colWidths
+
+      // Nombre del archivo
+      const periodo = filters.periodo || 'Todos'
+      const fecha = new Date().toISOString().split('T')[0]
+      const fileName = `Gastos_Diarios_${periodo}_${fecha}.xlsx`
+
+      XLSX.writeFile(wb, fileName)
+    } catch (err) {
+      console.error('Error exportando:', err)
+      alert('Error al exportar. Revisa la consola.')
+    } finally {
+      setExporting(false)
+    }
   }
 
   const handleDoubleClick = (gasto: any) => {
@@ -148,7 +219,6 @@ export default function GastosTable() {
     return CLASIFICACION_COLORS[clasificacion] || { bg: 'bg-slate-100', text: 'text-slate-800', border: 'border-slate-200' }
   }
 
-  // Generar array de números de página para mostrar
   const getPageNumbers = () => {
     const pages: (number | string)[] = []
     const maxVisible = 5
@@ -186,7 +256,7 @@ export default function GastosTable() {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      {/* Barra de búsqueda y filtros */}
+      {/* Barra de búsqueda, filtros y exportar */}
       <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -213,6 +283,16 @@ export default function GastosTable() {
           >
             <Filter className="w-4 h-4" />
             Filtros {showFilters ? '▲' : '▼'}
+          </button>
+          {/* NUEVO: Botón Exportar */}
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="btn-secondary flex items-center gap-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+            title="Exportar todos los registros filtrados a Excel"
+          >
+            <Download className={`w-4 h-4 ${exporting ? 'animate-bounce' : ''}`} />
+            {exporting ? 'Exportando...' : 'Exportar Excel'}
           </button>
         </div>
       </div>
@@ -523,23 +603,4 @@ export default function GastosTable() {
             
             <button
               onClick={nextPage}
-              disabled={page >= totalPages - 1}
-              className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Siguiente"
-            >
-              <ChevronRight className="w-4 h-4 text-slate-600" />
-            </button>
-            <button
-              onClick={() => goToPage(totalPages - 1)}
-              disabled={page >= totalPages - 1}
-              className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-              title="Última página"
-            >
-              <ChevronLast className="w-4 h-4 text-slate-600" />
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
+             
