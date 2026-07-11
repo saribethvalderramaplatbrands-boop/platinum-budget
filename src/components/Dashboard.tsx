@@ -60,13 +60,43 @@ const formatMoney = (amount: number) => {
 function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: number, amortizaciones: any[] }) {
   if (!data.length) return null
 
-  const sortedData = [...data].sort((a, b) => (a.mes || 0) - (b.mes || 0))
+  // Agrupar por mes - sumar presupuesto y gasto de todas las tiendas
+  const mesesMap = new Map<number, { presupuesto: number; gasto: number; mes: number }>()
 
-  const maxVal = Math.max(...sortedData.map(d => Math.max(d.presupuesto_asignado || 0, d.gasto_real || 0)), 1)
+  data.forEach(d => {
+    const mesNum = typeof d.mes === 'number' ? d.mes : parseInt(d.mes) || 1
+    const existente = mesesMap.get(mesNum)
+    if (existente) {
+      existente.presupuesto += (d.presupuesto_asignado || 0)
+      existente.gasto += (d.gasto_real || 0)
+    } else {
+      mesesMap.set(mesNum, {
+        presupuesto: d.presupuesto_asignado || 0,
+        gasto: d.gasto_real || 0,
+        mes: mesNum
+      })
+    }
+  })
+
+  // Sumar amortizaciones por mes al gasto
+  amortizaciones.forEach(a => {
+    const mesNum = MESES.indexOf(a.periodo) + 1
+    if (mesNum > 0) {
+      const existente = mesesMap.get(mesNum)
+      if (existente) {
+        existente.gasto += (a.monto || 0)
+      }
+    }
+  })
+
+  // Convertir a array y ordenar por mes
+  const mesesData = Array.from(mesesMap.values()).sort((a, b) => a.mes - b.mes)
+
+  const maxVal = Math.max(...mesesData.map(d => Math.max(d.presupuesto, d.gasto)), 1)
   const chartHeight = 200
   const barWidth = 50
   const gap = 25
-  const totalWidth = sortedData.length * (barWidth + gap) + gap * 2
+  const totalWidth = mesesData.length * (barWidth + gap) + gap * 2
 
   return (
     <div className="card-solid overflow-hidden">
@@ -105,13 +135,13 @@ function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: numb
             />
           ))}
 
-          {sortedData.map((d, i) => {
+          {mesesData.map((d, i) => {
             const x = gap + i * (barWidth + gap)
-            const presupuestoH = maxVal > 0 ? (d.presupuesto_asignado / maxVal) * chartHeight : 0
-            const gastoH = maxVal > 0 ? (d.gasto_real / maxVal) * chartHeight : 0
-            const mesIndex = (typeof d.mes === 'number' ? d.mes : parseInt(d.mes) || 1) - 1
+            const presupuestoH = maxVal > 0 ? (d.presupuesto / maxVal) * chartHeight : 0
+            const gastoH = maxVal > 0 ? (d.gasto / maxVal) * chartHeight : 0
+            const mesIndex = d.mes - 1
             const mesLabel = MESES[mesIndex] || 'Mes ' + d.mes
-            const isOver = d.gasto_real > d.presupuesto_asignado
+            const isOver = d.gasto > d.presupuesto
 
             return (
               <g key={`mes-${d.mes}`}>
@@ -154,7 +184,7 @@ function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: numb
                     fontSize="9"
                     fill="#3b82f6"
                   >
-                    {(d.presupuesto_asignado / 1000).toFixed(0)}k
+                    {(d.presupuesto / 1000).toFixed(0)}k
                   </text>
                 )}
                 {/* Valor gasto */}
@@ -166,7 +196,7 @@ function GraficoBarras({ data, año, amortizaciones }: { data: any[], año: numb
                     fontSize="9"
                     fill={isOver ? "#ef4444" : "#10b981"}
                   >
-                    {(d.gasto_real / 1000).toFixed(0)}k
+                    {(d.gasto / 1000).toFixed(0)}k
                   </text>
                 )}
               </g>
