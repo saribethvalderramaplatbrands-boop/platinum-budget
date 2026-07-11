@@ -16,7 +16,9 @@ import {
   AlertTriangle,
   Sparkles,
   Search,
-  Filter
+  Filter,
+  Pencil,
+  Trash2
 } from 'lucide-react'
 
 const MESES = [
@@ -108,6 +110,9 @@ export default function CalendarioMantenimiento() {
   const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [viewMode, setViewMode] = useState<'calendario' | 'lista'>('calendario')
+
+  // Estado para edición
+  const [editingMantenimiento, setEditingMantenimiento] = useState<Mantenimiento | null>(null)
 
   // Filtros para vista lista
   const [filtroProveedor, setFiltroProveedor] = useState('')
@@ -315,6 +320,101 @@ export default function CalendarioMantenimiento() {
     }
   }
 
+  // Editar mantenimiento
+  const handleEdit = (mantenimiento: Mantenimiento) => {
+    const tienda = tiendas.find(t => t.id === mantenimiento.tienda_id)
+    const proveedor = proveedores.find(p => p.id === mantenimiento.proveedor_id)
+    
+    setEditingMantenimiento(mantenimiento)
+    setFormData({
+      tienda_id: mantenimiento.tienda_id,
+      fecha_programada: mantenimiento.fecha_programada,
+      tipo_servicio: mantenimiento.tipo_servicio,
+      frecuencia: mantenimiento.frecuencia,
+      proveedor_id: mantenimiento.proveedor_id || '',
+      monto_estimado: mantenimiento.monto_estimado.toString(),
+      descripcion: mantenimiento.descripcion,
+      fecha_tope: mantenimiento.fecha_tope
+    })
+    setTiendaSearch(tienda ? `${tienda.codigo} - ${tienda.nombre}` : '')
+    setProvSearch(proveedor ? `${proveedor.codigo} - ${proveedor.nombre}` : '')
+    setShowForm(true)
+  }
+
+  // Actualizar mantenimiento
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!editingMantenimiento) return
+    if (!formData.tienda_id) {
+      alert('Error: Debes seleccionar una tienda')
+      return
+    }
+    if (!formData.fecha_programada) {
+      alert('Error: Debes seleccionar una fecha programada')
+      return
+    }
+    if (!formData.monto_estimado || parseFloat(formData.monto_estimado) <= 0) {
+      alert('Error: El monto estimado debe ser mayor a 0')
+      return
+    }
+
+    const { error } = await supabase
+      .from('mantenimientos_preventivos')
+      .update({
+        tienda_id: formData.tienda_id,
+        fecha_programada: formData.fecha_programada,
+        tipo_servicio: formData.tipo_servicio,
+        frecuencia: formData.frecuencia,
+        proveedor_id: formData.proveedor_id || null,
+        monto_estimado: parseFloat(formData.monto_estimado),
+        descripcion: formData.descripcion,
+        fecha_tope: formData.fecha_tope
+      })
+      .eq('id', editingMantenimiento.id)
+
+    if (error) {
+      alert('Error actualizando: ' + error.message)
+      return
+    }
+
+    setShowForm(false)
+    setEditingMantenimiento(null)
+    setFormData({
+      tienda_id: '',
+      fecha_programada: '',
+      tipo_servicio: TIPOS_SERVICIO[0],
+      frecuencia: 'mensual',
+      proveedor_id: '',
+      monto_estimado: '',
+      descripcion: '',
+      fecha_tope: ''
+    })
+    setTiendaSearch('')
+    setProvSearch('')
+    
+    await fetchMantenimientos()
+    alert('✅ Mantenimiento actualizado correctamente')
+  }
+
+  // Eliminar mantenimiento
+  const handleDelete = async (id: string) => {
+    if (!confirm('¿Eliminar este mantenimiento permanentemente?')) return
+
+    const { error } = await supabase
+      .from('mantenimientos_preventivos')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      alert('Error eliminando: ' + error.message)
+      return
+    }
+
+    fetchMantenimientos()
+    alert('✅ Mantenimiento eliminado')
+  }
+
   const completarMantenimiento = async (mantenimiento: Mantenimiento) => {
     if (mantenimiento.gasto_registrado_id) {
       alert('ℹ️ Este mantenimiento ya tiene el gasto registrado.\n\n💰 Monto: ' + formatMoney(mantenimiento.monto_estimado) + '\n📅 Fecha: ' + new Date(mantenimiento.fecha_programada).toLocaleDateString('es-PA'))
@@ -384,12 +484,10 @@ export default function CalendarioMantenimiento() {
   const mantenimientosListaFiltrados = mantenimientos.filter(m => {
     let cumple = true
     
-    // Filtro por proveedor
     if (filtroProveedor) {
       cumple = cumple && m.proveedor_id === filtroProveedor
     }
     
-    // Filtro por mes
     if (filtroMes) {
       const mesMantenimiento = parseInt(m.fecha_programada.split('-')[1])
       cumple = cumple && mesMantenimiento === parseInt(filtroMes)
@@ -499,7 +597,22 @@ export default function CalendarioMantenimiento() {
               {viewMode === 'calendario' ? 'Ver Lista' : 'Ver Calendario'}
             </button>
             <button
-              onClick={() => setShowForm(!showForm)}
+              onClick={() => {
+                setEditingMantenimiento(null)
+                setFormData({
+                  tienda_id: '',
+                  fecha_programada: '',
+                  tipo_servicio: TIPOS_SERVICIO[0],
+                  frecuencia: 'mensual',
+                  proveedor_id: '',
+                  monto_estimado: '',
+                  descripcion: '',
+                  fecha_tope: ''
+                })
+                setTiendaSearch('')
+                setProvSearch('')
+                setShowForm(!showForm)
+              }}
               className="px-4 py-2 bg-white text-violet-600 rounded-lg text-sm font-bold hover:bg-violet-50 transition-colors flex items-center gap-2 shadow-lg"
             >
               <Plus className="w-4 h-4" />
@@ -551,12 +664,12 @@ export default function CalendarioMantenimiento() {
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-slate-200 shadow-lg p-6 space-y-4 animate-fade-in">
+        <form onSubmit={editingMantenimiento ? handleUpdate : handleSubmit} className="bg-white rounded-2xl border border-slate-200 shadow-lg p-6 space-y-4 animate-fade-in">
           <h3 className="font-bold text-lg text-slate-800 flex items-center gap-2">
             <div className="p-2 bg-violet-100 rounded-lg">
               <Wrench className="w-5 h-5 text-violet-600" />
             </div>
-            Programar Mantenimiento
+            {editingMantenimiento ? 'Editar Mantenimiento' : 'Programar Mantenimiento'}
           </h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -689,10 +802,13 @@ export default function CalendarioMantenimiento() {
           </div>
 
           <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
-            <button type="button" onClick={() => setShowForm(false)} className="btn-secondary">Cancelar</button>
+            <button type="button" onClick={() => {
+              setShowForm(false)
+              setEditingMantenimiento(null)
+            }} className="btn-secondary">Cancelar</button>
             <button type="submit" className="btn-primary flex items-center gap-2">
-              <Repeat className="w-4 h-4" />
-              Programar y Repetir
+              <Pencil className="w-4 h-4" />
+              {editingMantenimiento ? 'Actualizar' : 'Programar y Repetir'}
             </button>
           </div>
         </form>
@@ -808,14 +924,13 @@ export default function CalendarioMantenimiento() {
                   <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">Proveedor</th>
                   <th className="text-left py-3 px-4 text-xs font-bold text-slate-500 uppercase">Frecuencia</th>
                   <th className="text-right py-3 px-4 text-xs font-bold text-slate-500 uppercase">Monto</th>
-                  <th className="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">Estatus</th>
                   <th className="text-center py-3 px-4 text-xs font-bold text-slate-500 uppercase">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {mantenimientosListaFiltrados.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-12 text-slate-400">
+                    <td colSpan={7} className="text-center py-12 text-slate-400">
                       <Calendar className="w-12 h-12 mx-auto mb-3 opacity-30" />
                       <p>No hay mantenimientos con los filtros seleccionados</p>
                     </td>
@@ -826,7 +941,12 @@ export default function CalendarioMantenimiento() {
                     const proveedor = proveedores.find(p => p.id === m.proveedor_id)
                     const yaRegistrado = !!m.gasto_registrado_id
                     return (
-                      <tr key={m.id} className={yaRegistrado ? 'bg-emerald-50/30' : ''}>
+                      <tr 
+                        key={m.id} 
+                        className={`${yaRegistrado ? 'bg-emerald-50/30' : ''} hover:bg-slate-50 cursor-pointer transition-colors`}
+                        onDoubleClick={() => handleEdit(m)}
+                        title="Doble clic para editar"
+                      >
                         <td className="py-3 px-4 whitespace-nowrap text-slate-600">{new Date(m.fecha_programada).toLocaleDateString('es-PA')}</td>
                         <td className="py-3 px-4 font-medium text-slate-800">
                           <div className="flex items-center gap-2">
@@ -843,37 +963,26 @@ export default function CalendarioMantenimiento() {
                         </td>
                         <td className="py-3 px-4 text-right font-bold text-slate-800">{formatMoney(m.monto_estimado)}</td>
                         <td className="py-3 px-4 text-center">
-                          {yaRegistrado ? (
-                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-200">
-                              <CheckCircle2 className="w-3 h-3 inline mr-1" />
-                              Registrado
-                            </span>
-                          ) : (
-                            <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-200">
-                              <Clock className="w-3 h-3 inline mr-1" />
-                              Pendiente
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 px-4 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <button 
-                              onClick={() => completarMantenimiento(m)}
-                              className={`p-1.5 rounded-lg transition-colors ${
-                                yaRegistrado 
-                                  ? 'bg-slate-100 text-slate-400 cursor-default' 
-                                  : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200'
-                              }`}
-                              title={yaRegistrado ? 'Gasto ya registrado' : 'Completar y registrar gasto'}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleEdit(m)
+                              }}
+                              className="p-1.5 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                              title="Editar"
                             >
-                              <CheckCircle2 className="w-4 h-4" />
+                              <Pencil className="w-4 h-4" />
                             </button>
                             <button 
-                              onClick={() => cancelarMantenimiento(m.id)}
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleDelete(m.id)
+                              }}
                               className="p-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
-                              title="Cancelar"
+                              title="Eliminar"
                             >
-                              <XCircle className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         </td>
