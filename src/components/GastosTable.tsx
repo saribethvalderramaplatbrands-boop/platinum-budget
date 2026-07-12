@@ -39,6 +39,12 @@ const formatMoney = (amount: number) => {
   return '$' + (amount || 0).toLocaleString('es-PA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+// FIX: Formatear fecha sin convertir a Date (evita problemas de zona horaria UTC-5)
+const formatDate = (dateStr: string) => {
+  const [year, month, day] = dateStr.split('-')
+  return `${day}/${month}/${year.slice(2)}`
+}
+
 export default function GastosTable() {
   const { 
     gastos, 
@@ -120,7 +126,7 @@ export default function GastosTable() {
       }
 
       const excelData = data.map((g: any) => ({
-        'Fecha': new Date(g.fecha).toLocaleDateString('es-PA'),
+        'Fecha': formatDate(g.fecha),
         'Periodo': g.periodo,
         'Tienda': getTiendaName(g.tienda_id),
         'Descripcion': g.descripcion,
@@ -130,7 +136,7 @@ export default function GastosTable() {
         'Estatus': g.estatus,
         'Orden Compra': g.orden_compra || '',
         'Factura': g.factura || '',
-        'Creado': g.created_at ? new Date(g.created_at).toLocaleDateString('es-PA') : '',
+        'Creado': g.created_at ? formatDate(g.created_at.split('T')[0]) : '',
       }))
 
       const ws = XLSX.utils.json_to_sheet(excelData)
@@ -194,10 +200,6 @@ export default function GastosTable() {
   const handleCancel = () => {
     setEditingId(null)
     setEditData({ orden_compra: '', factura: '', periodo: '' })
-  }
-
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('es-PA')
   }
 
   const getTiendaName = (tiendaId: string) => {
