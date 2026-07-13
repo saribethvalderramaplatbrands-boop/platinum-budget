@@ -8,8 +8,27 @@ export default function GastosDiarios() {
   const [showForm, setShowForm] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
 
+  // Función para calcular el estatus basado en OC y Factura
+  function calcularEstatus(orden_compra: string | null, factura: string | null): string {
+    if (factura && factura.trim() !== '') {
+      return 'Completado'
+    } else if (orden_compra && orden_compra.trim() !== '') {
+      return 'Pendiente Factura'
+    } else {
+      return 'Pendiente OC'
+    }
+  }
+
   async function handleSubmit(gasto: any) {
-    const { error } = await supabase.from('gastos_diarios').insert([gasto])
+    // Calcular el estatus antes de insertar
+    const estatus = calcularEstatus(gasto.orden_compra, gasto.factura)
+    
+    const gastoConEstatus = {
+      ...gasto,
+      estatus: estatus,
+    }
+
+    const { error } = await supabase.from('gastos_diarios').insert([gastoConEstatus])
     if (error) {
       alert('Error: ' + error.message)
     } else {
