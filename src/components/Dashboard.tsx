@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useResumen, useAmortizaciones, useResumenAnual } from '../hooks/useSupabase'
+import { useResumen, useAmortizaciones, useResumenAnual, useGastosPorClasificacion } from '../hooks/useSupabase'
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -37,6 +37,7 @@ const CLASIFICACION_COLORS: Record<string, string> = {
   'LETRERO': '#8b5cf6',
   'ACERO INOXIDABLE': '#64748b',
   'SERVICIOS FIJOS': '#10b981',
+  'OTROS': '#94a3b8',
 }
 
 interface TiendaConAmortizacion {
@@ -220,6 +221,12 @@ export default function Dashboard() {
   const { amortizaciones } = useAmortizaciones()
   const { datos: datosAnual, loading: loadingAnual } = useResumenAnual(año)
 
+  // NUEVO: Gastos por clasificación REALES desde la base de datos
+  const { datos: datosClasificacion, loading: loadingClasificacion } = useGastosPorClasificacion(
+    año, 
+    mes === 'todos' ? undefined : mes
+  )
+
   const periodoActual = mes === 'todos' ? 'Año ' + año : MESES[mes - 1]
 
   const amortizacionesMes = mes === 'todos' 
@@ -298,38 +305,6 @@ export default function Dashboard() {
       if (a.saldo >= 0 && b.saldo < 0) return 1
       return (b.gasto_real + b.amortizado) - (a.gasto_real + a.amortizado)
     })
-
-  // Gasto por clasificacion - Top 5 + Otros (datos estimados)
-  const datosClasificacion = useMemo(() => {
-    const total = totalGasto || 1
-    const distribucion = [
-      { nombre: 'INFRAESTRUCTURA', pct: 0.28 },
-      { nombre: 'REFRIGERACION', pct: 0.22 },
-      { nombre: 'EQUIPO', pct: 0.15 },
-      { nombre: 'PLOMERIA', pct: 0.12 },
-      { nombre: 'ALARMA ROBO', pct: 0.08 },
-      { nombre: 'EXTINTORES', pct: 0.05 },
-      { nombre: 'EBANISTERIA', pct: 0.04 },
-      { nombre: 'GAS', pct: 0.03 },
-      { nombre: 'LETRERO', pct: 0.02 },
-      { nombre: 'ALARMA INCENDIO', pct: 0.01 },
-    ]
-
-    const conMontos = distribucion.map(d => ({
-      ...d,
-      monto: total * d.pct,
-      color: CLASIFICACION_COLORS[d.nombre] || '#94a3b8'
-    })).filter(d => d.monto > 0).sort((a, b) => b.monto - a.monto)
-
-    const top5 = conMontos.slice(0, 5)
-    const otrosMonto = conMontos.slice(5).reduce((sum, d) => sum + d.monto, 0)
-
-    if (otrosMonto > 0) {
-      top5.push({ nombre: 'Otros', pct: otrosMonto / total, monto: otrosMonto, color: '#94a3b8' })
-    }
-
-    return top5.sort((a, b) => b.monto - a.monto)
-  }, [totalGasto])
 
   // Exportar Dashboard a Excel
   const handleExport = () => {
@@ -649,7 +624,7 @@ export default function Dashboard() {
         <GraficoBarras data={datosAnual} año={año} amortizaciones={amortizaciones} />
       )}
 
-      {/* Gasto por Clasificacion - Top 5 + Otros */}
+      {/* Gasto por Clasificacion - Top 5 + Otros (DATOS REALES) */}
       <div className="card-solid overflow-hidden">
         <div className="flex items-center gap-3 mb-4">
           <div className="p-2 bg-violet-100 rounded-lg">
@@ -661,34 +636,62 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="space-y-3">
-          {datosClasificacion.map((item, index) => {
-            const pct = totalGasto > 0 ? (item.monto / totalGasto) * 100 : 0
-            return (
-              <div key={item.nombre} className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-100">
-                  <span className="text-xs font-bold text-slate-600">{index + 1}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-slate-700 truncate">{item.nombre}</span>
-                    <span className="text-sm font-bold text-slate-800">{formatMoney(item.monto)}</span>
+        {loadingClasificacion ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-violet-600" />
+            <span className="ml-2 text-sm text-slate-500">Cargando clasificaciones...</span>
+          </div>
+        ) : datosClasificacion.length === 0 ? (
+          <div className="text-center py-8 text-slate-400">
+            <Tag className="w-8 h-8 mx-auto mb-2 opacity-30" />
+            <p className="text-sm font-medium">No hay gastos registrados en este periodo</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {(() => {
+              const totalGastoClasif = datosClasificacion.reduce((sum, d) => sum + d.monto, 0)
+              const top5 = datosClasificacion.slice(0, 5)
+              const otros = datosClasificacion.slice(5)
+              const otrosMonto = otros.reduce((sum, d) => sum + d.monto, 0)
+
+              const itemsToShow = [...top5]
+              if (otrosMonto > 0) {
+                itemsToShow.push({
+                  nombre: 'Otros',
+                  monto: otrosMonto,
+                  color: '#94a3b8'
+                })
+              }
+
+              return itemsToShow.map((item, index) => {
+                const pct = totalGastoClasif > 0 ? (item.monto / totalGastoClasif) * 100 : 0
+                return (
+                  <div key={item.nombre} className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-slate-100">
+                      <span className="text-xs font-bold text-slate-600">{index + 1}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm font-medium text-slate-700 truncate">{item.nombre}</span>
+                        <span className="text-sm font-bold text-slate-800">{formatMoney(item.monto)}</span>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
+                        <div 
+                          className="h-2.5 rounded-full transition-all duration-700"
+                          style={{ 
+                            width: `${pct}%`, 
+                            backgroundColor: item.color 
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <span className="text-xs font-medium text-slate-500 w-10 text-right shrink-0">{pct.toFixed(1)}%</span>
                   </div>
-                  <div className="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden">
-                    <div 
-                      className="h-2.5 rounded-full transition-all duration-700"
-                      style={{ 
-                        width: `${pct}%`, 
-                        backgroundColor: item.color 
-                      }}
-                    />
-                  </div>
-                </div>
-                <span className="text-xs font-medium text-slate-500 w-10 text-right shrink-0">{pct.toFixed(1)}%</span>
-              </div>
-            )
-          })}
-        </div>
+                )
+              })
+            })()}
+          </div>
+        )}
       </div>
 
       {/* Detalle por tienda */}
