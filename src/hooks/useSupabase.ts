@@ -235,6 +235,66 @@ export function useGastos() {
   }
 }
 
+// ============================================
+// NUEVO: Gastos agrupados por clasificacion
+// ============================================
+export function useGastosPorClasificacion(año?: number, mes?: number | string) {
+  const [datos, setDatos] = useState<{ nombre: string; monto: number; color: string }[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const fetchDatos = useCallback(async () => {
+    setLoading(true)
+
+    let query = supabase
+      .from('gastos_diarios')
+      .select('clasificacion, monto')
+
+    if (año) {
+      query = query.gte('fecha', `${año}-01-01`).lte('fecha', `${año}-12-31`)
+    }
+
+    if (mes && mes !== 'todos') {
+      const mesNombre = typeof mes === 'number' ? MESES[mes - 1] : mes
+      query = query.eq('periodo', mesNombre)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      console.error('Error fetching gastos por clasificacion:', error)
+      setDatos([])
+    } else {
+      // Agrupar por clasificacion y sumar montos
+      const agrupado = new Map<string, number>()
+
+      data?.forEach((gasto: any) => {
+        const clasif = gasto.clasificacion || 'OTROS'
+        const monto = parseFloat(gasto.monto) || 0
+        agrupado.set(clasif, (agrupado.get(clasif) || 0) + monto)
+      })
+
+      // Convertir a array y ordenar por monto descendente
+      const resultado = Array.from(agrupado.entries())
+        .map(([nombre, monto]) => ({
+          nombre,
+          monto,
+          color: CLASIFICACION_COLORS[nombre] || '#94a3b8'
+        }))
+        .sort((a, b) => b.monto - a.monto)
+        .filter(d => d.monto > 0)
+
+      setDatos(resultado)
+    }
+    setLoading(false)
+  }, [año, mes])
+
+  useEffect(() => {
+    fetchDatos()
+  }, [fetchDatos])
+
+  return { datos, loading, refetch: fetchDatos }
+}
+
 export function useResumen(año?: number, mes?: number) {
   const [resumen, setResumen] = useState<ResumenMensual[]>([])
   const [loading, setLoading] = useState(true)
@@ -344,4 +404,20 @@ export function usePlanificador(año: number) {
   }
 
   return { datos, loading, recalcular, refetch: fetchPlanificador }
+}
+
+const CLASIFICACION_COLORS: Record<string, string> = {
+  'INFRAESTRUCTURA': '#3b82f6',
+  'PLOMERIA': '#06b6d4',
+  'ALARMA ROBO': '#ef4444',
+  'ALARMA INCENDIO': '#f97316',
+  'EXTINTORES': '#e11d48',
+  'EQUIPO': '#6366f1',
+  'REFRIGERACION': '#0ea5e9',
+  'EBANISTERIA': '#d97706',
+  'GAS': '#eab308',
+  'LETRERO': '#8b5cf6',
+  'ACERO INOXIDABLE': '#64748b',
+  'SERVICIOS FIJOS': '#10b981',
+  'OTROS': '#94a3b8',
 }
