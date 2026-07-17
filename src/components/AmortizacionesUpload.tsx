@@ -1,9 +1,15 @@
 import { useState, useRef } from 'react'
-import { Upload, FileSpreadsheet, Check, AlertCircle, Receipt } from 'lucide-react'
+import { Upload, FileSpreadsheet, Check, AlertCircle, Receipt, X, Download, Warning } from 'lucide-react'
 import { useAmortizaciones } from '../hooks/useSupabase'
+import { supabase } from '../lib/supabase'
 
 // @ts-ignore
 import * as XLSX from 'xlsx'
+
+const MESES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+]
 
 const formatMoney = (amount: number) => {
   return '$' + (amount || 0).toLocaleString('es-PA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -12,8 +18,36 @@ const formatMoney = (amount: number) => {
 export default function AmortizacionesUpload() {
   const { amortizaciones, uploadAmortizaciones, refetch } = useAmortizaciones()
   const [uploading, setUploading] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
+  const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warning', text: string } | null>(null)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [pendingData, setPendingData] = useState<any[]>([])
+  const [pendingPeriodo, setPendingPeriodo] = useState('')
+  const [existingCount, setExistingCount] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Verificar si ya existen amortizaciones para un periodo
+  const checkExistingAmortizaciones = async (periodo: string) => {
+    const { count, error } = await supabase
+      .from('amortizaciones')
+      .select('*', { count: 'exact', head: true })
+      .eq('periodo', periodo)
+
+    if (error) {
+      console.error('Error checking existing:', error)
+      return 0
+    }
+    return count || 0
+  }
+
+  // Borrar amortizaciones existentes para un periodo
+  const deleteExistingAmortizaciones = async (periodo: string) => {
+    const { error } = await supabase
+      .from('amortizaciones')
+      .delete()
+      .eq('periodo', periodo)
+
+    if (error) throw error
+  }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -21,6 +55,7 @@ export default function AmortizacionesUpload() {
 
     setUploading(true)
     setMessage(null)
+    setShowConfirmDialog(false)
 
     try {
       const data = await file.arrayBuffer()
@@ -37,17 +72,34 @@ export default function AmortizacionesUpload() {
           tienda_nombre: String(row[1] || ''),
           descripcion: String(row[2] || ''),
           monto: parseFloat(row[3]) || 0,
-          periodo: String(row[4] || 'Junio'),
+          periodo: String(row[4] || 'Junio').trim(),
         }))
 
-      const error = await uploadAmortizaciones(amortizacionesData)
-
-      if (error) {
-        setMessage({ type: 'error', text: 'Error al subir: ' + error.message })
-      } else {
-        setMessage({ type: 'success', text: `¡${amortizacionesData.length} amortizaciones subidas exitosamente!` })
-        refetch()
+      if (amortizacionesData.length === 0) {
+        setMessage({ type: 'error', text: 'No se encontraron registros válidos en el archivo.' })
+        setUploading(false)
+        return
       }
+
+      // Detectar el periodo del archivo (usar el primero o default)
+      const periodoDetectado = amortizacionesData[0]?.periodo || 'Junio'
+
+      // Verificar si ya existen amortizaciones para este periodo
+      const count = await checkExistingAmortizaciones(periodoDetectado)
+
+      if (count > 0) {
+        // Ya existen - mostrar diálogo de confirmación
+        setPendingData(amortizacionesData)
+        setPendingPeriodo(periodoDetectado)
+        setExistingCount(count)
+        setShowConfirmDialog(true)
+        setUploading(false)
+        return
+      }
+
+      // No existen - subir directamente
+      await insertAmortizaciones(amortizacionesData)
+
     } catch (err: any) {
       setMessage({ type: 'error', text: 'Error procesando archivo: ' + err.message })
     } finally {
@@ -56,12 +108,102 @@ export default function AmortizacionesUpload() {
     }
   }
 
+  const insertAmortizaciones = async (data: any[]) => {
+    const error = await uploadAmortizaciones(data)
+
+    if (error) {
+      setMessage({ type: 'error', text: 'Error al subir: ' + error.message })
+    } else {
+      setMessage({ type: 'success', text: `¡${data.length} amortizaciones subidas exitosamente!` })
+      refetch()
+    }
+  }
+
+  const handleConfirmReplace = async () => {
+    setUploading(true)
+    setShowConfirmDialog(false)
+
+    try {
+      // Borrar existentes
+      await deleteExistingAmortizaciones(pendingPeriodo)
+
+      // Insertar nuevas
+      await insertAmortizaciones(pendingData)
+
+      setMessage({ 
+        type: 'success', 
+        text: `¡Reemplazo completado! ${existingCount} amortizaciones eliminadas, ${pendingData.length} nuevas insertadas para ${pendingPeriodo}.` 
+      })
+    } catch (err: any) {
+      setMessage({ type: 'error', text: 'Error en reemplazo: ' + err.message })
+    } finally {
+      setUploading(false)
+      setPendingData([])
+      setPendingPeriodo('')
+      setExistingCount(0)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const handleCancelReplace = () => {
+    setShowConfirmDialog(false)
+    setPendingData([])
+    setPendingPeriodo('')
+    setExistingCount(0)
+    setMessage({ type: 'warning', text: 'Subida cancelada. Las amortizaciones existentes no fueron modificadas.' })
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h2 className="text-2xl font-bold text-slate-800">Amortizaciones</h2>
         <p className="text-sm text-slate-500 mt-1">Sube y gestiona las amortizaciones mensuales</p>
       </div>
+
+      {/* Diálogo de confirmación */}
+      {showConfirmDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(4px)' }}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-amber-100 rounded-xl">
+                <Warning className="w-6 h-6 text-amber-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-slate-800">Amortizaciones existentes</h3>
+                <p className="text-sm text-slate-500">Periodo: {pendingPeriodo}</p>
+              </div>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <p className="text-sm text-amber-800">
+                Ya existen <span className="font-bold">{existingCount}</span> amortizaciones para <span className="font-bold">{pendingPeriodo}</span>.
+              </p>
+              <p className="text-sm text-amber-700 mt-2">
+                ¿Deseas <span className="font-bold">reemplazarlas</span> con las {pendingData.length} nuevas del archivo?
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button 
+                onClick={handleConfirmReplace}
+                className="btn-primary flex-1 flex items-center justify-center gap-2"
+                style={{ background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)' }}
+              >
+                <Check className="w-4 h-4" />
+                Reemplazar
+              </button>
+              <button 
+                onClick={handleCancelReplace}
+                className="btn-secondary flex-1 flex items-center justify-center gap-2"
+              >
+                <X className="w-4 h-4" />
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="card-solid">
         <div className="flex items-center gap-3 mb-4">
@@ -86,7 +228,7 @@ export default function AmortizacionesUpload() {
         {uploading && <p className="text-center mt-4 text-blue-600 font-medium">Procesando...</p>}
 
         {message && (
-          <div className={`mt-4 p-4 rounded-xl flex items-center gap-3 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+          <div className={`mt-4 p-4 rounded-xl flex items-center gap-3 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : message.type === 'warning' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
             {message.type === 'success' ? <Check className="w-5 h-5" /> : <AlertCircle className="w-5 h-5" />}
             {message.text}
           </div>
