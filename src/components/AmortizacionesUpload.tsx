@@ -1,15 +1,10 @@
 import { useState, useRef } from 'react'
-import { Upload, FileSpreadsheet, Check, AlertCircle, Receipt, X, Download, Warning } from 'lucide-react'
+import { Upload, FileSpreadsheet, Check, AlertCircle, Receipt, X, AlertTriangle } from 'lucide-react'
 import { useAmortizaciones } from '../hooks/useSupabase'
 import { supabase } from '../lib/supabase'
 
 // @ts-ignore
 import * as XLSX from 'xlsx'
-
-const MESES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
-]
 
 const formatMoney = (amount: number) => {
   return '$' + (amount || 0).toLocaleString('es-PA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -167,7 +162,7 @@ export default function AmortizacionesUpload() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-amber-100 rounded-xl">
-                <Warning className="w-6 h-6 text-amber-600" />
+                <AlertTriangle className="w-6 h-6 text-amber-600" />
               </div>
               <div>
                 <h3 className="font-bold text-lg text-slate-800">Amortizaciones existentes</h3>
