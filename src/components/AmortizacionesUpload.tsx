@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react'
-import { Upload, FileSpreadsheet, Check, AlertCircle, Receipt, X, AlertTriangle } from 'lucide-react'
+import { Upload, FileSpreadsheet, Check, AlertCircle, Receipt } from 'lucide-react'
 import { useAmortizaciones } from '../hooks/useSupabase'
 import { supabase } from '../lib/supabase'
 
@@ -14,35 +14,7 @@ export default function AmortizacionesUpload() {
   const { amortizaciones, uploadAmortizaciones, refetch } = useAmortizaciones()
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error' | 'warning', text: string } | null>(null)
-  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
-  const [pendingData, setPendingData] = useState<any[]>([])
-  const [pendingPeriodo, setPendingPeriodo] = useState('')
-  const [existingCount, setExistingCount] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // Verificar si ya existen amortizaciones para un periodo
-  const checkExistingAmortizaciones = async (periodo: string) => {
-    const { count, error } = await supabase
-      .from('amortizaciones')
-      .select('*', { count: 'exact', head: true })
-      .eq('periodo', periodo)
-
-    if (error) {
-      console.error('Error checking existing:', error)
-      return 0
-    }
-    return count || 0
-  }
-
-  // Borrar amortizaciones existentes para un periodo
-  const deleteExistingAmortizaciones = async (periodo: string) => {
-    const { error } = await supabase
-      .from('amortizaciones')
-      .delete()
-      .eq('periodo', periodo)
-
-    if (error) throw error
-  }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -50,7 +22,6 @@ export default function AmortizacionesUpload() {
 
     setUploading(true)
     setMessage(null)
-    setShowConfirmDialog(false)
 
     try {
       const data = await file.arrayBuffer()
@@ -76,25 +47,38 @@ export default function AmortizacionesUpload() {
         return
       }
 
-      // Detectar el periodo del archivo (usar el primero o default)
       const periodoDetectado = amortizacionesData[0]?.periodo || 'Junio'
 
       // Verificar si ya existen amortizaciones para este periodo
-      const count = await checkExistingAmortizaciones(periodoDetectado)
+      const { count, error: countError } = await supabase
+        .from('amortizaciones')
+        .select('*', { count: 'exact', head: true })
+        .eq('periodo', periodoDetectado)
 
-      if (count > 0) {
-        // Ya existen - mostrar diálogo de confirmación
-        setPendingData(amortizacionesData)
-        setPendingPeriodo(periodoDetectado)
-        setExistingCount(count)
-        setShowConfirmDialog(true)
-        setUploading(false)
-        return
+      if (countError) throw countError
+
+      // Si ya existen, borrarlas primero (igual que Cierre de Mes)
+      if (count && count > 0) {
+        const { error: deleteError } = await supabase
+          .from('amortizaciones')
+          .delete()
+          .eq('periodo', periodoDetectado)
+
+        if (deleteError) throw deleteError
       }
 
-      // No existen - subir directamente
-      await insertAmortizaciones(amortizacionesData)
+      // Insertar las nuevas
+      const error = await uploadAmortizaciones(amortizacionesData)
 
+      if (error) {
+        setMessage({ type: 'error', text: 'Error al subir: ' + error.message })
+      } else {
+        setMessage({ 
+          type: 'success', 
+          text: `¡${amortizacionesData.length} amortizaciones subidas para ${periodoDetectado}!${count && count > 0 ? ` (${count} anteriores reemplazadas)` : ''}` 
+        })
+        refetch()
+      }
     } catch (err: any) {
       setMessage({ type: 'error', text: 'Error procesando archivo: ' + err.message })
     } finally {
@@ -103,108 +87,12 @@ export default function AmortizacionesUpload() {
     }
   }
 
-  const insertAmortizaciones = async (data: any[]) => {
-    const error = await uploadAmortizaciones(data)
-
-    if (error) {
-      setMessage({ type: 'error', text: 'Error al subir: ' + error.message })
-    } else {
-      setMessage({ type: 'success', text: `¡${data.length} amortizaciones subidas exitosamente!` })
-      refetch()
-    }
-  }
-
-  const handleConfirmReplace = async () => {
-    setUploading(true)
-    setShowConfirmDialog(false)
-
-    try {
-      // Borrar existentes
-      await deleteExistingAmortizaciones(pendingPeriodo)
-
-      // Insertar nuevas
-      await insertAmortizaciones(pendingData)
-
-      setMessage({ 
-        type: 'success', 
-        text: `¡Reemplazo completado! ${existingCount} amortizaciones eliminadas, ${pendingData.length} nuevas insertadas para ${pendingPeriodo}.` 
-      })
-    } catch (err: any) {
-      setMessage({ type: 'error', text: 'Error en reemplazo: ' + err.message })
-    } finally {
-      setUploading(false)
-      setPendingData([])
-      setPendingPeriodo('')
-      setExistingCount(0)
-      if (fileInputRef.current) fileInputRef.current.value = ''
-    }
-  }
-
-  const handleCancelReplace = () => {
-    setShowConfirmDialog(false)
-    setPendingData([])
-    setPendingPeriodo('')
-    setExistingCount(0)
-    setMessage({ type: 'warning', text: 'Subida cancelada. Las amortizaciones existentes no fueron modificadas.' })
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
   return (
-    <div className="space-y-6 animate-fade-in relative">
+    <div className="space-y-6 animate-fade-in">
       <div>
         <h2 className="text-2xl font-bold text-slate-800">Amortizaciones</h2>
         <p className="text-sm text-slate-500 mt-1">Sube y gestiona las amortizaciones mensuales</p>
       </div>
-
-      {/* Diálogo de confirmación - FIX: z-index alto y centrado correctamente */}
-      {showConfirmDialog && (
-        <div 
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-          style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}
-        >
-          <div 
-            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 relative z-[10000]"
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-amber-100 rounded-xl">
-                <AlertTriangle className="w-6 h-6 text-amber-600" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg text-slate-800">Amortizaciones existentes</h3>
-                <p className="text-sm text-slate-500">Periodo: {pendingPeriodo}</p>
-              </div>
-            </div>
-
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-              <p className="text-sm text-amber-800">
-                Ya existen <span className="font-bold">{existingCount}</span> amortizaciones para <span className="font-bold">{pendingPeriodo}</span>.
-              </p>
-              <p className="text-sm text-amber-700 mt-2">
-                ¿Deseas <span className="font-bold">reemplazarlas</span> con las {pendingData.length} nuevas del archivo?
-              </p>
-            </div>
-
-            <div className="flex gap-3">
-              <button 
-                onClick={handleConfirmReplace}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white font-semibold text-sm transition-all hover:scale-[0.98] active:scale-[0.95]"
-                style={{ background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)' }}
-              >
-                <Check className="w-4 h-4" />
-                Reemplazar
-              </button>
-              <button 
-                onClick={handleCancelReplace}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 transition-all hover:scale-[0.98] active:scale-[0.95]"
-              >
-                <X className="w-4 h-4" />
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <div className="card-solid">
         <div className="flex items-center gap-3 mb-4">
