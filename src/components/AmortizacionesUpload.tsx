@@ -150,16 +150,22 @@ export default function AmortizacionesUpload() {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in relative">
       <div>
         <h2 className="text-2xl font-bold text-slate-800">Amortizaciones</h2>
         <p className="text-sm text-slate-500 mt-1">Sube y gestiona las amortizaciones mensuales</p>
       </div>
 
-      {/* Diálogo de confirmación */}
+      {/* Diálogo de confirmación - FIX: z-index alto y centrado correctamente */}
       {showConfirmDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(15, 23, 42, 0.5)', backdropFilter: 'blur(4px)' }}>
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+          style={{ backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 relative z-[10000]"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="flex items-center gap-3">
               <div className="p-3 bg-amber-100 rounded-xl">
                 <AlertTriangle className="w-6 h-6 text-amber-600" />
@@ -182,7 +188,7 @@ export default function AmortizacionesUpload() {
             <div className="flex gap-3">
               <button 
                 onClick={handleConfirmReplace}
-                className="btn-primary flex-1 flex items-center justify-center gap-2"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-white font-semibold text-sm transition-all hover:scale-[0.98] active:scale-[0.95]"
                 style={{ background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)' }}
               >
                 <Check className="w-4 h-4" />
@@ -190,7 +196,7 @@ export default function AmortizacionesUpload() {
               </button>
               <button 
                 onClick={handleCancelReplace}
-                className="btn-secondary flex-1 flex items-center justify-center gap-2"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold text-sm hover:bg-slate-50 transition-all hover:scale-[0.98] active:scale-[0.95]"
               >
                 <X className="w-4 h-4" />
                 Cancelar
