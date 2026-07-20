@@ -351,6 +351,17 @@ export default function PresupuestoView() {
   const kfcAmort = presupuestos.filter(p => p.unidad_negocio?.includes('Kentucky')).reduce((sum, p) => sum + p.amortizado, 0)
   const kfcSaldo = kfcTotal - kfcGasto - kfcAmort
 
+  // Estilo para los encabezados de la tabla principal (fondo oscuro fijo para que el texto blanco resalte)
+  const thBase: React.CSSProperties = {
+    padding: '12px 16px',
+    color: '#ffffff',
+    fontSize: '13px',
+    fontWeight: 700,
+    backgroundColor: '#1e293b',
+    letterSpacing: '0.03em',
+    whiteSpace: 'nowrap'
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
@@ -490,14 +501,14 @@ export default function PresupuestoView() {
           <div className="overflow-x-auto" style={{ padding: '0 20px 20px' }}>
             <table className="table-modern" style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '0' }}>
               <thead>
-                <tr style={{ background: 'linear-gradient(135deg, #1e293b 0%, #334155 100%)' }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', color: 'white', fontSize: '13px', fontWeight: 600, borderRadius: '8px 0 0 0' }}>Tienda</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', color: 'white', fontSize: '13px', fontWeight: 600 }}>Mes</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right', color: 'white', fontSize: '13px', fontWeight: 600 }}>Presupuesto</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right', color: 'white', fontSize: '13px', fontWeight: 600 }}>Amortizado</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right', color: 'white', fontSize: '13px', fontWeight: 600 }}>Gasto</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right', color: 'white', fontSize: '13px', fontWeight: 600 }}>Saldo</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center', color: 'white', fontSize: '13px', fontWeight: 600, borderRadius: '0 8px 0 0' }}>%</th>
+                <tr>
+                  <th style={{ ...thBase, textAlign: 'left', borderRadius: '8px 0 0 0' }}>Tienda</th>
+                  <th style={{ ...thBase, textAlign: 'center' }}>Mes</th>
+                  <th style={{ ...thBase, textAlign: 'right' }}>Presupuesto</th>
+                  <th style={{ ...thBase, textAlign: 'right' }}>Amortizado</th>
+                  <th style={{ ...thBase, textAlign: 'right' }}>Gasto</th>
+                  <th style={{ ...thBase, textAlign: 'right' }}>Saldo</th>
+                  <th style={{ ...thBase, textAlign: 'center', borderRadius: '0 8px 0 0' }}>%</th>
                 </tr>
               </thead>
               <tbody>
