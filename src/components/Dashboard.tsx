@@ -547,7 +547,7 @@ export default function Dashboard() {
         <div className={`card-kfc ${kfcPct >= 90 ? 'ring-2 ring-amber-400' : ''}`}>
           <div className="flex items-center gap-3 mb-4">
             <img 
-              src="/kfc-logo.png" 
+              src="https://ojrtrfbikapdqngokxvj.supabase.co/storage/v1/object/public/assets/kfc-logo.png" 
               alt="KFC" 
               className="h-10 w-auto object-contain"
               onError={(e) => {

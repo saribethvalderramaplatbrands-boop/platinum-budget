@@ -455,7 +455,7 @@ export default function PresupuestoView() {
           {hayKFC && (
             <div className="card-kfc" style={{ background: 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)', border: '1px solid #fecaca', boxShadow: '0 4px 6px -1px rgba(220, 38, 38, 0.1)' }}>
               <div className="flex items-center gap-3 mb-3">
-                <img src="/kfc-logo.png" alt="KFC" className="h-8 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                <img src="https://ojrtrfbikapdqngokxvj.supabase.co/storage/v1/object/public/assets/kfc-logo.png" alt="KFC" className="h-8 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                 <p className="text-sm font-bold text-red-700">Kentucky Fried Chicken</p>
               </div>
               <div className="grid grid-cols-4 gap-2 text-sm">
