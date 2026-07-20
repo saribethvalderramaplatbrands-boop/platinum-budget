@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useTiendas } from '../hooks/useSupabase'
 import { supabase } from '../lib/supabase'
-import { useTheme } from '../context/ThemeContext'
 import { Table, Search, X, ArrowDown, ArrowUp, Filter, Building2, Eye, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react'
 
 const MESES = [
@@ -181,7 +180,6 @@ function TiendaModal({
 
 export default function PresupuestoView() {
   const { tiendas } = useTiendas()
-  const { dark } = useTheme()
   const [año, setAño] = useState(2026)
   const [mes, setMes] = useState<number | null>(null)
   const [gerenteArea, setGerenteArea] = useState('')
@@ -316,24 +314,24 @@ export default function PresupuestoView() {
     return ''
   }
 
-  // Fondo de fila según estado (adaptado a modo día/noche)
+  // NEW: Get full row background color for negative saldo - ROJO PURO
   const getRowStyle = (saldo: number, presupuesto: number, isEven: boolean) => {
     if (saldo < 0) {
       return { 
-        backgroundColor: dark ? 'rgba(127, 29, 29, 0.28)' : '#fee2e2',
-        borderLeft: '5px solid #dc2626',
-        boxShadow: dark ? 'inset 0 0 0 1px rgba(220, 38, 38, 0.35)' : 'inset 0 0 0 1px #fecaca'
+        backgroundColor: '#fee2e2', // Red-200 - más fuerte
+        borderLeft: '5px solid #dc2626', // Red-600 borde izquierdo grueso
+        boxShadow: 'inset 0 0 0 1px #fecaca' // Borde interno sutil
       }
     }
     if (presupuesto > 0 && (presupuesto - saldo) / presupuesto > 0.9) {
       return { 
-        backgroundColor: dark ? 'rgba(120, 53, 15, 0.25)' : '#fffbeb', 
+        backgroundColor: '#fffbeb', 
         borderLeft: '5px solid #d97706',
-        boxShadow: dark ? 'inset 0 0 0 1px rgba(217, 119, 6, 0.3)' : 'inset 0 0 0 1px #fcd34d'
+        boxShadow: 'inset 0 0 0 1px #fcd34d'
       }
     }
     return { 
-      backgroundColor: dark ? (isEven ? '#1e293b' : '#182338') : (isEven ? 'white' : '#f8fafc'), 
+      backgroundColor: isEven ? 'white' : '#f8fafc', 
       borderLeft: '5px solid transparent',
       boxShadow: 'none'
     }
@@ -353,18 +351,13 @@ export default function PresupuestoView() {
   const kfcAmort = presupuestos.filter(p => p.unidad_negocio?.includes('Kentucky')).reduce((sum, p) => sum + p.amortizado, 0)
   const kfcSaldo = kfcTotal - kfcGasto - kfcAmort
 
-  // Colores de texto adaptados al tema
-  const colorTienda = (saldo: number) => saldo < 0 ? (dark ? '#fca5a5' : '#991b1b') : (dark ? '#f1f5f9' : '#1e293b')
-  const colorPresupuesto = dark ? '#e2e8f0' : '#334155'
-  const colorMes = dark ? '#94a3b8' : '#64748b'
-
   // Estilo para los encabezados de la tabla principal (fondo oscuro fijo para que el texto blanco resalte)
   const thBase: React.CSSProperties = {
     padding: '12px 16px',
     color: '#ffffff',
     fontSize: '13px',
     fontWeight: 700,
-    backgroundColor: dark ? '#0f172a' : '#1e293b',
+    backgroundColor: '#1e293b',
     letterSpacing: '0.03em',
     whiteSpace: 'nowrap'
   }
@@ -530,10 +523,10 @@ export default function PresupuestoView() {
                       title="Doble clic para ver detalle"
                       style={{ 
                         ...getRowStyle(p.saldo, p.presupuesto_asignado, isEven),
-                        borderBottom: dark ? '1px solid #1e293b' : '1px solid #e2e8f0'
+                        borderBottom: '1px solid #e2e8f0'
                       }}
                     >
-                      <td className="font-bold" style={{ padding: '12px 16px', color: colorTienda(p.saldo) }}>
+                      <td className="font-bold" style={{ padding: '12px 16px', color: p.saldo < 0 ? '#991b1b' : '#1e293b' }}>
                         <div className="flex items-center gap-2">
                           <span className={`inline-flex items-center px-2 py-1 rounded-md text-[11px] font-bold ${
                             p.unidad_negocio?.includes('Dairy') ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
@@ -548,16 +541,16 @@ export default function PresupuestoView() {
                           )}
                         </div>
                       </td>
-                      <td style={{ padding: '12px 16px', textAlign: 'center', color: colorMes, fontSize: '13px' }}>{MESES[p.mes - 1]}</td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: colorPresupuesto }}>{formatMoney(p.presupuesto_asignado)}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>{MESES[p.mes - 1]}</td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#334155' }}>{formatMoney(p.presupuesto_asignado)}</td>
                       <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#ea580c' }}>{formatMoney(p.amortizado)}</td>
                       <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600, color: '#dc2626' }}>{formatMoney(p.gasto_real)}</td>
-                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 'bold', color: p.saldo < 0 ? (dark ? '#f87171' : '#dc2626') : (dark ? '#34d399' : '#059669') }}>
+                      <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 'bold', color: p.saldo < 0 ? '#dc2626' : '#059669' }}>
                         {formatMoney(p.saldo)}
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                         <div className="flex items-center gap-2 justify-center">
-                          <div className="w-14 bg-slate-100 rounded-full h-2 overflow-hidden" style={{ border: dark ? '1px solid #334155' : '1px solid #e2e8f0' }}>
+                          <div className="w-14 bg-slate-100 rounded-full h-2 overflow-hidden" style={{ border: '1px solid #e2e8f0' }}>
                             <div className={`h-2 rounded-full transition-all duration-500 ${pct > 100 ? 'bg-red-500' : pct > 90 ? 'bg-amber-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
                           </div>
                           <span className="text-xs font-bold" style={{ color: pct > 100 ? '#dc2626' : pct > 90 ? '#d97706' : '#059669', minWidth: '28px' }}>{pct.toFixed(0)}%</span>
