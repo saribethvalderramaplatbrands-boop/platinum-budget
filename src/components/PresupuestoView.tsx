@@ -309,20 +309,32 @@ export default function PresupuestoView() {
   }
 
   const getAlertClass = (saldo: number, presupuesto: number) => {
-    if (saldo < 0) return 'bg-red-50/80 text-red-700 border-red-100'
+    if (saldo < 0) return 'bg-red-100 text-red-800 border-red-200'
     if (presupuesto > 0 && (presupuesto - saldo) / presupuesto > 0.9) return 'bg-amber-50/80 text-amber-700 border-amber-100'
     return ''
   }
 
-  // NEW: Get full row background color for negative saldo
+  // NEW: Get full row background color for negative saldo - ROJO PURO
   const getRowStyle = (saldo: number, presupuesto: number, isEven: boolean) => {
     if (saldo < 0) {
-      return { backgroundColor: '#fef2f2', borderLeft: '4px solid #dc2626' } // Red background + red left border
+      return { 
+        backgroundColor: '#fee2e2', // Red-200 - más fuerte
+        borderLeft: '5px solid #dc2626', // Red-600 borde izquierdo grueso
+        boxShadow: 'inset 0 0 0 1px #fecaca' // Borde interno sutil
+      }
     }
     if (presupuesto > 0 && (presupuesto - saldo) / presupuesto > 0.9) {
-      return { backgroundColor: '#fffbeb', borderLeft: '4px solid #d97706' } // Amber background
+      return { 
+        backgroundColor: '#fffbeb', 
+        borderLeft: '5px solid #d97706',
+        boxShadow: 'inset 0 0 0 1px #fcd34d'
+      }
     }
-    return { backgroundColor: isEven ? 'white' : '#f8fafc', borderLeft: '4px solid transparent' }
+    return { 
+      backgroundColor: isEven ? 'white' : '#f8fafc', 
+      borderLeft: '5px solid transparent',
+      boxShadow: 'none'
+    }
   }
 
   const unidadesEnResultados = [...new Set(presupuestos.map(p => p.unidad_negocio))]
@@ -503,7 +515,7 @@ export default function PresupuestoView() {
                         borderBottom: '1px solid #e2e8f0'
                       }}
                     >
-                      <td className="font-bold" style={{ padding: '12px 16px', color: '#1e293b' }}>
+                      <td className="font-bold" style={{ padding: '12px 16px', color: p.saldo < 0 ? '#991b1b' : '#1e293b' }}>
                         <div className="flex items-center gap-2">
                           <span className={`inline-flex items-center px-2 py-1 rounded-md text-[11px] font-bold ${
                             p.unidad_negocio?.includes('Dairy') ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
@@ -511,6 +523,11 @@ export default function PresupuestoView() {
                             {p.unidad_negocio?.includes('Dairy') ? 'DQ' : 'KFC'}
                           </span>
                           {p.tienda}
+                          {p.saldo < 0 && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white ml-1 animate-pulse">
+                              ⚠️ ALERTA
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>{MESES[p.mes - 1]}</td>
