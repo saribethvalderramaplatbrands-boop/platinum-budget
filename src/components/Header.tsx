@@ -58,7 +58,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 }}
               />
               <img 
-                src="/kfc-logo.png" 
+                src="https://ojrtrfbikapdqngokxvj.supabase.co/storage/v1/object/public/assets/kfc-logo.png" 
                 alt="KFC" 
                 className="h-6 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
                 onError={(e) => {

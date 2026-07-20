@@ -146,7 +146,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
                 style={{ backgroundColor: '#fee2e2' }}
                 title="Kentucky Fried Chicken"
               >
-                <img src="/kfc-logo.png" alt="KFC" className="h-4 w-auto object-contain" style={{ filter: 'grayscale(0.3)' }} />
+                <img src="https://ojrtrfbikapdqngokxvj.supabase.co/storage/v1/object/public/assets/kfc-logo.png" alt="KFC" className="h-4 w-auto object-contain" style={{ filter: 'grayscale(0.3)' }} />
               </div>
             </div>
             <p className="text-[9px] text-slate-400 mt-1">Platinum Brands</p>
