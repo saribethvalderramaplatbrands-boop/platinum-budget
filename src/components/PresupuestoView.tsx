@@ -314,6 +314,17 @@ export default function PresupuestoView() {
     return ''
   }
 
+  // NEW: Get full row background color for negative saldo
+  const getRowStyle = (saldo: number, presupuesto: number, isEven: boolean) => {
+    if (saldo < 0) {
+      return { backgroundColor: '#fef2f2', borderLeft: '4px solid #dc2626' } // Red background + red left border
+    }
+    if (presupuesto > 0 && (presupuesto - saldo) / presupuesto > 0.9) {
+      return { backgroundColor: '#fffbeb', borderLeft: '4px solid #d97706' } // Amber background
+    }
+    return { backgroundColor: isEven ? 'white' : '#f8fafc', borderLeft: '4px solid transparent' }
+  }
+
   const unidadesEnResultados = [...new Set(presupuestos.map(p => p.unidad_negocio))]
   const hayDQ = unidadesEnResultados.some(u => u?.includes('Dairy'))
   const hayKFC = unidadesEnResultados.some(u => u?.includes('Kentucky'))
@@ -488,7 +499,7 @@ export default function PresupuestoView() {
                       onDoubleClick={() => handleRowDoubleClick(p)} 
                       title="Doble clic para ver detalle"
                       style={{ 
-                        backgroundColor: isEven ? 'white' : '#f8fafc',
+                        ...getRowStyle(p.saldo, p.presupuesto_asignado, isEven),
                         borderBottom: '1px solid #e2e8f0'
                       }}
                     >
