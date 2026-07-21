@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { Filter, Search, AlertCircle, CheckCircle2, Clock, Save, X, Trash2, MoreVertical, Edit3, Receipt, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Download } from 'lucide-react'
+import { Filter, Search, AlertCircle, CheckCircle2, Clock, Save, X, Trash2, MoreVertical, Edit3, Receipt, ChevronLeft, ChevronRight, ChevronFirst, ChevronLast, Download, CheckCheck, Eraser } from 'lucide-react'
 import { useGastos, useTiendas, useProveedores } from '../hooks/useSupabase'
+import { supabase } from '../lib/supabase'
 import * as XLSX from 'xlsx'
 
 const PERIODOS = [
@@ -45,6 +46,17 @@ const formatDate = (dateStr: string) => {
   return `${day}/${month}/${year.slice(2)}`
 }
 
+// Misma lógica de estatus que usa GastosDiarios al registrar
+function calcularEstatus(orden_compra: string | null, factura: string | null): string {
+  if (factura && factura.trim() !== '') {
+    return 'Completado'
+  } else if (orden_compra && orden_compra.trim() !== '') {
+    return 'Pendiente Factura'
+  } else {
+    return 'Pendiente OC'
+  }
+}
+
 export default function GastosTable() {
   const { 
     gastos, 
@@ -83,7 +95,36 @@ export default function GastosTable() {
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
 
-  const applyFilters = () => {
+  // === SELECCIÓN MÚLTIPLE Y EDICIÓN MASIVA ===
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkOC, setBulkOC] = useState('')
+  const [bulkFactura, setBulkFactura] = useState('')
+  const [applying, setApplying] = useState(false)
+
+  const toggleSelect = (id: string) => {
+    setSelected(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    const allVisibleSelected = gastos.length > 0 && gastos.every(g => selected.has(g.id))
+    setSelected(prev => {
+      const next = new Set(prev)
+      gastos.forEach(g => {
+        if (allVisibleSelected) next.delete(g.id)
+        else next.add(g.id)
+      })
+      return next
+    })
+  }
+
+  const clearSelection = () => setSelected(new Set())
+
+  const getActiveFilters = () => {
     const activeFilters: any = {}
     if (filters.clasificacion) activeFilters.clasificacion = filters.clasificacion
     if (filters.proveedor_id) activeFilters.proveedor_id = filters.proveedor_id
@@ -91,7 +132,90 @@ export default function GastosTable() {
     if (filters.tienda_id) activeFilters.tienda_id = filters.tienda_id
     if (filters.estatus) activeFilters.estatus = filters.estatus
     if (filters.search) activeFilters.search = filters.search
-    fetchGastos(activeFilters, 0)
+    return activeFilters
+  }
+
+  const refreshCurrentPage = () => {
+    fetchGastos(getActiveFilters(), page)
+  }
+
+  // Aplicar OC y/o factura a todas las filas seleccionadas
+  const handleBulkApply = async () => {
+    const oc = bulkOC.trim()
+    const fact = bulkFactura.trim()
+    if (!oc && !fact) {
+      alert('Escribe un número de OC y/o factura para aplicar a las filas seleccionadas')
+      return
+    }
+
+    setApplying(true)
+    try {
+      const ids = Array.from(selected)
+
+      // Traemos los valores actuales de esas filas (por si seleccionaste en varias páginas)
+      const { data: rows, error: fetchErr } = await supabase
+        .from('gastos_diarios')
+        .select('id, orden_compra, factura')
+        .in('id', ids)
+
+      if (fetchErr) {
+        alert('Error al leer los registros: ' + fetchErr.message)
+        setApplying(false)
+        return
+      }
+
+      const results = await Promise.all((rows || []).map(r => {
+        const newOC = oc !== '' ? oc : (r.orden_compra || null)
+        const newFact = fact !== '' ? fact : (r.factura || null)
+        return supabase
+          .from('gastos_diarios')
+          .update({
+            orden_compra: newOC,
+            factura: newFact,
+            estatus: calcularEstatus(newOC, newFact),
+          })
+          .eq('id', r.id)
+      }))
+
+      const errores = results.filter(r => r.error)
+      if (errores.length > 0) {
+        alert(`Se actualizaron ${(rows || []).length - errores.length} de ${(rows || []).length} registros. Hubo ${errores.length} errores.`)
+      }
+
+      clearSelection()
+      setBulkOC('')
+      setBulkFactura('')
+      refreshCurrentPage()
+    } finally {
+      setApplying(false)
+    }
+  }
+
+  // Quitar OC y factura de todas las filas seleccionadas
+  const handleBulkClear = async () => {
+    if (!confirm(`¿Quitar la OC y la factura de los ${selected.size} registros seleccionados? Quedarán como "Pendiente OC".`)) return
+
+    setApplying(true)
+    try {
+      const { error } = await supabase
+        .from('gastos_diarios')
+        .update({ orden_compra: null, factura: null, estatus: 'Pendiente OC' })
+        .in('id', Array.from(selected))
+
+      if (error) {
+        alert('Error: ' + error.message)
+      }
+
+      clearSelection()
+      refreshCurrentPage()
+    } finally {
+      setApplying(false)
+    }
+  }
+  // === FIN SELECCIÓN MÚLTIPLE ===
+
+  const applyFilters = () => {
+    fetchGastos(getActiveFilters(), 0)
   }
 
   const clearFilters = () => {
@@ -109,15 +233,7 @@ export default function GastosTable() {
   const handleExport = async () => {
     setExporting(true)
     try {
-      const activeFilters: any = {}
-      if (filters.clasificacion) activeFilters.clasificacion = filters.clasificacion
-      if (filters.proveedor_id) activeFilters.proveedor_id = filters.proveedor_id
-      if (filters.periodo && filters.periodo !== 'Todos') activeFilters.periodo = filters.periodo
-      if (filters.tienda_id) activeFilters.tienda_id = filters.tienda_id
-      if (filters.estatus) activeFilters.estatus = filters.estatus
-      if (filters.search) activeFilters.search = filters.search
-
-      const data = await exportGastos(activeFilters)
+      const data = await exportGastos(getActiveFilters())
 
       if (data.length === 0) {
         alert('No hay registros para exportar con los filtros actuales')
@@ -251,9 +367,10 @@ export default function GastosTable() {
 
   const fromItem = page * pageSize + 1
   const toItem = Math.min((page + 1) * pageSize, totalCount)
+  const allVisibleSelected = gastos.length > 0 && gastos.every(g => selected.has(g.id))
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    <div className={`space-y-4 animate-fade-in ${selected.size > 0 ? 'pb-28' : ''}`}>
       <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -365,12 +482,24 @@ export default function GastosTable() {
           Mostrando <strong className="text-slate-700">{fromItem}-{toItem}</strong> de <strong className="text-slate-700">{totalCount}</strong> registros
           {filters.periodo && <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">Periodo: {filters.periodo}</span>}
         </span>
+        <span className="text-xs text-slate-400 hidden sm:block">
+          💡 Marca las casillas para editar varias filas a la vez
+        </span>
       </div>
 
       <div className="overflow-x-auto card-solid p-0 shadow-lg">
         <table className="w-full">
           <thead>
             <tr className="bg-gradient-to-r from-slate-100 to-blue-50/50 border-b-2 border-blue-200">
+              <th className="px-3 py-3 text-center w-10">
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 accent-blue-600 cursor-pointer align-middle"
+                  title="Seleccionar todas las de esta página"
+                />
+              </th>
               <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Fecha</th>
               <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Periodo</th>
               <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Tienda</th>
@@ -386,7 +515,7 @@ export default function GastosTable() {
           <tbody>
             {gastos.length === 0 ? (
               <tr>
-                <td colSpan={10} className="text-center py-16 text-slate-400">
+                <td colSpan={11} className="text-center py-16 text-slate-400">
                   <Receipt className="w-12 h-12 mx-auto mb-3 opacity-30" />
                   <p className="text-lg font-medium">No hay gastos registrados</p>
                   <p className="text-sm mt-1">Prueba ajustando los filtros o agrega un nuevo gasto</p>
@@ -399,14 +528,25 @@ export default function GastosTable() {
                 const isMenuOpen = menuOpen === gasto.id
                 const clasifStyle = getClasificacionStyle(gasto.clasificacion)
                 const isEven = index % 2 === 0
+                const isSelected = selected.has(gasto.id)
 
                 return (
                   <tr 
                     key={gasto.id} 
-                    className={`transition-all duration-150 border-b border-slate-100 ${isEditing ? 'bg-blue-50/80 ring-2 ring-blue-200' : isEven ? 'bg-white hover:bg-blue-50/30' : 'bg-slate-50/50 hover:bg-blue-50/40'}`}
+                    className={`transition-all duration-150 border-b border-slate-100 ${isEditing ? 'bg-blue-50/80 ring-2 ring-blue-200' : isSelected ? 'bg-blue-100/60 hover:bg-blue-100/80' : isEven ? 'bg-white hover:bg-blue-50/30' : 'bg-slate-50/50 hover:bg-blue-50/40'}`}
                     onDoubleClick={() => !isEditing && handleDoubleClick(gasto)}
                     title="Doble clic para editar"
                   >
+                    <td className="px-3 py-3 text-center" onClick={e => e.stopPropagation()} onDoubleClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(gasto.id)}
+                        className="w-4 h-4 accent-blue-600 cursor-pointer align-middle"
+                        title="Seleccionar esta fila"
+                      />
+                    </td>
+
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-slate-600 font-medium">{formatDate(gasto.fecha)}</td>
 
                     <td className="px-4 py-3 whitespace-nowrap">
@@ -609,6 +749,70 @@ export default function GastosTable() {
               title="Ultima pagina"
             >
               <ChevronLast className="w-4 h-4 text-slate-600" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* BARRA FLOTANTE DE EDICIÓN MASIVA */}
+      {selected.size > 0 && (
+        <div 
+          className="fixed bottom-4 left-1/2 z-50 animate-fade-in"
+          style={{ transform: 'translateX(-50%)' }}
+        >
+          <div 
+            className="flex flex-col sm:flex-row items-center gap-3 bg-white rounded-2xl border border-blue-200 px-4 py-3"
+            style={{ boxShadow: '0 20px 40px -10px rgba(37, 99, 235, 0.25), 0 0 0 1px rgba(37, 99, 235, 0.08)' }}
+          >
+            <span className="flex items-center gap-2 text-sm font-bold text-blue-700 whitespace-nowrap">
+              <CheckCheck className="w-5 h-5" />
+              {selected.size} seleccionada{selected.size > 1 ? 's' : ''}
+            </span>
+
+            <input
+              type="text"
+              value={bulkOC}
+              onChange={e => setBulkOC(e.target.value)}
+              placeholder="N° de OC (opcional)"
+              className="input-field py-1.5 text-sm w-44"
+              disabled={applying}
+            />
+            <input
+              type="text"
+              value={bulkFactura}
+              onChange={e => setBulkFactura(e.target.value)}
+              placeholder="N° de Factura (opcional)"
+              className="input-field py-1.5 text-sm w-44"
+              disabled={applying}
+            />
+
+            <button
+              onClick={handleBulkApply}
+              disabled={applying}
+              className="btn-primary py-1.5 flex items-center gap-1.5 whitespace-nowrap"
+              title="Aplica la OC y/o factura escrita a todas las filas seleccionadas"
+            >
+              <Save className="w-4 h-4" />
+              {applying ? 'Aplicando...' : 'Aplicar a seleccionadas'}
+            </button>
+
+            <button
+              onClick={handleBulkClear}
+              disabled={applying}
+              className="btn-secondary py-1.5 flex items-center gap-1.5 text-red-600 border-red-200 hover:bg-red-50 whitespace-nowrap"
+              title="Quita la OC y la factura de las filas seleccionadas"
+            >
+              <Eraser className="w-4 h-4" />
+              Limpiar docs
+            </button>
+
+            <button
+              onClick={() => { clearSelection(); setBulkOC(''); setBulkFactura('') }}
+              disabled={applying}
+              className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+              title="Cancelar selección"
+            >
+              <X className="w-4 h-4 text-slate-500" />
             </button>
           </div>
         </div>
