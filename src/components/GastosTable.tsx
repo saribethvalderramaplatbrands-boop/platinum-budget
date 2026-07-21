@@ -370,7 +370,7 @@ export default function GastosTable() {
   const allVisibleSelected = gastos.length > 0 && gastos.every(g => selected.has(g.id))
 
   return (
-    <div className={`space-y-4 animate-fade-in ${selected.size > 0 ? 'pb-28' : ''}`}>
+    <div className="space-y-4 animate-fade-in">
       <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -754,12 +754,9 @@ export default function GastosTable() {
         </div>
       )}
 
-      {/* BARRA FLOTANTE DE EDICIÓN MASIVA */}
+      {/* BARRA FLOTANTE DE EDICIÓN MASIVA (pegada a la izquierda, alineada con la tabla) */}
       {selected.size > 0 && (
-        <div 
-          className="fixed bottom-4 left-1/2 z-50 animate-fade-in"
-          style={{ transform: 'translateX(-50%)' }}
-        >
+        <div className="sticky bottom-4 z-50 flex justify-start animate-fade-in">
           <div 
             className="flex flex-col sm:flex-row items-center gap-3 bg-white rounded-2xl border border-blue-200 px-4 py-3"
             style={{ boxShadow: '0 20px 40px -10px rgba(37, 99, 235, 0.25), 0 0 0 1px rgba(37, 99, 235, 0.08)' }}
