@@ -91,6 +91,7 @@ export default function GastosTable() {
     orden_compra: '',
     factura: '',
     periodo: '',
+    monto: '',
   })
   const [menuOpen, setMenuOpen] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
@@ -298,6 +299,23 @@ export default function GastosTable() {
   }
 
   const handleSave = async (id: string) => {
+    // Validar y actualizar el monto directo en la base de datos
+    const montoNum = parseFloat(editData.monto)
+    if (isNaN(montoNum) || montoNum < 0) {
+      alert('El monto debe ser un número válido (ej. 150.50)')
+      return
+    }
+
+    const { error: montoError } = await supabase
+      .from('gastos_diarios')
+      .update({ monto: montoNum })
+      .eq('id', id)
+
+    if (montoError) {
+      alert('Error al actualizar el monto: ' + montoError.message)
+      return
+    }
+
     await updateGasto(id, {
       orden_compra: editData.orden_compra || null,
       factura: editData.factura || null,
@@ -315,7 +333,7 @@ export default function GastosTable() {
 
   const handleCancel = () => {
     setEditingId(null)
-    setEditData({ orden_compra: '', factura: '', periodo: '' })
+    setEditData({ orden_compra: '', factura: '', periodo: '', monto: '' })
   }
 
   const getTiendaName = (tiendaId: string) => {
@@ -580,7 +598,23 @@ export default function GastosTable() {
                     </td>
 
                     <td className="px-4 py-3 text-right whitespace-nowrap">
-                      <span className="text-sm font-bold text-slate-800">{formatMoney(gasto.monto)}</span>
+                      {isEditing ? (
+                        <div>
+                          <label className="block text-xs font-medium text-slate-600 mb-1 text-left">Monto:</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={editData.monto}
+                            onChange={e => setEditData(prev => ({ ...prev, monto: e.target.value }))}
+                            placeholder="0.00"
+                            className="input-field text-xs py-1 px-2 w-28 text-right"
+                            title="Editar monto"
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-sm font-bold text-slate-800">{formatMoney(gasto.monto)}</span>
+                      )}
                     </td>
 
                     <td className="px-4 py-3 whitespace-nowrap">
