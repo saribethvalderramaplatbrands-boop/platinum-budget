@@ -355,7 +355,7 @@ export default function CalendarioMantenimiento() {
             monto: parseFloat(formData.monto_estimado),
             clasificacion: 'Servicios Fijos',
             proveedor_id: formData.proveedor_id || null,
-            estatus: 'Completado',
+            estatus: 'Pendiente OC',
             orden_compra: null,
             factura: null,
             gerente_area: tienda?.gerente_area || '',
@@ -653,7 +653,9 @@ export default function CalendarioMantenimiento() {
         clasificacion: 'Servicios Fijos',
         proveedor_id: mantenimiento.proveedor_id,
         periodo: MESES[mesIndex],
-        estatus: 'Completado'
+        estatus: 'Pendiente OC',
+        orden_compra: null,
+        factura: null
       }])
       .select()
 
