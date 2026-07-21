@@ -294,6 +294,7 @@ export default function GastosTable() {
       orden_compra: gasto.orden_compra || '',
       factura: gasto.factura || '',
       periodo: gasto.periodo || '',
+      monto: gasto.monto != null ? String(gasto.monto) : '',
     })
     setMenuOpen(null)
   }
