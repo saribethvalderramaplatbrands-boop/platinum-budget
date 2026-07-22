@@ -22,6 +22,7 @@ const CLASIFICACION_COLORS: Record<string, { bg: string; text: string; border: s
   'LETRERO': { bg: 'bg-violet-100', text: 'text-violet-800', border: 'border-violet-200' },
   'ACERO INOXIDABLE': { bg: 'bg-slate-100', text: 'text-slate-800', border: 'border-slate-200' },
   'SERVICIOS FIJOS': { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-200' },
+  'CERRAJERIA': { bg: 'bg-teal-100', text: 'text-teal-800', border: 'border-teal-200' },
 }
 
 const ESTATUS_COLORS = {
@@ -469,7 +470,7 @@ export default function GastosTable() {
               className="input-field"
             >
               <option value="">Todas las clasificaciones</option>
-              {['INFRAESTRUCTURA', 'PLOMERIA', 'ALARMA ROBO', 'ALARMA INCENDIO', 'EXTINTORES', 'EQUIPO', 'REFRIGERACION', 'EBANISTERIA', 'GAS', 'LETRERO', 'ACERO INOXIDABLE', 'SERVICIOS FIJOS'].map(c => (
+              {['INFRAESTRUCTURA', 'PLOMERIA', 'ALARMA ROBO', 'ALARMA INCENDIO', 'EXTINTORES', 'EQUIPO', 'REFRIGERACION', 'EBANISTERIA', 'GAS', 'LETRERO', 'ACERO INOXIDABLE', 'SERVICIOS FIJOS', 'CERRAJERIA'].map(c => (
                 <option key={c} value={c}>{c}</option>
               ))}
             </select>
