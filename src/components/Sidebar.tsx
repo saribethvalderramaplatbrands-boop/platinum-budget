@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { X, LayoutDashboard, Receipt, PieChart, FileSpreadsheet, CalendarCheck, TrendingUp, Wrench, ChevronLeft, ChevronRight } from 'lucide-react'
+import { X, LayoutDashboard, Receipt, PieChart, FileSpreadsheet, CalendarCheck, TrendingUp, Wrench, ChevronLeft, ChevronRight, PackagePlus } from 'lucide-react'
 import { useState } from 'react'
 
 interface SidebarProps {
@@ -15,6 +15,7 @@ const menuItems = [
   { path: '/presupuesto', label: 'Presupuesto', icon: PieChart, color: 'violet', accent: '#7c3aed', bgAccent: '#f5f3ff' },
   { path: '/amortizaciones', label: 'Amortizaciones', icon: FileSpreadsheet, color: 'orange', accent: '#ea580c', bgAccent: '#fff7ed' },
   { path: '/cierre-mes', label: 'Cierre de Mes', icon: CalendarCheck, color: 'rose', accent: '#e11d48', bgAccent: '#fff1f2' },
+  { path: '/carga-gastos', label: 'Carga de Gastos', icon: PackagePlus, color: 'teal', accent: '#0d9488', bgAccent: '#f0fdfa' },
   { path: '/mantenimientos', label: 'Mantenimientos', icon: Wrench, color: 'violet', accent: '#7c3aed', bgAccent: '#f5f3ff' },
   { path: '/planificador', label: 'Planificador', icon: TrendingUp, color: 'cyan', accent: '#0891b2', bgAccent: '#ecfeff' },
 ]
