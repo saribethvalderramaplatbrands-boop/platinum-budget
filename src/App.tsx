@@ -8,6 +8,7 @@ import GastosDiarios from './components/GastosDiarios'
 import PresupuestoView from './components/PresupuestoView'
 import AmortizacionesUpload from './components/AmortizacionesUpload'
 import CierreMesView from './components/CierreMesView'
+import CargaGastosView from './components/CargaGastosView'
 import Planificador from './components/Planificador'
 import CalendarioMantenimiento from './components/CalendarioMantenimiento'
 
@@ -45,6 +46,11 @@ function App() {
             <Route path="/cierre-mes" element={
               <PinGuard title="Cierre de Mes">
                 <CierreMesView />
+              </PinGuard>
+            } />
+            <Route path="/carga-gastos" element={
+              <PinGuard title="Carga de Gastos">
+                <CargaGastosView />
               </PinGuard>
             } />
 
