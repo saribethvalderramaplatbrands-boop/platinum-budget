@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useCallback } from 'react'
 import type { DatosTienda } from '../types'
 import type { Tienda } from '../data/tiendas'
 import CeldaInput from './CeldaInput'
@@ -6,31 +6,11 @@ import CeldaInput from './CeldaInput'
 interface TablaTiendasProps {
   gerente: string
   tiendas: Tienda[]
+  datos: DatosTienda[]
+  onUpdateDato: (tiendaIndex: number, campo: keyof DatosTienda, valor: number) => void
 }
 
-const EMPTY_DATOS: DatosTienda = {
-  ventaNeta: 0, presupuestoVentas: 0, ventas2025: 0,
-  transaccionesActuales: 0, presupuestoTransacciones: 0, transacciones2025: 0,
-  ticketPromedio: 0, presupuestoTicket: 0,
-  kioskos: 0, kioskoTrx: 0, localLlevar: 0, localLlevarTrx: 0,
-  autoservicio: 0, autoservicioTrx: 0, domicilio: 0, domicilioTrx: 0,
-  dayPartApertura: 0, dayPart12a3: 0, dayPart3a6: 0, dayPart6a9: 0, dayPart9aCierre: 0,
-  borrantes: 0, notasCredito: 0, notasCreditoCantidad: 0,
-  descuentosEmpleados: 0, descuentosJubilados: 0,
-  personalEntrenamiento: 0, theVault: 0,
-  manpowerAprobado: 0, empleadosActivos: 0, empleadosVacaciones: 0, gerentesActivos: 0,
-  costoManoObra: 0, horasColaboradores: 0, horasInasistencia: 0, horasExtras: 0,
-  costoSemanal: 0, costoTeorico: 0, merma: 0, gap: 0,
-  tiempoAutoSegundos: 0, tiempoAutoDia: 0, dp1: 0, dp2: 0, dp3: 0, dp4: 0, dp5: 0,
-  roccL1: 0, roccL3: 0,
-  penalizacionesPct: 0, montoPenalizado: 0, tiempoCocina: 0,
-}
-
-// Funciones de cálculo
-function calcularTotalesFila(
-  tiendasDatos: DatosTienda[],
-  campo: keyof DatosTienda
-): number {
+function calcularTotalesFila(tiendasDatos: DatosTienda[], campo: keyof DatosTienda): number {
   if (tiendasDatos.length === 0) return 0
 
   const camposSuma: (keyof DatosTienda)[] = [
@@ -76,18 +56,10 @@ const getColorVariacion = (val: number): string => {
   return 'text-gray-500'
 }
 
-export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
-  const [datos, setDatos] = useState<DatosTienda[]>(
-    tiendas.map(() => ({ ...EMPTY_DATOS }))
-  )
-
+export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: TablaTiendasProps) {
   const updateDato = useCallback((tiendaIndex: number, campo: keyof DatosTienda, valor: number) => {
-    setDatos(prev => {
-      const next = [...prev]
-      next[tiendaIndex] = { ...next[tiendaIndex], [campo]: valor }
-      return next
-    })
-  }, [])
+    onUpdateDato(tiendaIndex, campo, valor)
+  }, [onUpdateDato])
 
   const colWidth = 280
   const tiendaWidth = 140
@@ -97,11 +69,9 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
   return (
     <div className="overflow-x-auto border border-gray-300 rounded-lg shadow-sm">
       <div className="min-w-max">
-        {/* ENCABEZADO: Nombres de tiendas */}
+        {/* ENCABEZADO */}
         <div className="grid bg-red-700 text-white" style={{ gridTemplateColumns: gridTemplate }}>
-          <div className="px-3 py-2 text-xs font-bold border-r border-red-600">
-            GERENTE: {gerente}
-          </div>
+          <div className="px-3 py-2 text-xs font-bold border-r border-red-600">GERENTE: {gerente}</div>
           {tiendas.map(t => (
             <div key={t.codigo} className="px-2 py-2 text-center text-xs font-bold border-r border-red-600">
               <div>{t.nombre}</div>
@@ -116,7 +86,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           <div className="px-3 py-2 text-xs font-semibold text-gray-700 border-r border-b border-gray-300">VENTAS NETA</div>
           {tiendas.map((_, i) => (
             <div key={i} className="border-r border-b border-gray-300">
-              <CeldaInput value={datos[i].ventaNeta} onChange={(v) => updateDato(i, 'ventaNeta', v)} />
+              <CeldaInput value={datos[i]?.ventaNeta || 0} onChange={(v) => updateDato(i, 'ventaNeta', v)} />
             </div>
           ))}
           <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-300">
@@ -129,7 +99,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           <div className="px-3 py-2 text-xs font-semibold text-gray-700 border-r border-b border-gray-300">PRESUPUESTO DE VENTAS</div>
           {tiendas.map((_, i) => (
             <div key={i} className="border-r border-b border-gray-300">
-              <CeldaInput value={datos[i].presupuestoVentas} onChange={(v) => updateDato(i, 'presupuestoVentas', v)} />
+              <CeldaInput value={datos[i]?.presupuestoVentas || 0} onChange={(v) => updateDato(i, 'presupuestoVentas', v)} />
             </div>
           ))}
           <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-300">
@@ -141,7 +111,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
         <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
           <div className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-r border-b border-gray-200">VARIACIÓN VS PPTO</div>
           {tiendas.map((_, i) => {
-            const val = datos[i].presupuestoVentas > 0 ? (datos[i].ventaNeta / datos[i].presupuestoVentas) - 1 : 0
+            const val = (datos[i]?.presupuestoVentas || 0) > 0 ? ((datos[i]?.ventaNeta || 0) / datos[i].presupuestoVentas) - 1 : 0
             return (
               <div key={i} className={`px-2 py-1.5 text-right text-xs font-mono border-r border-b border-gray-200 ${getColorVariacion(val)}`}>
                 {(val * 100).toFixed(2)}%
@@ -164,7 +134,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           <div className="px-3 py-2 text-xs font-semibold text-gray-700 border-r border-b border-gray-300">VENTAS 2025</div>
           {tiendas.map((_, i) => (
             <div key={i} className="border-r border-b border-gray-300">
-              <CeldaInput value={datos[i].ventas2025} onChange={(v) => updateDato(i, 'ventas2025', v)} />
+              <CeldaInput value={datos[i]?.ventas2025 || 0} onChange={(v) => updateDato(i, 'ventas2025', v)} />
             </div>
           ))}
           <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-300">
@@ -176,7 +146,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
         <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
           <div className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-r border-b border-gray-200">VARIACIÓN 2025 % VS 2026</div>
           {tiendas.map((_, i) => {
-            const val = datos[i].ventas2025 > 0 ? (datos[i].ventaNeta / datos[i].ventas2025) - 1 : 0
+            const val = (datos[i]?.ventas2025 || 0) > 0 ? ((datos[i]?.ventaNeta || 0) / datos[i].ventas2025) - 1 : 0
             return (
               <div key={i} className={`px-2 py-1.5 text-right text-xs font-mono border-r border-b border-gray-200 ${getColorVariacion(val)}`}>
                 {(val * 100).toFixed(2)}%
@@ -194,15 +164,14 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         </div>
 
-        {/* SEPARADOR */}
         <div className="h-3 bg-white" />
 
-        {/* TRANSACCIONES ACTUALES */}
+        {/* TRANSACCIONES */}
         <div className="grid bg-blue-50" style={{ gridTemplateColumns: gridTemplate }}>
           <div className="px-3 py-2 text-xs font-semibold text-blue-800 border-r border-b border-blue-200">TRANSACCIONES ACTUALES</div>
           {tiendas.map((_, i) => (
             <div key={i} className="border-r border-b border-blue-200">
-              <CeldaInput value={datos[i].transaccionesActuales} onChange={(v) => updateDato(i, 'transaccionesActuales', v)} />
+              <CeldaInput value={datos[i]?.transaccionesActuales || 0} onChange={(v) => updateDato(i, 'transaccionesActuales', v)} />
             </div>
           ))}
           <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-blue-100 border-b border-blue-200">
@@ -210,12 +179,11 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         </div>
 
-        {/* PRESUPUESTO TRANSACCIONES */}
         <div className="grid bg-blue-50" style={{ gridTemplateColumns: gridTemplate }}>
           <div className="px-3 py-2 text-xs font-semibold text-blue-800 border-r border-b border-blue-200">PRESUPUESTO DE TRANSACCIONES</div>
           {tiendas.map((_, i) => (
             <div key={i} className="border-r border-b border-blue-200">
-              <CeldaInput value={datos[i].presupuestoTransacciones} onChange={(v) => updateDato(i, 'presupuestoTransacciones', v)} />
+              <CeldaInput value={datos[i]?.presupuestoTransacciones || 0} onChange={(v) => updateDato(i, 'presupuestoTransacciones', v)} />
             </div>
           ))}
           <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-blue-100 border-b border-blue-200">
@@ -223,11 +191,10 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         </div>
 
-        {/* VARIACIÓN TRX VS PPTO */}
         <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
           <div className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-r border-b border-gray-200">VARIACIÓN VS PPTO</div>
           {tiendas.map((_, i) => {
-            const val = datos[i].presupuestoTransacciones > 0 ? (datos[i].transaccionesActuales / datos[i].presupuestoTransacciones) - 1 : 0
+            const val = (datos[i]?.presupuestoTransacciones || 0) > 0 ? ((datos[i]?.transaccionesActuales || 0) / datos[i].presupuestoTransacciones) - 1 : 0
             return (
               <div key={i} className={`px-2 py-1.5 text-right text-xs font-mono border-r border-b border-gray-200 ${getColorVariacion(val)}`}>
                 {(val * 100).toFixed(2)}%
@@ -245,12 +212,11 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         </div>
 
-        {/* TRANSACCIONES 2025 */}
         <div className="grid bg-blue-50" style={{ gridTemplateColumns: gridTemplate }}>
           <div className="px-3 py-2 text-xs font-semibold text-blue-800 border-r border-b border-blue-200">TRANSACCIONES 2025</div>
           {tiendas.map((_, i) => (
             <div key={i} className="border-r border-b border-blue-200">
-              <CeldaInput value={datos[i].transacciones2025} onChange={(v) => updateDato(i, 'transacciones2025', v)} />
+              <CeldaInput value={datos[i]?.transacciones2025 || 0} onChange={(v) => updateDato(i, 'transacciones2025', v)} />
             </div>
           ))}
           <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-blue-100 border-b border-blue-200">
@@ -258,11 +224,10 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         </div>
 
-        {/* VARIACIÓN TRX 2025 VS 2026 */}
         <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
           <div className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-r border-b border-gray-200">VARIACIÓN 2025 VS 2026</div>
           {tiendas.map((_, i) => {
-            const val = datos[i].transacciones2025 > 0 ? (datos[i].transaccionesActuales / datos[i].transacciones2025) - 1 : 0
+            const val = (datos[i]?.transacciones2025 || 0) > 0 ? ((datos[i]?.transaccionesActuales || 0) / datos[i].transacciones2025) - 1 : 0
             return (
               <div key={i} className={`px-2 py-1.5 text-right text-xs font-mono border-r border-b border-gray-200 ${getColorVariacion(val)}`}>
                 {(val * 100).toFixed(2)}%
@@ -280,14 +245,13 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         </div>
 
-        {/* SEPARADOR */}
         <div className="h-3 bg-white" />
 
         {/* TICKET PROM. */}
         <div className="grid bg-purple-50" style={{ gridTemplateColumns: gridTemplate }}>
           <div className="px-3 py-2 text-xs font-semibold text-purple-800 border-r border-b border-purple-200">TICKET PROM.</div>
           {tiendas.map((_, i) => {
-            const val = datos[i].transaccionesActuales > 0 ? datos[i].ventaNeta / datos[i].transaccionesActuales : 0
+            const val = (datos[i]?.transaccionesActuales || 0) > 0 ? (datos[i]?.ventaNeta || 0) / datos[i].transaccionesActuales : 0
             return (
               <div key={i} className="px-2 py-1.5 text-right text-sm font-mono bg-yellow-50 border-r border-b border-purple-200">{val.toFixed(2)}</div>
             )
@@ -301,12 +265,11 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         </div>
 
-        {/* PRESUPUESTO TICKET */}
         <div className="grid bg-purple-50" style={{ gridTemplateColumns: gridTemplate }}>
           <div className="px-3 py-2 text-xs font-semibold text-purple-800 border-r border-b border-purple-200">PRESUPUESTO TICKET</div>
           {tiendas.map((_, i) => (
             <div key={i} className="border-r border-b border-purple-200">
-              <CeldaInput value={datos[i].presupuestoTicket} onChange={(v) => updateDato(i, 'presupuestoTicket', v)} />
+              <CeldaInput value={datos[i]?.presupuestoTicket || 0} onChange={(v) => updateDato(i, 'presupuestoTicket', v)} />
             </div>
           ))}
           <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-purple-100 border-b border-purple-200">
@@ -314,12 +277,11 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         </div>
 
-        {/* VARIACIÓN TICKET VS PPTO */}
         <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
           <div className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-r border-b border-gray-200">VARIACIÓN VS PPTO</div>
           {tiendas.map((_, i) => {
-            const ticket = datos[i].transaccionesActuales > 0 ? datos[i].ventaNeta / datos[i].transaccionesActuales : 0
-            const val = datos[i].presupuestoTicket > 0 ? (ticket / datos[i].presupuestoTicket) - 1 : 0
+            const ticket = (datos[i]?.transaccionesActuales || 0) > 0 ? (datos[i]?.ventaNeta || 0) / datos[i].transaccionesActuales : 0
+            const val = (datos[i]?.presupuestoTicket || 0) > 0 ? (ticket / datos[i].presupuestoTicket) - 1 : 0
             return (
               <div key={i} className={`px-2 py-1.5 text-right text-xs font-mono border-r border-b border-gray-200 ${getColorVariacion(val)}`}>
                 {(val * 100).toFixed(2)}%
@@ -345,7 +307,6 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         </div>
 
-        {/* SEPARADOR */}
         <div className="h-3 bg-white" />
 
         {/* CANALES */}
@@ -368,7 +329,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
               <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">{label}</div>
               {tiendas.map((_, i) => (
                 <div key={i} className="border-r border-b border-gray-200">
-                  <CeldaInput value={datos[i][key] as number} onChange={(v) => updateDato(i, key, v)} />
+                  <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} />
                 </div>
               ))}
               <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
@@ -378,9 +339,9 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
             <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
               <div className="px-3 py-1 text-xs text-gray-500 bg-gray-50 border-r border-b border-gray-200">%</div>
               {tiendas.map((_, i) => {
-                const totalVenta = datos[i].ventaNeta
-                const totalTrx = datos[i].transaccionesActuales
-                const val = key.includes('Trx') ? (totalTrx > 0 ? (datos[i][key] as number) / totalTrx : 0) : (totalVenta > 0 ? (datos[i][key] as number) / totalVenta : 0)
+                const totalVenta = datos[i]?.ventaNeta || 0
+                const totalTrx = datos[i]?.transaccionesActuales || 0
+                const val = key.includes('Trx') ? (totalTrx > 0 ? ((datos[i]?.[key] as number) || 0) / totalTrx : 0) : (totalVenta > 0 ? ((datos[i]?.[key] as number) || 0) / totalVenta : 0)
                 return (
                   <div key={i} className="px-2 py-1 text-right text-xs font-mono text-gray-600 border-r border-b border-gray-200">{(val * 100).toFixed(2)}%</div>
                 )
@@ -398,7 +359,6 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         ))}
 
-        {/* SEPARADOR */}
         <div className="h-3 bg-white" />
 
         {/* DAY PART */}
@@ -417,7 +377,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
             <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">{label}</div>
             {tiendas.map((_, i) => (
               <div key={i} className="border-r border-b border-gray-200">
-                <CeldaInput value={datos[i][key] as number} onChange={(v) => updateDato(i, key, v)} />
+                <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} />
               </div>
             ))}
             <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
@@ -426,7 +386,6 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         ))}
 
-        {/* SEPARADOR */}
         <div className="h-3 bg-white" />
 
         {/* INFO FINANCIERA */}
@@ -446,7 +405,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
               <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">{label}</div>
               {tiendas.map((_, i) => (
                 <div key={i} className="border-r border-b border-gray-200">
-                  <CeldaInput value={datos[i][key] as number} onChange={(v) => updateDato(i, key, v)} />
+                  <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} />
                 </div>
               ))}
               <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
@@ -457,7 +416,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
               <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
                 <div className="px-3 py-1 text-xs text-gray-500 bg-gray-50 border-r border-b border-gray-200">%</div>
                 {tiendas.map((_, i) => {
-                  const val = datos[i].ventaNeta > 0 ? (datos[i][key] as number) / datos[i].ventaNeta : 0
+                  const val = (datos[i]?.ventaNeta || 0) > 0 ? ((datos[i]?.[key] as number) || 0) / datos[i].ventaNeta : 0
                   return (
                     <div key={i} className="px-2 py-1 text-right text-xs font-mono text-gray-600 border-r border-b border-gray-200">{(val * 100).toFixed(3)}%</div>
                   )
@@ -474,7 +433,6 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         ))}
 
-        {/* SEPARADOR */}
         <div className="h-3 bg-white" />
 
         {/* ENTRENAMIENTO */}
@@ -490,7 +448,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
             <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">{label}</div>
             {tiendas.map((_, i) => (
               <div key={i} className="border-r border-b border-gray-200">
-                <CeldaInput value={datos[i][key] as number} onChange={(v) => updateDato(i, key, v)} type={key === 'theVault' ? 'percentage' : 'number'} />
+                <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} type={key === 'theVault' ? 'percentage' : 'number'} />
               </div>
             ))}
             <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
@@ -499,7 +457,6 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         ))}
 
-        {/* SEPARADOR */}
         <div className="h-3 bg-white" />
 
         {/* MANO DE OBRA */}
@@ -522,7 +479,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
               <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">{label}</div>
               {tiendas.map((_, i) => (
                 <div key={i} className="border-r border-b border-gray-200">
-                  <CeldaInput value={datos[i][key] as number} onChange={(v) => updateDato(i, key, v)} />
+                  <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} />
                 </div>
               ))}
               <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
@@ -533,7 +490,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
               <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
                 <div className="px-3 py-1 text-xs text-gray-500 bg-gray-50 border-r border-b border-gray-200">% Mano de Obra</div>
                 {tiendas.map((_, i) => {
-                  const val = datos[i].ventaNeta > 0 ? datos[i].costoManoObra / datos[i].ventaNeta : 0
+                  const val = (datos[i]?.ventaNeta || 0) > 0 ? (datos[i]?.costoManoObra || 0) / datos[i].ventaNeta : 0
                   return (
                     <div key={i} className="px-2 py-1 text-right text-xs font-mono text-gray-600 border-r border-b border-gray-200">{(val * 100).toFixed(2)}%</div>
                   )
@@ -551,7 +508,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
               <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
                 <div className="px-3 py-1 text-xs text-gray-500 bg-gray-50 border-r border-b border-gray-200">Productividad</div>
                 {tiendas.map((_, i) => {
-                  const val = datos[i].empleadosActivos > 0 ? datos[i].ventaNeta / datos[i].empleadosActivos : 0
+                  const val = (datos[i]?.empleadosActivos || 0) > 0 ? (datos[i]?.ventaNeta || 0) / datos[i].empleadosActivos : 0
                   return (
                     <div key={i} className="px-2 py-1 text-right text-xs font-mono text-gray-600 border-r border-b border-gray-200">{val.toFixed(2)}</div>
                   )
@@ -568,7 +525,6 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         ))}
 
-        {/* SEPARADOR */}
         <div className="h-3 bg-white" />
 
         {/* COSTOS */}
@@ -584,7 +540,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
             <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">{label}</div>
             {tiendas.map((_, i) => (
               <div key={i} className="border-r border-b border-gray-200">
-                <CeldaInput value={datos[i][key] as number} onChange={(v) => updateDato(i, key, v)} type="percentage" />
+                <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} type="percentage" />
               </div>
             ))}
             <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
@@ -593,11 +549,10 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         ))}
 
-        {/* Variación % */}
         <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
           <div className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-r border-b border-gray-200">Variación %</div>
           {tiendas.map((_, i) => {
-            const val = datos[i].costoSemanal - datos[i].costoTeorico
+            const val = (datos[i]?.costoSemanal || 0) - (datos[i]?.costoTeorico || 0)
             return (
               <div key={i} className={`px-2 py-1.5 text-right text-xs font-mono border-r border-b border-gray-200 ${getColorVariacion(val)}`}>
                 {(val * 100).toFixed(2)}%
@@ -620,7 +575,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
               <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">{label}</div>
               {tiendas.map((_, i) => (
                 <div key={i} className="border-r border-b border-gray-200">
-                  <CeldaInput value={datos[i][key] as number} onChange={(v) => updateDato(i, key, v)} />
+                  <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} />
                 </div>
               ))}
               <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
@@ -630,7 +585,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
             <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
               <div className="px-3 py-1 text-xs text-gray-500 bg-gray-50 border-r border-b border-gray-200">%</div>
               {tiendas.map((_, i) => {
-                const val = datos[i].ventaNeta > 0 ? (datos[i][key] as number) / datos[i].ventaNeta : 0
+                const val = (datos[i]?.ventaNeta || 0) > 0 ? ((datos[i]?.[key] as number) || 0) / datos[i].ventaNeta : 0
                 return (
                   <div key={i} className="px-2 py-1 text-right text-xs font-mono text-gray-600 border-r border-b border-gray-200">{(val * 100).toFixed(3)}%</div>
                 )
@@ -646,7 +601,6 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         ))}
 
-        {/* SEPARADOR */}
         <div className="h-3 bg-white" />
 
         {/* CLIENTES */}
@@ -667,7 +621,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
             <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">{label}</div>
             {tiendas.map((_, i) => (
               <div key={i} className="border-r border-b border-gray-200">
-                <CeldaInput value={datos[i][key] as number} onChange={(v) => updateDato(i, key, v)} />
+                <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} />
               </div>
             ))}
             <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
@@ -676,7 +630,6 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         ))}
 
-        {/* SEPARADOR */}
         <div className="h-3 bg-white" />
 
         {/* ROCC */}
@@ -692,7 +645,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
             <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">{label}</div>
             {tiendas.map((_, i) => (
               <div key={i} className="border-r border-b border-gray-200">
-                <CeldaInput value={datos[i][key] as number} onChange={(v) => updateDato(i, key, v)} />
+                <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} />
               </div>
             ))}
             <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
@@ -701,7 +654,6 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
           </div>
         ))}
 
-        {/* SEPARADOR */}
         <div className="h-3 bg-white" />
 
         {/* DOMICILIO */}
@@ -718,7 +670,7 @@ export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
             <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">{label}</div>
             {tiendas.map((_, i) => (
               <div key={i} className="border-r border-b border-gray-200">
-                <CeldaInput value={datos[i][key] as number} onChange={(v) => updateDato(i, key, v)} type={key === 'penalizacionesPct' ? 'percentage' : 'number'} />
+                <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} type={key === 'penalizacionesPct' ? 'percentage' : 'number'} />
               </div>
             ))}
             <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
