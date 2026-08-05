@@ -1,7 +1,12 @@
-import { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import Header from './components/Header'
-import Sidebar from './components/Sidebar'
+
+// === SELECTOR DE MÓDULOS ===
+import ModuleSelector from './components/ModuleSelector'
+
+// === LAYOUT DEL BUDGET ===
+import BudgetLayout from './components/BudgetLayout'
+
+// === PÁGINAS DEL BUDGET ===
 import PinGuard from './components/PinGuard'
 import Dashboard from './components/Dashboard'
 import GastosDiarios from './components/GastosDiarios'
@@ -12,53 +17,57 @@ import CargaGastosView from './components/CargaGastosView'
 import Planificador from './components/Planificador'
 import CalendarioMantenimiento from './components/CalendarioMantenimiento'
 
+// === AVANCE SEMANAL ===
+import AvanceLayout from './modules/avance-semanal/components/AvanceLayout'
+import AvanceDashboard from './modules/avance-semanal/pages/AvanceDashboard'
+import AvanceFormulario from './modules/avance-semanal/pages/AvanceFormulario'
+import AvanceReportes from './modules/avance-semanal/pages/AvanceReportes'
+
 function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      <Sidebar 
-        isOpen={sidebarOpen} 
-        onClose={() => setSidebarOpen(false)} 
-        isCollapsed={sidebarCollapsed}
-        onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
-      />
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-        <Header onMenuClick={() => setSidebarOpen(true)} />
-        <main className="flex-1 p-4 md:p-6 overflow-auto">
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/presupuesto" element={<PresupuestoView />} />
-            <Route path="/planificador" element={<Planificador />} />
-            <Route path="/mantenimientos" element={<CalendarioMantenimiento />} />
+    <Routes>
+      {/* Pantalla de bienvenida / selector de módulos */}
+      <Route path="/" element={<ModuleSelector />} />
 
-            <Route path="/gastos" element={
-              <PinGuard title="Gastos Diarios">
-                <GastosDiarios />
-              </PinGuard>
-            } />
-            <Route path="/amortizaciones" element={
-              <PinGuard title="Amortizaciones">
-                <AmortizacionesUpload />
-              </PinGuard>
-            } />
-            <Route path="/cierre-mes" element={
-              <PinGuard title="Cierre de Mes">
-                <CierreMesView />
-              </PinGuard>
-            } />
-            <Route path="/carga-gastos" element={
-              <PinGuard title="Carga de Gastos">
-                <CargaGastosView />
-              </PinGuard>
-            } />
+      {/* === RUTAS DEL PLATINUM BUDGET (con Sidebar + Header) === */}
+      <Route element={<BudgetLayout />}>
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/presupuesto" element={<PresupuestoView />} />
+        <Route path="/planificador" element={<Planificador />} />
+        <Route path="/mantenimientos" element={<CalendarioMantenimiento />} />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </main>
-      </div>
-    </div>
+        <Route path="/gastos" element={
+          <PinGuard title="Gastos Diarios">
+            <GastosDiarios />
+          </PinGuard>
+        } />
+        <Route path="/amortizaciones" element={
+          <PinGuard title="Amortizaciones">
+            <AmortizacionesUpload />
+          </PinGuard>
+        } />
+        <Route path="/cierre-mes" element={
+          <PinGuard title="Cierre de Mes">
+            <CierreMesView />
+          </PinGuard>
+        } />
+        <Route path="/carga-gastos" element={
+          <PinGuard title="Carga de Gastos">
+            <CargaGastosView />
+          </PinGuard>
+        } />
+      </Route>
+
+      {/* === RUTAS DEL AVANCE SEMANAL KFC === */}
+      <Route path="/avance-semanal" element={<AvanceLayout />}>
+        <Route index element={<AvanceDashboard />} />
+        <Route path="formulario" element={<AvanceFormulario />} />
+        <Route path="reportes" element={<AvanceReportes />} />
+      </Route>
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   )
 }
 
