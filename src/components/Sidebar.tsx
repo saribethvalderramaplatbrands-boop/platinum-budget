@@ -1,6 +1,5 @@
-import { NavLink } from 'react-router-dom'
-import { X, LayoutDashboard, Receipt, PieChart, FileSpreadsheet, CalendarCheck, TrendingUp, Wrench, ChevronLeft, ChevronRight, PackagePlus } from 'lucide-react'
-import { useState } from 'react'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { X, LayoutDashboard, Receipt, PieChart, FileSpreadsheet, CalendarCheck, TrendingUp, Wrench, ChevronLeft, ChevronRight, PackagePlus, Grid3X3 } from 'lucide-react'
 
 interface SidebarProps {
   isOpen: boolean
@@ -10,7 +9,7 @@ interface SidebarProps {
 }
 
 const menuItems = [
-  { path: '/', label: 'Dashboard', icon: LayoutDashboard, color: 'blue', accent: '#2563eb', bgAccent: '#eff6ff' },
+  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, color: 'blue', accent: '#2563eb', bgAccent: '#eff6ff' },
   { path: '/gastos', label: 'Gastos Diarios', icon: Receipt, color: 'emerald', accent: '#059669', bgAccent: '#ecfdf5' },
   { path: '/presupuesto', label: 'Presupuesto', icon: PieChart, color: 'violet', accent: '#7c3aed', bgAccent: '#f5f3ff' },
   { path: '/amortizaciones', label: 'Amortizaciones', icon: FileSpreadsheet, color: 'orange', accent: '#ea580c', bgAccent: '#fff7ed' },
@@ -21,6 +20,8 @@ const menuItems = [
 ]
 
 export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse }: SidebarProps) {
+  const navigate = useNavigate()
+
   return (
     <>
       {/* Overlay para mobile */}
@@ -31,7 +32,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         />
       )}
 
-      {/* Sidebar - sticky en desktop, fixed en mobile */}
+      {/* Sidebar */}
       <aside className={`
         fixed lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:overflow-x-hidden
         inset-y-0 left-0 z-50 
@@ -46,7 +47,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
         boxShadow: '4px 0 24px rgba(0, 0, 0, 0.04)'
       }}
       >
-        {/* Toggle button (solo desktop, arriba) */}
+        {/* Toggle button (solo desktop) */}
         <button
           onClick={onToggleCollapse}
           className="hidden lg:flex mx-auto mt-4 mb-2 p-2 rounded-lg hover:bg-slate-100 transition-colors text-slate-400 hover:text-slate-600"
@@ -61,6 +62,19 @@ export default function Sidebar({ isOpen, onClose, isCollapsed, onToggleCollapse
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
+
+        {/* Botón Volver a Módulos */}
+        {!isCollapsed && (
+          <div className="px-4 pb-2">
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 w-full px-3 py-2 rounded-lg text-xs font-medium text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all"
+            >
+              <Grid3X3 className="w-3.5 h-3.5" />
+              <span>Volver a módulos</span>
+            </button>
+          </div>
+        )}
 
         {/* Nav */}
         <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
