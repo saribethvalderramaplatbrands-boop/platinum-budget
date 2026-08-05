@@ -112,7 +112,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
             <div key={key} className="grid hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
               <div className={"px-5 py-3 text-sm font-semibold text-gray-700 border-r border-gray-100 " + bg + " flex items-center"}>{label}</div>
               {tiendas.map((_, i) => (
-                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} /></div>
+                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></div>
               ))}
               <div className="px-4 py-2.5 text-right text-sm font-mono font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
             </div>
@@ -133,7 +133,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
             <div key={key} className="grid hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
               <div className={"px-5 py-3 text-sm font-semibold text-gray-700 border-r border-gray-100 " + bg + " flex items-center"}>{label}</div>
               {tiendas.map((_, i) => (
-                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} /></div>
+                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></div>
               ))}
               <div className="px-4 py-2.5 text-right text-sm font-mono font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
             </div>
@@ -158,7 +158,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
             <div key={key} className="grid hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
               <div className={"px-5 py-3 text-sm font-semibold text-gray-700 border-r border-gray-100 " + bg + " flex items-center"}>{label}</div>
               {tiendas.map((_, i) => (
-                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} /></div>
+                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></div>
               ))}
               <div className="px-4 py-2.5 text-right text-sm font-mono font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 0 })}</div>
             </div>
@@ -179,7 +179,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
             <div key={key} className="grid hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
               <div className={"px-5 py-3 text-sm font-semibold text-gray-700 border-r border-gray-100 " + bg + " flex items-center"}>{label}</div>
               {tiendas.map((_, i) => (
-                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} /></div>
+                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></div>
               ))}
               <div className="px-4 py-2.5 text-right text-sm font-mono font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 0 })}</div>
             </div>
@@ -210,7 +210,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
           <div className="grid hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
             <div className="px-5 py-3 text-sm font-semibold text-gray-700 border-r border-gray-100 bg-violet-50/30 flex items-center">Presupuesto Ticket</div>
             {tiendas.map((_, i) => (
-              <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.presupuestoTicket || 0} onChange={(v) => updateDato(i, 'presupuestoTicket', v)} /></div>
+              <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.presupuestoTicket || 0} onChange={(v) => updateDato(i, 'presupuestoTicket', v)} campo="presupuestoTicket" /></div>
             ))}
             <div className="px-4 py-2.5 text-right text-sm font-mono font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, 'presupuestoTicket').toFixed(2)}</div>
           </div>
@@ -242,7 +242,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
               <div className="grid hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
                 <div className="px-5 py-3 text-sm font-semibold text-gray-700 border-r border-gray-100 bg-emerald-50/20 flex items-center">{label}</div>
                 {tiendas.map((_, i) => (
-                  <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} /></div>
+                  <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></div>
                 ))}
                 <div className="px-4 py-2.5 text-right text-sm font-mono font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
               </div>
@@ -273,7 +273,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
             <div key={key} className="grid hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
               <div className="px-5 py-3 text-sm font-semibold text-gray-700 border-r border-gray-100 bg-amber-50/20 flex items-center">{label}</div>
               {tiendas.map((_, i) => (
-                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} /></div>
+                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></div>
               ))}
               <div className="px-4 py-2.5 text-right text-sm font-mono font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
             </div>
@@ -292,7 +292,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
               <div className="grid hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
                 <div className="px-5 py-3 text-sm font-semibold text-gray-700 border-r border-gray-100 bg-orange-50/20 flex items-center">{label}</div>
                 {tiendas.map((_, i) => (
-                  <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} /></div>
+                  <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></div>
                 ))}
                 <div className="px-4 py-2.5 text-right text-sm font-mono font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
               </div>
@@ -320,7 +320,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
             <div key={key} className="grid hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
               <div className="px-5 py-3 text-sm font-semibold text-gray-700 border-r border-gray-100 bg-cyan-50/20 flex items-center">{label}</div>
               {tiendas.map((_, i) => (
-                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} type={key === 'theVault' ? 'percentage' : 'number'} /></div>
+                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} type={key === 'theVault' ? 'percentage' : 'number'} campo={key} /></div>
               ))}
               <div className="px-4 py-2.5 text-right text-sm font-mono font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: key === 'theVault' ? 2 : 0 })}</div>
             </div>
@@ -342,7 +342,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
               <div className="grid hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
                 <div className="px-5 py-3 text-sm font-semibold text-gray-700 border-r border-gray-100 bg-indigo-50/20 flex items-center">{label}</div>
                 {tiendas.map((_, i) => (
-                  <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} /></div>
+                  <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></div>
                 ))}
                 <div className="px-4 py-2.5 text-right text-sm font-mono font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
               </div>
@@ -382,7 +382,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
             <div key={key} className="grid hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
               <div className="px-5 py-3 text-sm font-semibold text-gray-700 border-r border-gray-100 bg-rose-50/20 flex items-center">{label}</div>
               {tiendas.map((_, i) => (
-                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} type="percentage" /></div>
+                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} type="percentage" campo={key} /></div>
               ))}
               <div className="px-4 py-2.5 text-right text-sm font-mono font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toFixed(2)}%</div>
             </div>
@@ -405,7 +405,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
               <div className="grid hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
                 <div className="px-5 py-3 text-sm font-semibold text-gray-700 border-r border-gray-100 bg-rose-50/20 flex items-center">{label}</div>
                 {tiendas.map((_, i) => (
-                  <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} /></div>
+                  <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></div>
                 ))}
                 <div className="px-4 py-2.5 text-right text-sm font-mono font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 2 })}</div>
               </div>
@@ -436,7 +436,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
             <div key={key} className="grid hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
               <div className="px-5 py-3 text-sm font-semibold text-gray-700 border-r border-gray-100 bg-teal-50/20 flex items-center">{label}</div>
               {tiendas.map((_, i) => (
-                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} /></div>
+                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></div>
               ))}
               <div className="px-4 py-2.5 text-right text-sm font-mono font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toFixed(2)}</div>
             </div>
@@ -451,7 +451,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
             <div key={key} className="grid hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
               <div className="px-5 py-3 text-sm font-semibold text-gray-700 border-r border-gray-100 bg-gray-50/40 flex items-center">{label}</div>
               {tiendas.map((_, i) => (
-                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} /></div>
+                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></div>
               ))}
               <div className="px-4 py-2.5 text-right text-sm font-mono font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 0 })}</div>
             </div>
@@ -467,7 +467,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
             <div key={key} className="grid hover:bg-gray-50/50 transition-colors" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
               <div className="px-5 py-3 text-sm font-semibold text-gray-700 border-r border-gray-100 bg-fuchsia-50/20 flex items-center">{label}</div>
               {tiendas.map((_, i) => (
-                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} type={key === 'penalizacionesPct' ? 'percentage' : 'number'} /></div>
+                <div key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} type={key === 'penalizacionesPct' ? 'percentage' : 'number'} campo={key} /></div>
               ))}
               <div className="px-4 py-2.5 text-right text-sm font-mono font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: key === 'penalizacionesPct' ? 2 : 0 })}</div>
             </div>
