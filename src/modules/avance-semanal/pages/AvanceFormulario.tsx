@@ -89,6 +89,10 @@ export default function AvanceFormulario() {
     })
   }
 
+  useEffect(() => {
+    setMensaje(null)
+  }, [semana])
+
   const semanaAnterior = () => {
     if (semanaIndex > 0) setSemanaIndex(semanaIndex - 1)
   }
@@ -120,8 +124,9 @@ export default function AvanceFormulario() {
             {/* Izquierda: Logo + Título */}
             <div className="flex items-center gap-4">
               <div className="relative">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center shadow-lg shadow-red-500/20">
-                  <img src="/kfc-logo.png" alt="KFC" className="h-9 w-auto object-contain brightness-0 invert" />
+                {/* LOGO KFC - fondo blanco para que se vea bien */}
+                <div className="w-14 h-14 rounded-2xl bg-white border border-gray-200 flex items-center justify-center shadow-lg overflow-hidden">
+                  <img src="/kfc-logo.png" alt="KFC" className="h-10 w-auto object-contain" />
                 </div>
                 <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
                   <div className="w-2 h-2 bg-white rounded-full" />
@@ -143,7 +148,7 @@ export default function AvanceFormulario() {
                 <ChevronLeft className="w-5 h-5 text-gray-700" />
               </button>
 
-              <div className="bg-gray-100/80 rounded-2xl px-5 py-3 min-w-[300px] text-center">
+              <div className="bg-gray-100/80 rounded-2xl px-5 py-3 min-w-[320px] text-center">
                 <div className="flex items-center justify-center gap-2 text-gray-400 mb-0.5">
                   <CalendarDays className="w-3.5 h-3.5" />
                   <span className="text-[11px] font-semibold uppercase tracking-wider">Período de la semana</span>
