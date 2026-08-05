@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
-import { Save, FileSpreadsheet, Calendar, AlertCircle, CheckCircle } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Save, FileSpreadsheet, ChevronLeft, ChevronRight, CalendarDays, Store } from 'lucide-react'
 import { getTiendasPorGerente, GERENTES } from '../data/tiendas'
 import { useAvanceSemanal } from '../hooks/useAvanceSemanal'
+import { getSemanasMartesLunes, getSemanaActualMartesLunes } from '../hooks/useSemanaMartesLunes'
 import TablaTiendas from '../components/TablaTiendas'
 import type { DatosTienda } from '../types'
 
-// TODO: En el futuro, esto vendrá del login/email del usuario
 const GERENTE_ACTUAL = 'IDA APARICIO'
 
 const EMPTY_DATOS: DatosTienda = {
@@ -27,10 +27,23 @@ const EMPTY_DATOS: DatosTienda = {
 }
 
 export default function AvanceFormulario() {
-  const [semana, setSemana] = useState('')
+  const anioActual = new Date().getFullYear()
+  const semanasDisponibles = useMemo(() => getSemanasMartesLunes(anioActual), [anioActual])
+  const semanaInicial = useMemo(() => getSemanaActualMartesLunes(), [])
+
+  const [semanaIndex, setSemanaIndex] = useState(() => {
+    if (semanaInicial) {
+      const idx = semanasDisponibles.findIndex(s => s.value === semanaInicial.value)
+      return idx >= 0 ? idx : 0
+    }
+    return 0
+  })
+
+  const semana = semanasDisponibles[semanaIndex]
   const [gerenteSeleccionado, setGerenteSeleccionado] = useState(GERENTE_ACTUAL)
   const [datos, setDatos] = useState<DatosTienda[]>([])
   const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
+  const [mostrarToast, setMostrarToast] = useState(false)
 
   const tiendas = getTiendasPorGerente(gerenteSeleccionado)
 
@@ -40,33 +53,32 @@ export default function AvanceFormulario() {
     error,
     guardarRegistros,
     cargarDatosGuardados,
-  } = useAvanceSemanal(semana, gerenteSeleccionado, tiendas)
+  } = useAvanceSemanal(semana?.value || '', gerenteSeleccionado, tiendas)
 
-  // Inicializar datos cuando cambian tiendas o se cargan registros
   useEffect(() => {
     if (tiendas.length > 0) {
       const guardados = cargarDatosGuardados()
-      setDatos(guardados)
+      setDatos(guardados.length > 0 ? guardados : tiendas.map(() => ({ ...EMPTY_DATOS })))
     }
   }, [tiendas, cargarDatosGuardados])
 
   const handleGuardar = async () => {
     if (!semana) {
-      setMensaje({ tipo: 'error', texto: 'Selecciona una semana antes de guardar' })
+      setMensaje({ tipo: 'error', texto: 'Selecciona una semana' })
       return
     }
-
     const ok = await guardarRegistros(datos)
     if (ok) {
-      setMensaje({ tipo: 'ok', texto: 'Datos guardados correctamente en Supabase' })
-      setTimeout(() => setMensaje(null), 4000)
+      setMensaje({ tipo: 'ok', texto: 'Guardado correctamente' })
+      setMostrarToast(true)
+      setTimeout(() => setMostrarToast(false), 3000)
     } else {
       setMensaje({ tipo: 'error', texto: error || 'Error al guardar' })
     }
   }
 
   const handleExportar = () => {
-    alert('Exportar a Excel (próximamente en Fase 4)')
+    alert('Exportar a Excel (próximamente)')
   }
 
   const updateDato = (tiendaIndex: number, campo: keyof DatosTienda, valor: number) => {
@@ -77,101 +89,165 @@ export default function AvanceFormulario() {
     })
   }
 
-  // Cuando cambia la semana, limpiar mensaje
-  useEffect(() => {
-    setMensaje(null)
-  }, [semana])
+  const semanaAnterior = () => {
+    if (semanaIndex > 0) setSemanaIndex(semanaIndex - 1)
+  }
+
+  const semanaSiguiente = () => {
+    if (semanaIndex < semanasDisponibles.length - 1) setSemanaIndex(semanaIndex + 1)
+  }
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-        <div>
-          <h1 className="text-xl font-bold text-gray-900">Formulario Semanal</h1>
-          <p className="text-sm text-gray-500">
-            Ingresa los datos de todas tus tiendas para la semana seleccionada
-          </p>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Toast flotante iOS */}
+      {mostrarToast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="bg-gray-900/90 backdrop-blur-xl text-white px-6 py-3 rounded-full shadow-2xl text-sm font-medium flex items-center gap-2">
+            <svg className="w-4 h-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+            Guardado correctamente
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-[1600px] mx-auto p-4 md:p-6 space-y-5">
+
+        {/* HEADER iOS */}
+        <div className="bg-white/80 backdrop-blur-xl rounded-3xl border border-white/50 shadow-[0_8px_32px_rgba(0,0,0,0.04)] p-5 md:p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+
+            {/* Izquierda: Logo + Título */}
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center shadow-lg shadow-red-500/20">
+                  <img src="/kfc-logo.png" alt="KFC" className="h-9 w-auto object-contain brightness-0 invert" />
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white flex items-center justify-center">
+                  <div className="w-2 h-2 bg-white rounded-full" />
+                </div>
+              </div>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900 tracking-tight">Avance Semanal</h1>
+                <p className="text-sm text-gray-500">Reporte operativo KFC — {gerenteSeleccionado}</p>
+              </div>
+            </div>
+
+            {/* Centro: Selector de semana estilo iOS */}
+            <div className="flex items-center gap-3">
+              <button 
+                onClick={semanaAnterior}
+                disabled={semanaIndex === 0}
+                className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-30 flex items-center justify-center transition-all active:scale-95"
+              >
+                <ChevronLeft className="w-5 h-5 text-gray-700" />
+              </button>
+
+              <div className="bg-gray-100/80 rounded-2xl px-5 py-3 min-w-[300px] text-center">
+                <div className="flex items-center justify-center gap-2 text-gray-400 mb-0.5">
+                  <CalendarDays className="w-3.5 h-3.5" />
+                  <span className="text-[11px] font-semibold uppercase tracking-wider">Período de la semana</span>
+                </div>
+                <p className="text-sm font-bold text-gray-900">{semana?.label || 'Selecciona semana'}</p>
+              </div>
+
+              <button 
+                onClick={semanaSiguiente}
+                disabled={semanaIndex === semanasDisponibles.length - 1}
+                className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 disabled:opacity-30 flex items-center justify-center transition-all active:scale-95"
+              >
+                <ChevronRight className="w-5 h-5 text-gray-700" />
+              </button>
+            </div>
+
+            {/* Derecha: Acciones */}
+            <div className="flex items-center gap-2.5">
+              <select
+                value={gerenteSeleccionado}
+                onChange={(e) => setGerenteSeleccionado(e.target.value)}
+                className="px-4 py-2.5 bg-gray-100 rounded-xl text-sm font-medium text-gray-700 border-0 outline-none focus:ring-2 focus:ring-red-500/30 cursor-pointer"
+              >
+                {GERENTES.map(g => (
+                  <option key={g} value={g}>{g}</option>
+                ))}
+              </select>
+
+              <button
+                onClick={handleGuardar}
+                disabled={guardando}
+                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-600 to-red-700 text-white text-sm font-semibold rounded-xl shadow-lg shadow-red-500/25 hover:shadow-red-500/40 hover:-translate-y-0.5 transition-all active:scale-95 disabled:opacity-60"
+              >
+                <Save className="w-4 h-4" />
+                {guardando ? 'Guardando...' : 'Guardar'}
+              </button>
+
+              <button
+                onClick={handleExportar}
+                className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-semibold rounded-xl shadow-sm hover:bg-gray-50 hover:border-gray-300 transition-all active:scale-95"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                Excel
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-gray-400" />
-            <input
-              type="week"
-              value={semana}
-              onChange={(e) => setSemana(e.target.value)}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500"
-            />
+        {/* Info card iOS */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 border border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
+              <Store className="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Tiendas asignadas</p>
+              <p className="text-lg font-bold text-gray-900">{tiendas.length}</p>
+            </div>
           </div>
 
-          <select
-            value={gerenteSeleccionado}
-            onChange={(e) => setGerenteSeleccionado(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
-          >
-            {GERENTES.map(g => (
-              <option key={g} value={g}>{g}</option>
-            ))}
-          </select>
+          <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 border border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+              <CalendarDays className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Semana actual</p>
+              <p className="text-lg font-bold text-gray-900">#{semana?.numero || '-'}</p>
+            </div>
+          </div>
 
-          <button
-            onClick={handleGuardar}
-            disabled={guardando || !semana}
-            className="flex items-center gap-2 px-4 py-2 bg-red-700 text-white text-sm font-medium rounded-lg hover:bg-red-800 transition-colors disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            {guardando ? 'Guardando...' : 'Guardar'}
-          </button>
-
-          <button
-            onClick={handleExportar}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
-          >
-            <FileSpreadsheet className="w-4 h-4" />
-            Exportar Excel
-          </button>
+          <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 border border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+              <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Regional</p>
+              <p className="text-lg font-bold text-gray-900">{tiendas[0]?.regional?.split(' ')[0] || '-'}</p>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Info del gerente */}
-      <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 flex items-center justify-between">
-        <p className="text-sm text-red-800">
-          <span className="font-bold">Gerente:</span> {gerenteSeleccionado} &nbsp;|&nbsp;
-          <span className="font-bold"> Tiendas:</span> {tiendas.length} &nbsp;|&nbsp;
-          <span className="font-bold"> Regional:</span> {tiendas[0]?.regional || ''}
-        </p>
-        {cargando && (
-          <span className="text-xs text-red-600 animate-pulse">Cargando datos...</span>
+        {/* Mensaje de error */}
+        {mensaje?.tipo === 'error' && (
+          <div className="bg-red-50 border border-red-100 rounded-2xl px-5 py-4 text-sm text-red-700 flex items-center gap-3">
+            <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {mensaje.texto}
+          </div>
+        )}
+
+        {/* Tabla */}
+        {tiendas.length > 0 && (
+          <TablaTiendas
+            gerente={gerenteSeleccionado}
+            tiendas={tiendas}
+            datos={datos}
+            onUpdateDato={updateDato}
+          />
         )}
       </div>
-
-      {/* Mensajes */}
-      {mensaje && (
-        <div className={`flex items-center gap-2 px-4 py-3 rounded-lg text-sm ${
-          mensaje.tipo === 'ok' ? 'bg-green-50 text-green-800 border border-green-200' : 'bg-red-50 text-red-800 border border-red-200'
-        }`}>
-          {mensaje.tipo === 'ok' ? <CheckCircle className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
-          {mensaje.texto}
-        </div>
-      )}
-
-      {/* Alerta si no hay semana */}
-      {!semana && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800 flex items-center gap-2">
-          <AlertCircle className="w-4 h-4" />
-          Selecciona una semana arriba para empezar a ingresar datos. Los datos se guardan por semana.
-        </div>
-      )}
-
-      {/* Tabla */}
-      {tiendas.length > 0 && (
-        <TablaTiendas
-          gerente={gerenteSeleccionado}
-          tiendas={tiendas}
-          datos={datos}
-          onUpdateDato={updateDato}
-        />
-      )}
     </div>
   )
 }
