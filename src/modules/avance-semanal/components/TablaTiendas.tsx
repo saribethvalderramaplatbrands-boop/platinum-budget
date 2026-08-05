@@ -1,0 +1,1046 @@
+import { useState, useCallback } from 'react'
+import type { Tienda, DatosTienda, TotalesCalculados } from '../types'
+import { SECCIONES } from '../data/secciones'
+import { calcularTotales, calcularTotalesFila, calcularPctFila } from '../hooks/useCalculadora'
+import CeldaInput from './CeldaInput'
+
+interface TablaTiendasProps {
+  gerente: string
+  tiendas: Tienda[]
+}
+
+const EMPTY_DATOS: DatosTienda = {
+  ventaNeta: 0, presupuestoVentas: 0, ventas2025: 0,
+  transaccionesActuales: 0, presupuestoTransacciones: 0, transacciones2025: 0,
+  ticketPromedio: 0, presupuestoTicket: 0,
+  kioskos: 0, kioskoTrx: 0, localLlevar: 0, localLlevarTrx: 0,
+  autoservicio: 0, autoservicioTrx: 0, domicilio: 0, domicilioTrx: 0,
+  dayPartApertura: 0, dayPart12a3: 0, dayPart3a6: 0, dayPart6a9: 0, dayPart9aCierre: 0,
+  borrantes: 0, notasCredito: 0, notasCreditoCantidad: 0,
+  descuentosEmpleados: 0, descuentosJubilados: 0,
+  personalEntrenamiento: 0, theVault: 0,
+  manpowerAprobado: 0, empleadosActivos: 0, empleadosVacaciones: 0, gerentesActivos: 0,
+  costoManoObra: 0, horasColaboradores: 0, horasInasistencia: 0, horasExtras: 0,
+  costoSemanal: 0, costoTeorico: 0, merma: 0, gap: 0,
+  tiempoAutoSegundos: 0, tiempoAutoDia: 0, dp1: 0, dp2: 0, dp3: 0, dp4: 0, dp5: 0,
+  roccL1: 0, roccL3: 0,
+  penalizacionesPct: 0, montoPenalizado: 0, tiempoCocina: 0,
+}
+
+export default function TablaTiendas({ gerente, tiendas }: TablaTiendasProps) {
+  const [datos, setDatos] = useState<DatosTienda[]>(
+    tiendas.map(() => ({ ...EMPTY_DATOS }))
+  )
+
+  const totales = datos.map(d => calcularTotales(d))
+
+  const updateDato = useCallback((tiendaIndex: number, campo: keyof DatosTienda, valor: number) => {
+    setDatos(prev => {
+      const next = [...prev]
+      next[tiendaIndex] = { ...next[tiendaIndex], [campo]: valor }
+      return next
+    })
+  }, [])
+
+  // Función para obtener el valor a mostrar (dato crudo o calculado)
+  const getValorCelda = (tiendaIndex: number, campo: keyof DatosTienda): number => {
+    const d = datos[tiendaIndex]
+    const t = totales[tiendaIndex]
+
+    // Campos calculados por tienda
+    if (campo === 'ticketPromedio') {
+      return d.transaccionesActuales > 0 ? d.ventaNeta / d.transaccionesActuales : 0
+    }
+
+    return (d[campo] as number) || 0
+  }
+
+  // Función para obtener el valor de la columna TOTAL
+  const getValorTotal = (campo: keyof DatosTienda): number => {
+    // Para porcentajes, calcular sobre totales
+    if (campo === 'ticketPromedio') {
+      const totalVenta = calcularTotalesFila(datos, 'ventaNeta')
+      const totalTrx = calcularTotalesFila(datos, 'transaccionesActuales')
+      return totalTrx > 0 ? totalVenta / totalTrx : 0
+    }
+
+    const camposPct: Record<string, [keyof DatosTienda, keyof DatosTienda]> = {
+      'pctBorrantes': ['borrantes', 'ventaNeta'],
+      'pctNotasCredito': ['notasCredito', 'ventaNeta'],
+      'pctDescEmpleados': ['descuentosEmpleados', 'ventaNeta'],
+      'pctDescJubilados': ['descuentosJubilados', 'ventaNeta'],
+      'pctManoObra': ['costoManoObra', 'ventaNeta'],
+      'pctMerma': ['merma', 'ventaNeta'],
+      'pctGap': ['gap', 'ventaNeta'],
+    }
+
+    // Estos campos no existen en DatosTienda directamente, pero los mostramos como filas calculadas
+    // En realidad, mostraremos las filas de % como calculadas separadas
+
+    return calcularTotalesFila(datos, campo)
+  }
+
+  // Determinar si un campo es calculado (readonly)
+  const isCalculated = (campo: keyof DatosTienda): boolean => {
+    const calculados: (keyof DatosTienda)[] = ['ticketPromedio']
+    return calculados.includes(campo)
+  }
+
+  // Color condicional para variaciones
+  const getColorVariacion = (val: number): string => {
+    if (val < -0.05) return 'text-red-600 font-bold'
+    if (val < 0) return 'text-red-500'
+    if (val > 0.05) return 'text-green-600 font-bold'
+    if (val > 0) return 'text-green-500'
+    return 'text-gray-500'
+  }
+
+  // Renderizar fila de variación
+  const renderFilaVariacion = (
+    label: string,
+    tiendaIndex: number,
+    actual: number,
+    presupuesto: number,
+    key: string
+  ) => {
+    const val = presupuesto > 0 ? (actual / presupuesto) - 1 : 0
+    return (
+      <div key={key} className="grid" style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}>
+        <div className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-r border-b border-gray-200">
+          {label}
+        </div>
+        <div className={`px-2 py-1.5 text-right text-xs font-mono border-r border-b border-gray-200 ${getColorVariacion(val)}`}>
+          {(val * 100).toFixed(2)}%
+        </div>
+        {tiendas.slice(1).map((_, i) => (
+          <div key={i} className="border-r border-b border-gray-200" />
+        ))}
+        <div className="border-b border-gray-200" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="overflow-x-auto border border-gray-300 rounded-lg shadow-sm">
+      <div className="min-w-max">
+        {/* ENCABEZADO: Nombres de tiendas */}
+        <div
+          className="grid bg-red-700 text-white"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-bold border-r border-red-600">
+            GERENTE: {gerente}
+          </div>
+          {tiendas.map(t => (
+            <div key={t.codigo} className="px-2 py-2 text-center text-xs font-bold border-r border-red-600">
+              <div>{t.nombre}</div>
+              <div className="text-red-200 text-[10px]">({t.codigo})</div>
+            </div>
+          ))}
+          <div className="px-2 py-2 text-center text-xs font-bold bg-red-800">
+            TOTAL
+          </div>
+        </div>
+
+        {/* ENCABEZADO: Filas de Ventas con variaciones */}
+        <div
+          className="grid bg-gray-100"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-semibold text-gray-700 border-r border-b border-gray-300">
+            VENTAS NETA
+          </div>
+          {tiendas.map((_, i) => (
+            <div key={i} className="border-r border-b border-gray-300">
+              <CeldaInput
+                value={datos[i].ventaNeta}
+                onChange={(v) => updateDato(i, 'ventaNeta', v)}
+              />
+            </div>
+          ))}
+          <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-300">
+            {calcularTotalesFila(datos, 'ventaNeta').toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          </div>
+        </div>
+
+        <div
+          className="grid bg-gray-100"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-semibold text-gray-700 border-r border-b border-gray-300">
+            PRESUPUESTO DE VENTAS
+          </div>
+          {tiendas.map((_, i) => (
+            <div key={i} className="border-r border-b border-gray-300">
+              <CeldaInput
+                value={datos[i].presupuestoVentas}
+                onChange={(v) => updateDato(i, 'presupuestoVentas', v)}
+              />
+            </div>
+          ))}
+          <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-300">
+            {calcularTotalesFila(datos, 'presupuestoVentas').toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          </div>
+        </div>
+
+        {/* VARIACIÓN VS PPTO */}
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-r border-b border-gray-200">
+            VARIACIÓN VS PPTO
+          </div>
+          {tiendas.map((_, i) => {
+            const val = datos[i].presupuestoVentas > 0
+              ? (datos[i].ventaNeta / datos[i].presupuestoVentas) - 1
+              : 0
+            return (
+              <div key={i} className={`px-2 py-1.5 text-right text-xs font-mono border-r border-b border-gray-200 ${getColorVariacion(val)}`}>
+                {(val * 100).toFixed(2)}%
+              </div>
+            )
+          })}
+          <div className={`px-2 py-1.5 text-right text-xs font-mono font-bold border-b border-gray-200 ${getColorVariacion(
+            calcularTotalesFila(datos, 'presupuestoVentas') > 0
+              ? (calcularTotalesFila(datos, 'ventaNeta') / calcularTotalesFila(datos, 'presupuestoVentas')) - 1
+              : 0
+          )}`}>
+            {calcularTotalesFila(datos, 'presupuestoVentas') > 0
+              ? ((calcularTotalesFila(datos, 'ventaNeta') / calcularTotalesFila(datos, 'presupuestoVentas')) - 1 * 100).toFixed(2)
+              : '0.00'}%
+          </div>
+        </div>
+
+        {/* VENTAS 2025 */}
+        <div
+          className="grid bg-gray-100"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-semibold text-gray-700 border-r border-b border-gray-300">
+            VENTAS 2025
+          </div>
+          {tiendas.map((_, i) => (
+            <div key={i} className="border-r border-b border-gray-300">
+              <CeldaInput
+                value={datos[i].ventas2025}
+                onChange={(v) => updateDato(i, 'ventas2025', v)}
+              />
+            </div>
+          ))}
+          <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-300">
+            {calcularTotalesFila(datos, 'ventas2025').toLocaleString('en-US', { minimumFractionDigits: 2 })}
+          </div>
+        </div>
+
+        {/* VARIACIÓN 2025 VS 2026 */}
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-r border-b border-gray-200">
+            VARIACIÓN 2025 % VS 2026
+          </div>
+          {tiendas.map((_, i) => {
+            const val = datos[i].ventas2025 > 0
+              ? (datos[i].ventaNeta / datos[i].ventas2025) - 1
+              : 0
+            return (
+              <div key={i} className={`px-2 py-1.5 text-right text-xs font-mono border-r border-b border-gray-200 ${getColorVariacion(val)}`}>
+                {(val * 100).toFixed(2)}%
+              </div>
+            )
+          })}
+          <div className={`px-2 py-1.5 text-right text-xs font-mono font-bold border-b border-gray-200 ${getColorVariacion(
+            calcularTotalesFila(datos, 'ventas2025') > 0
+              ? (calcularTotalesFila(datos, 'ventaNeta') / calcularTotalesFila(datos, 'ventas2025')) - 1
+              : 0
+          )}`}>
+            {calcularTotalesFila(datos, 'ventas2025') > 0
+              ? ((calcularTotalesFila(datos, 'ventaNeta') / calcularTotalesFila(datos, 'ventas2025')) - 1 * 100).toFixed(2)
+              : '0.00'}%
+          </div>
+        </div>
+
+        {/* SEPARADOR */}
+        <div className="h-3 bg-white" />
+
+        {/* TRANSACCIONES */}
+        <div
+          className="grid bg-blue-50"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-semibold text-blue-800 border-r border-b border-blue-200">
+            TRANSACCIONES ACTUALES
+          </div>
+          {tiendas.map((_, i) => (
+            <div key={i} className="border-r border-b border-blue-200">
+              <CeldaInput
+                value={datos[i].transaccionesActuales}
+                onChange={(v) => updateDato(i, 'transaccionesActuales', v)}
+              />
+            </div>
+          ))}
+          <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-blue-100 border-b border-blue-200">
+            {calcularTotalesFila(datos, 'transaccionesActuales').toLocaleString('en-US', { minimumFractionDigits: 0 })}
+          </div>
+        </div>
+
+        <div
+          className="grid bg-blue-50"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-semibold text-blue-800 border-r border-b border-blue-200">
+            PRESUPUESTO DE TRANSACCIONES
+          </div>
+          {tiendas.map((_, i) => (
+            <div key={i} className="border-r border-b border-blue-200">
+              <CeldaInput
+                value={datos[i].presupuestoTransacciones}
+                onChange={(v) => updateDato(i, 'presupuestoTransacciones', v)}
+              />
+            </div>
+          ))}
+          <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-blue-100 border-b border-blue-200">
+            {calcularTotalesFila(datos, 'presupuestoTransacciones').toLocaleString('en-US', { minimumFractionDigits: 0 })}
+          </div>
+        </div>
+
+        {/* VARIACIÓN TRX VS PPTO */}
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-r border-b border-gray-200">
+            VARIACIÓN VS PPTO
+          </div>
+          {tiendas.map((_, i) => {
+            const val = datos[i].presupuestoTransacciones > 0
+              ? (datos[i].transaccionesActuales / datos[i].presupuestoTransacciones) - 1
+              : 0
+            return (
+              <div key={i} className={`px-2 py-1.5 text-right text-xs font-mono border-r border-b border-gray-200 ${getColorVariacion(val)}`}>
+                {(val * 100).toFixed(2)}%
+              </div>
+            )
+          })}
+          <div className={`px-2 py-1.5 text-right text-xs font-mono font-bold border-b border-gray-200 ${getColorVariacion(
+            calcularTotalesFila(datos, 'presupuestoTransacciones') > 0
+              ? (calcularTotalesFila(datos, 'transaccionesActuales') / calcularTotalesFila(datos, 'presupuestoTransacciones')) - 1
+              : 0
+          )}`}>
+            {calcularTotalesFila(datos, 'presupuestoTransacciones') > 0
+              ? ((calcularTotalesFila(datos, 'transaccionesActuales') / calcularTotalesFila(datos, 'presupuestoTransacciones')) - 1 * 100).toFixed(2)
+              : '0.00'}%
+          </div>
+        </div>
+
+        {/* TRANSACCIONES 2025 */}
+        <div
+          className="grid bg-blue-50"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-semibold text-blue-800 border-r border-b border-blue-200">
+            TRANSACCIONES 2025
+          </div>
+          {tiendas.map((_, i) => (
+            <div key={i} className="border-r border-b border-blue-200">
+              <CeldaInput
+                value={datos[i].transacciones2025}
+                onChange={(v) => updateDato(i, 'transacciones2025', v)}
+              />
+            </div>
+          ))}
+          <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-blue-100 border-b border-blue-200">
+            {calcularTotalesFila(datos, 'transacciones2025').toLocaleString('en-US', { minimumFractionDigits: 0 })}
+          </div>
+        </div>
+
+        {/* VARIACIÓN TRX 2025 VS 2026 */}
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-r border-b border-gray-200">
+            VARIACIÓN 2025 VS 2026
+          </div>
+          {tiendas.map((_, i) => {
+            const val = datos[i].transacciones2025 > 0
+              ? (datos[i].transaccionesActuales / datos[i].transacciones2025) - 1
+              : 0
+            return (
+              <div key={i} className={`px-2 py-1.5 text-right text-xs font-mono border-r border-b border-gray-200 ${getColorVariacion(val)}`}>
+                {(val * 100).toFixed(2)}%
+              </div>
+            )
+          })}
+          <div className={`px-2 py-1.5 text-right text-xs font-mono font-bold border-b border-gray-200 ${getColorVariacion(
+            calcularTotalesFila(datos, 'transacciones2025') > 0
+              ? (calcularTotalesFila(datos, 'transaccionesActuales') / calcularTotalesFila(datos, 'transacciones2025')) - 1
+              : 0
+          )}`}>
+            {calcularTotalesFila(datos, 'transacciones2025') > 0
+              ? ((calcularTotalesFila(datos, 'transaccionesActuales') / calcularTotalesFila(datos, 'transacciones2025')) - 1 * 100).toFixed(2)
+              : '0.00'}%
+          </div>
+        </div>
+
+        {/* SEPARADOR */}
+        <div className="h-3 bg-white" />
+
+        {/* TICKET PROMEDIO */}
+        <div
+          className="grid bg-purple-50"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-semibold text-purple-800 border-r border-b border-purple-200">
+            TICKET PROM.
+          </div>
+          {tiendas.map((_, i) => {
+            const val = datos[i].transaccionesActuales > 0
+              ? datos[i].ventaNeta / datos[i].transaccionesActuales
+              : 0
+            return (
+              <div key={i} className="px-2 py-1.5 text-right text-sm font-mono bg-yellow-50 border-r border-b border-purple-200">
+                {val.toFixed(2)}
+              </div>
+            )
+          })}
+          <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-yellow-100 border-b border-purple-200">
+            {(() => {
+              const totalVenta = calcularTotalesFila(datos, 'ventaNeta')
+              const totalTrx = calcularTotalesFila(datos, 'transaccionesActuales')
+              return totalTrx > 0 ? (totalVenta / totalTrx).toFixed(2) : '0.00'
+            })()}
+          </div>
+        </div>
+
+        <div
+          className="grid bg-purple-50"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-semibold text-purple-800 border-r border-b border-purple-200">
+            PRESUPUESTO TICKET
+          </div>
+          {tiendas.map((_, i) => (
+            <div key={i} className="border-r border-b border-purple-200">
+              <CeldaInput
+                value={datos[i].presupuestoTicket}
+                onChange={(v) => updateDato(i, 'presupuestoTicket', v)}
+              />
+            </div>
+          ))}
+          <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-purple-100 border-b border-purple-200">
+            {calcularTotalesFila(datos, 'presupuestoTicket').toFixed(2)}
+          </div>
+        </div>
+
+        {/* VARIACIÓN TICKET VS PPTO */}
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-r border-b border-gray-200">
+            VARIACIÓN VS PPTO
+          </div>
+          {tiendas.map((_, i) => {
+            const ticket = datos[i].transaccionesActuales > 0
+              ? datos[i].ventaNeta / datos[i].transaccionesActuales
+              : 0
+            const val = datos[i].presupuestoTicket > 0
+              ? (ticket / datos[i].presupuestoTicket) - 1
+              : 0
+            return (
+              <div key={i} className={`px-2 py-1.5 text-right text-xs font-mono border-r border-b border-gray-200 ${getColorVariacion(val)}`}>
+                {(val * 100).toFixed(2)}%
+              </div>
+            )
+          })}
+          <div className={`px-2 py-1.5 text-right text-xs font-mono font-bold border-b border-gray-200 ${getColorVariacion(
+            (() => {
+              const totalVenta = calcularTotalesFila(datos, 'ventaNeta')
+              const totalTrx = calcularTotalesFila(datos, 'transaccionesActuales')
+              const totalTicket = totalTrx > 0 ? totalVenta / totalTrx : 0
+              const totalPpto = calcularTotalesFila(datos, 'presupuestoTicket')
+              return totalPpto > 0 ? (totalTicket / totalPpto) - 1 : 0
+            })()
+          )}`}>
+            {(() => {
+              const totalVenta = calcularTotalesFila(datos, 'ventaNeta')
+              const totalTrx = calcularTotalesFila(datos, 'transaccionesActuales')
+              const totalTicket = totalTrx > 0 ? totalVenta / totalTrx : 0
+              const totalPpto = calcularTotalesFila(datos, 'presupuestoTicket')
+              return totalPpto > 0 ? ((totalTicket / totalPpto) - 1 * 100).toFixed(2) : '0.00'
+            })()}%
+          </div>
+        </div>
+
+        {/* SEPARADOR */}
+        <div className="h-3 bg-white" />
+
+        {/* CANALES */}
+        <div
+          className="grid bg-emerald-50"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-bold text-emerald-800 border-r border-b border-emerald-200 col-span-full">
+            CANALES
+          </div>
+        </div>
+
+        {[
+          { key: 'kioskos' as keyof DatosTienda, label: 'KIOSKOS ($)', pct: 'pctKioskos' },
+          { key: 'kioskoTrx' as keyof DatosTienda, label: 'KIOSKO TRX LOCAL Y LLEVAR', pct: 'pctKioskoTrx' },
+          { key: 'localLlevar' as keyof DatosTienda, label: 'VENTA DE LOCAL Y LLEVAR ($)', pct: 'pctLocalLlevar' },
+          { key: 'localLlevarTrx' as keyof DatosTienda, label: 'TRX LOCAL Y LLEVAR', pct: 'pctLocalLlevarTrx' },
+          { key: 'autoservicio' as keyof DatosTienda, label: 'VENTA AUTOSERVICIO ($)', pct: 'pctAutoservicio' },
+          { key: 'autoservicioTrx' as keyof DatosTienda, label: 'TRX AUTOSERVICIO', pct: 'pctAutoservicioTrx' },
+          { key: 'domicilio' as keyof DatosTienda, label: 'VENTA DE DOMICILIO ($)', pct: 'pctDomicilio' },
+          { key: 'domicilioTrx' as keyof DatosTienda, label: 'TRX DOMICILIO', pct: 'pctDomicilioTrx' },
+        ].map(({ key, label, pct }) => (
+          <div key={key}>
+            <div
+              className="grid"
+              style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+            >
+              <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">
+                {label}
+              </div>
+              {tiendas.map((_, i) => (
+                <div key={i} className="border-r border-b border-gray-200">
+                  <CeldaInput
+                    value={datos[i][key] as number}
+                    onChange={(v) => updateDato(i, key, v)}
+                  />
+                </div>
+              ))}
+              <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
+                {calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </div>
+            </div>
+            {/* Fila de % */}
+            <div
+              className="grid"
+              style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+            >
+              <div className="px-3 py-1 text-xs text-gray-500 bg-gray-50 border-r border-b border-gray-200">
+                %
+              </div>
+              {tiendas.map((_, i) => {
+                const totalVenta = datos[i].ventaNeta
+                const totalTrx = datos[i].transaccionesActuales
+                const val = key.includes('Trx')
+                  ? (totalTrx > 0 ? (datos[i][key] as number) / totalTrx : 0)
+                  : (totalVenta > 0 ? (datos[i][key] as number) / totalVenta : 0)
+                return (
+                  <div key={i} className="px-2 py-1 text-right text-xs font-mono text-gray-600 border-r border-b border-gray-200">
+                    {(val * 100).toFixed(2)}%
+                  </div>
+                )
+              })}
+              <div className="px-2 py-1 text-right text-xs font-mono font-bold text-gray-600 bg-gray-50 border-b border-gray-200">
+                {(() => {
+                  const totalVenta = calcularTotalesFila(datos, 'ventaNeta')
+                  const totalTrx = calcularTotalesFila(datos, 'transaccionesActuales')
+                  const totalConcepto = calcularTotalesFila(datos, key)
+                  const val = key.includes('Trx')
+                    ? (totalTrx > 0 ? totalConcepto / totalTrx : 0)
+                    : (totalVenta > 0 ? totalConcepto / totalVenta : 0)
+                  return (val * 100).toFixed(2) + '%'
+                })()}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {/* SEPARADOR */}
+        <div className="h-3 bg-white" />
+
+        {/* DAY PART */}
+        <div
+          className="grid bg-amber-50"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-bold text-amber-800 border-r border-b border-amber-200 col-span-full">
+            VENTAS POR DAY PART
+          </div>
+        </div>
+
+        {[
+          { key: 'dayPartApertura' as keyof DatosTienda, label: 'Apertura - 12 MD' },
+          { key: 'dayPart12a3' as keyof DatosTienda, label: '12 MD - 3 PM' },
+          { key: 'dayPart3a6' as keyof DatosTienda, label: '3 - 6 PM' },
+          { key: 'dayPart6a9' as keyof DatosTienda, label: '6 - 9 PM' },
+          { key: 'dayPart9aCierre' as keyof DatosTienda, label: '9 PM - Cierre' },
+        ].map(({ key, label }) => (
+          <div
+            key={key}
+            className="grid"
+            style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+          >
+            <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">
+              {label}
+            </div>
+            {tiendas.map((_, i) => (
+              <div key={i} className="border-r border-b border-gray-200">
+                <CeldaInput
+                  value={datos[i][key] as number}
+                  onChange={(v) => updateDato(i, key, v)}
+                />
+              </div>
+            ))}
+            <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
+              {calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            </div>
+          </div>
+        ))}
+
+        {/* SEPARADOR */}
+        <div className="h-3 bg-white" />
+
+        {/* INFO FINANCIERA */}
+        <div
+          className="grid bg-orange-50"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-bold text-orange-800 border-r border-b border-orange-200 col-span-full">
+            INFORMACIÓN FINANCIERA
+          </div>
+        </div>
+
+        {[
+          { key: 'borrantes' as keyof DatosTienda, label: 'Borrantes ($)' },
+          { key: 'notasCredito' as keyof DatosTienda, label: 'Notas de crédito ($)' },
+          { key: 'notasCreditoCantidad' as keyof DatosTienda, label: 'Número de notas de crédito' },
+          { key: 'descuentosEmpleados' as keyof DatosTienda, label: 'Descuentos de empleados ($)' },
+          { key: 'descuentosJubilados' as keyof DatosTienda, label: 'Descuentos de jubilados ($)' },
+        ].map(({ key, label }) => (
+          <div key={key}>
+            <div
+              className="grid"
+              style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+            >
+              <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">
+                {label}
+              </div>
+              {tiendas.map((_, i) => (
+                <div key={i} className="border-r border-b border-gray-200">
+                  <CeldaInput
+                    value={datos[i][key] as number}
+                    onChange={(v) => updateDato(i, key, v)}
+                  />
+                </div>
+              ))}
+              <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
+                {calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </div>
+            </div>
+            {/* Fila de % para los que aplica */}
+            {key !== 'notasCreditoCantidad' && (
+              <div
+                className="grid"
+                style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+              >
+                <div className="px-3 py-1 text-xs text-gray-500 bg-gray-50 border-r border-b border-gray-200">
+                  %
+                </div>
+                {tiendas.map((_, i) => {
+                  const val = datos[i].ventaNeta > 0 ? (datos[i][key] as number) / datos[i].ventaNeta : 0
+                  return (
+                    <div key={i} className="px-2 py-1 text-right text-xs font-mono text-gray-600 border-r border-b border-gray-200">
+                      {(val * 100).toFixed(3)}%
+                    </div>
+                  )
+                })}
+                <div className="px-2 py-1 text-right text-xs font-mono font-bold text-gray-600 bg-gray-50 border-b border-gray-200">
+                  {(() => {
+                    const totalVenta = calcularTotalesFila(datos, 'ventaNeta')
+                    const totalConcepto = calcularTotalesFila(datos, key)
+                    return totalVenta > 0 ? ((totalConcepto / totalVenta) * 100).toFixed(3) + '%' : '0.000%'
+                  })()}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* SEPARADOR */}
+        <div className="h-3 bg-white" />
+
+        {/* ENTRENAMIENTO */}
+        <div
+          className="grid bg-cyan-50"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-bold text-cyan-800 border-r border-b border-cyan-200 col-span-full">
+            ENTRENAMIENTO
+          </div>
+        </div>
+
+        {[
+          { key: 'personalEntrenamiento' as keyof DatosTienda, label: 'PERSONAL EN ENTRENAMIENTO' },
+          { key: 'theVault' as keyof DatosTienda, label: '% THE VAULT' },
+        ].map(({ key, label }) => (
+          <div
+            key={key}
+            className="grid"
+            style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+          >
+            <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">
+              {label}
+            </div>
+            {tiendas.map((_, i) => (
+              <div key={i} className="border-r border-b border-gray-200">
+                <CeldaInput
+                  value={datos[i][key] as number}
+                  onChange={(v) => updateDato(i, key, v)}
+                  type={key === 'theVault' ? 'percentage' : 'number'}
+                />
+              </div>
+            ))}
+            <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
+              {calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: key === 'theVault' ? 2 : 0 })}
+            </div>
+          </div>
+        ))}
+
+        {/* SEPARADOR */}
+        <div className="h-3 bg-white" />
+
+        {/* MANO DE OBRA */}
+        <div
+          className="grid bg-indigo-50"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-bold text-indigo-800 border-r border-b border-indigo-200 col-span-full">
+            MANO DE OBRA
+          </div>
+        </div>
+
+        {[
+          { key: 'manpowerAprobado' as keyof DatosTienda, label: 'Manpower aprobado' },
+          { key: 'empleadosActivos' as keyof DatosTienda, label: 'Empleados Activos' },
+          { key: 'empleadosVacaciones' as keyof DatosTienda, label: 'Empleados de vacaciones' },
+          { key: 'gerentesActivos' as keyof DatosTienda, label: 'Gerentes Activos' },
+          { key: 'costoManoObra' as keyof DatosTienda, label: 'Costo de mano de obra' },
+          { key: 'horasColaboradores' as keyof DatosTienda, label: 'Horas Colaboradores' },
+          { key: 'horasInasistencia' as keyof DatosTienda, label: 'Número de (hrs) Inasis / Incapac' },
+          { key: 'horasExtras' as keyof DatosTienda, label: 'Horas Extras Colaboradores' },
+        ].map(({ key, label }) => (
+          <div key={key}>
+            <div
+              className="grid"
+              style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+            >
+              <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">
+                {label}
+              </div>
+              {tiendas.map((_, i) => (
+                <div key={i} className="border-r border-b border-gray-200">
+                  <CeldaInput
+                    value={datos[i][key] as number}
+                    onChange={(v) => updateDato(i, key, v)}
+                  />
+                </div>
+              ))}
+              <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
+                {calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </div>
+            </div>
+            {/* % Mano de Obra */}
+            {key === 'costoManoObra' && (
+              <div
+                className="grid"
+                style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+              >
+                <div className="px-3 py-1 text-xs text-gray-500 bg-gray-50 border-r border-b border-gray-200">
+                  % Mano de Obra
+                </div>
+                {tiendas.map((_, i) => {
+                  const val = datos[i].ventaNeta > 0 ? datos[i].costoManoObra / datos[i].ventaNeta : 0
+                  return (
+                    <div key={i} className="px-2 py-1 text-right text-xs font-mono text-gray-600 border-r border-b border-gray-200">
+                      {(val * 100).toFixed(2)}%
+                    </div>
+                  )
+                })}
+                <div className="px-2 py-1 text-right text-xs font-mono font-bold text-gray-600 bg-gray-50 border-b border-gray-200">
+                  {(() => {
+                    const totalVenta = calcularTotalesFila(datos, 'ventaNeta')
+                    const totalMO = calcularTotalesFila(datos, 'costoManoObra')
+                    return totalVenta > 0 ? ((totalMO / totalVenta) * 100).toFixed(2) + '%' : '0.00%'
+                  })()}
+                </div>
+              </div>
+            )}
+            {/* Productividad */}
+            {key === 'empleadosActivos' && (
+              <div
+                className="grid"
+                style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+              >
+                <div className="px-3 py-1 text-xs text-gray-500 bg-gray-50 border-r border-b border-gray-200">
+                  Productividad
+                </div>
+                {tiendas.map((_, i) => {
+                  const val = datos[i].empleadosActivos > 0 ? datos[i].ventaNeta / datos[i].empleadosActivos : 0
+                  return (
+                    <div key={i} className="px-2 py-1 text-right text-xs font-mono text-gray-600 border-r border-b border-gray-200">
+                      {val.toFixed(2)}
+                    </div>
+                  )
+                })}
+                <div className="px-2 py-1 text-right text-xs font-mono font-bold text-gray-600 bg-gray-50 border-b border-gray-200">
+                  {(() => {
+                    const totalVenta = calcularTotalesFila(datos, 'ventaNeta')
+                    const totalEmp = calcularTotalesFila(datos, 'empleadosActivos')
+                    return totalEmp > 0 ? (totalVenta / totalEmp).toFixed(2) : '0.00'
+                  })()}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+
+        {/* SEPARADOR */}
+        <div className="h-3 bg-white" />
+
+        {/* COSTOS */}
+        <div
+          className="grid bg-rose-50"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-bold text-rose-800 border-r border-b border-rose-200 col-span-full">
+            COSTOS
+          </div>
+        </div>
+
+        {[
+          { key: 'costoSemanal' as keyof DatosTienda, label: 'Costo Semanal %' },
+          { key: 'costoTeorico' as keyof DatosTienda, label: 'Costo Teórico Semanal %' },
+        ].map(({ key, label }) => (
+          <div
+            key={key}
+            className="grid"
+            style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+          >
+            <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">
+              {label}
+            </div>
+            {tiendas.map((_, i) => (
+              <div key={i} className="border-r border-b border-gray-200">
+                <CeldaInput
+                  value={datos[i][key] as number}
+                  onChange={(v) => updateDato(i, key, v)}
+                  type="percentage"
+                />
+              </div>
+            ))}
+            <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
+              {calcularTotalesFila(datos, key).toFixed(2)}%
+            </div>
+          </div>
+        ))}
+
+        {/* Variación % */}
+        <div
+          className="grid"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-50 border-r border-b border-gray-200">
+            Variación %
+          </div>
+          {tiendas.map((_, i) => {
+            const val = datos[i].costoSemanal - datos[i].costoTeorico
+            return (
+              <div key={i} className={`px-2 py-1.5 text-right text-xs font-mono border-r border-b border-gray-200 ${getColorVariacion(val)}`}>
+                {(val * 100).toFixed(2)}%
+              </div>
+            )
+          })}
+          <div className={`px-2 py-1.5 text-right text-xs font-mono font-bold border-b border-gray-200 ${getColorVariacion(
+            calcularTotalesFila(datos, 'costoSemanal') - calcularTotalesFila(datos, 'costoTeorico')
+          )}`}>
+            {((calcularTotalesFila(datos, 'costoSemanal') - calcularTotalesFila(datos, 'costoTeorico')) * 100).toFixed(2)}%
+          </div>
+        </div>
+
+        {[
+          { key: 'merma' as keyof DatosTienda, label: 'Merma Semanal' },
+          { key: 'gap' as keyof DatosTienda, label: 'DIFERENCIAS NEGATIVAS (GAP)' },
+        ].map(({ key, label }) => (
+          <div key={key}>
+            <div
+              className="grid"
+              style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+            >
+              <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">
+                {label}
+              </div>
+              {tiendas.map((_, i) => (
+                <div key={i} className="border-r border-b border-gray-200">
+                  <CeldaInput
+                    value={datos[i][key] as number}
+                    onChange={(v) => updateDato(i, key, v)}
+                  />
+                </div>
+              ))}
+              <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
+                {calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+              </div>
+            </div>
+            {/* % */}
+            <div
+              className="grid"
+              style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+            >
+              <div className="px-3 py-1 text-xs text-gray-500 bg-gray-50 border-r border-b border-gray-200">
+                %
+              </div>
+              {tiendas.map((_, i) => {
+                const val = datos[i].ventaNeta > 0 ? (datos[i][key] as number) / datos[i].ventaNeta : 0
+                return (
+                  <div key={i} className="px-2 py-1 text-right text-xs font-mono text-gray-600 border-r border-b border-gray-200">
+                    {(val * 100).toFixed(3)}%
+                  </div>
+                )
+              })}
+              <div className="px-2 py-1 text-right text-xs font-mono font-bold text-gray-600 bg-gray-50 border-b border-gray-200">
+                {(() => {
+                  const totalVenta = calcularTotalesFila(datos, 'ventaNeta')
+                  const totalConcepto = calcularTotalesFila(datos, key)
+                  return totalVenta > 0 ? ((totalConcepto / totalVenta) * 100).toFixed(3) + '%' : '0.000%'
+                })()}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {/* SEPARADOR */}
+        <div className="h-3 bg-white" />
+
+        {/* CLIENTES */}
+        <div
+          className="grid bg-teal-50"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-bold text-teal-800 border-r border-b border-teal-200 col-span-full">
+            CLIENTES
+          </div>
+        </div>
+
+        {[
+          { key: 'tiempoAutoSegundos' as keyof DatosTienda, label: 'Tiempos de AUTO DEL DIA (segundos)' },
+          { key: 'tiempoAutoDia' as keyof DatosTienda, label: 'Tiempos de AUTO DEL DIA' },
+          { key: 'dp1' as keyof DatosTienda, label: 'DP# 1 - Apertura-12 MD' },
+          { key: 'dp2' as keyof DatosTienda, label: 'DP# 2 - 12 MD-3 PM' },
+          { key: 'dp3' as keyof DatosTienda, label: 'DP# 3 - 3-6 PM' },
+          { key: 'dp4' as keyof DatosTienda, label: 'DP# 4 - 6-9 PM' },
+          { key: 'dp5' as keyof DatosTienda, label: 'DP# 5 - 9 PM-Cierre' },
+        ].map(({ key, label }) => (
+          <div
+            key={key}
+            className="grid"
+            style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+          >
+            <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">
+              {label}
+            </div>
+            {tiendas.map((_, i) => (
+              <div key={i} className="border-r border-b border-gray-200">
+                <CeldaInput
+                  value={datos[i][key] as number}
+                  onChange={(v) => updateDato(i, key, v)}
+                />
+              </div>
+            ))}
+            <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
+              {calcularTotalesFila(datos, key).toFixed(2)}
+            </div>
+          </div>
+        ))}
+
+        {/* SEPARADOR */}
+        <div className="h-3 bg-white" />
+
+        {/* ROCC */}
+        <div
+          className="grid bg-gray-100"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-bold text-gray-800 border-r border-b border-gray-300 col-span-full">
+            ROCC
+          </div>
+        </div>
+
+        {[
+          { key: 'roccL1' as keyof DatosTienda, label: 'L1' },
+          { key: 'roccL3' as keyof DatosTienda, label: 'L3' },
+        ].map(({ key, label }) => (
+          <div
+            key={key}
+            className="grid"
+            style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+          >
+            <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">
+              {label}
+            </div>
+            {tiendas.map((_, i) => (
+              <div key={i} className="border-r border-b border-gray-200">
+                <CeldaInput
+                  value={datos[i][key] as number}
+                  onChange={(v) => updateDato(i, key, v)}
+                />
+              </div>
+            ))}
+            <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
+              {calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 0 })}
+            </div>
+          </div>
+        ))}
+
+        {/* SEPARADOR */}
+        <div className="h-3 bg-white" />
+
+        {/* DOMICILIO */}
+        <div
+          className="grid bg-purple-50"
+          style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+        >
+          <div className="px-3 py-2 text-xs font-bold text-purple-800 border-r border-b border-purple-200 col-span-full">
+            DOMICILIO
+          </div>
+        </div>
+
+        {[
+          { key: 'penalizacionesPct' as keyof DatosTienda, label: '% de penalizaciones' },
+          { key: 'montoPenalizado' as keyof DatosTienda, label: 'Monto penalizado' },
+          { key: 'tiempoCocina' as keyof DatosTienda, label: 'Tiempo de cocina (minutos)' },
+        ].map(({ key, label }) => (
+          <div
+            key={key}
+            className="grid"
+            style={{ gridTemplateColumns: `280px repeat(${tiendas.length}, 140px) 140px` }}
+          >
+            <div className="px-3 py-1.5 text-xs font-medium text-gray-700 border-r border-b border-gray-200">
+              {label}
+            </div>
+            {tiendas.map((_, i) => (
+              <div key={i} className="border-r border-b border-gray-200">
+                <CeldaInput
+                  value={datos[i][key] as number}
+                  onChange={(v) => updateDato(i, key, v)}
+                  type={key === 'penalizacionesPct' ? 'percentage' : 'number'}
+                />
+              </div>
+            ))}
+            <div className="px-2 py-1.5 text-right text-sm font-mono font-bold bg-gray-50 border-b border-gray-200">
+              {calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: key === 'penalizacionesPct' ? 2 : 0 })}
+            </div>
+          </div>
+        ))}
+
+      </div>
+    </div>
+  )
+}
