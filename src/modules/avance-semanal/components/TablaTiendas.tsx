@@ -99,26 +99,27 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
   }, [onUpdateDato])
 
   const n = tiendas.length
-  // FIX 1: minmax en todas las columnas para evitar que TOTAL se corte
-  const gridCols = "minmax(280px, 1.4fr) repeat(" + n + ", minmax(110px, 1fr)) minmax(140px, 1fr)"
+  // FIX: minmax más amplio para que quepan nombres completos
+  const gridCols = "minmax(260px, 1.3fr) repeat(" + n + ", minmax(130px, 1fr)) minmax(130px, 1fr)"
 
   return (
     <div className="overflow-hidden rounded-3xl border border-gray-200/60 shadow-[0_8px_40px_rgba(0,0,0,0.06)] bg-white">
       <div className="overflow-x-auto">
         <div className="min-w-full" style={{ ['--grid-cols' as any]: gridCols }}>
 
-          {/* HEADER ROJO KFC */}
+          {/* HEADER ROJO KFC - NOMBRES MÁS PEQUEÑOS Y VISIBLES */}
           <div className="grid bg-gradient-to-r from-red-600 to-red-700 text-white" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
-            <div className="px-5 py-5 text-base font-bold border-r border-white/10 flex items-center">
-              <span className="opacity-90">GERENTE:</span> <span className="ml-2">{gerente}</span>
+            <div className="px-4 py-4 text-sm font-bold border-r border-white/10 flex items-center">
+              <span className="opacity-90">GERENTE:</span> <span className="ml-1.5">{gerente}</span>
             </div>
             {tiendas.map(t => (
-              <div key={t.codigo} className="px-3 py-4 text-center border-r border-white/10">
-                <div className="text-base font-bold truncate">{t.nombre.replace('KFC ', '')}</div>
-                <div className="text-red-200 text-xs font-medium mt-1">({t.codigo})</div>
+              <div key={t.codigo} className="px-2 py-3 text-center border-r border-white/10 flex flex-col items-center justify-center">
+                {/* FIX: text-sm en vez de text-base, sin truncate, con wrap */}
+                <div className="text-sm font-bold leading-tight">{t.nombre.replace('KFC ', '')}</div>
+                <div className="text-red-200 text-[10px] font-medium mt-0.5">({t.codigo})</div>
               </div>
             ))}
-            <div className="px-3 py-4 text-center text-base font-bold bg-black/10">TOTAL</div>
+            <div className="px-2 py-3 text-center text-sm font-bold bg-black/10 flex items-center justify-center">TOTAL</div>
           </div>
 
           {/* VENTAS */}
@@ -264,7 +265,6 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
                 ))}
                 <div className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50">{formatValor(key as string, calcularTotalesFila(datos, key))}</div>
               </div>
-              {/* FIX 2: text-xs cambiado a text-sm para unificar tamaño */}
               <div className="grid" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
                 <div className="px-5 py-2 text-sm text-gray-400 bg-gray-50/40 border-r border-gray-100">%</div>
                 {tiendas.map((_, i) => {
