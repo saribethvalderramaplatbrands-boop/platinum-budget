@@ -68,10 +68,10 @@ const formatValor = (campo: string, val: number, digits: number = 2): string => 
   return prefix + val.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })
 }
 
-// Anchos fijos para cada tipo de columna
-const COL_FIRST = 260   // Primera columna (nombres de fila)
-const COL_TIENDA = 140  // Cada tienda
-const COL_TOTAL = 120   // Columna TOTAL
+// Anchos de columnas
+const W_FIRST = 260
+const W_TIENDA = 140
+const W_TOTAL = 120
 
 export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: TablaTiendasProps) {
   const updateDato = useCallback((tiendaIndex: number, campo: keyof DatosTienda, valor: number) => {
@@ -79,75 +79,74 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
   }, [onUpdateDato])
 
   const n = tiendas.length
-  // Ancho mínimo total de la tabla
-  const tableMinWidth = COL_FIRST + (n * COL_TIENDA) + COL_TOTAL
+  const totalWidth = W_FIRST + (n * W_TIENDA) + W_TOTAL
+
+  // Colgroup: define anchos exactos de columnas
+  const cols = [
+    <col key="first" style={{ width: W_FIRST, minWidth: W_FIRST }} />,
+    ...tiendas.map((_, i) => <col key={i} style={{ width: W_TIENDA, minWidth: W_TIENDA }} />),
+    <col key="total" style={{ width: W_TOTAL, minWidth: W_TOTAL }} />,
+  ]
 
   return (
     <div className="rounded-3xl border border-gray-200/60 shadow-[0_8px_40px_rgba(0,0,0,0.06)] bg-white overflow-hidden">
       <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
-        {/* table-layout: fixed fuerza anchos exactos, minWidth fuerza scroll cuando es necesario */}
-        <table className="border-collapse" style={{ tableLayout: 'fixed', minWidth: tableMinWidth }}>
+        <table
+          className="border-collapse"
+          style={{ tableLayout: 'fixed', width: totalWidth }}
+        >
+          <colgroup>{cols}</colgroup>
+
           <thead>
-            {/* HEADER ROJO KFC */}
             <tr className="bg-gradient-to-r from-red-600 to-red-700 text-white">
-              <th 
+              <th
                 className="sticky top-0 left-0 z-50 px-4 py-4 text-sm font-bold text-left border-r border-white/10 bg-gradient-to-r from-red-600 to-red-700 rounded-tl-3xl"
-                style={{ width: COL_FIRST, minWidth: COL_FIRST }}
               >
                 <span className="opacity-90">GERENTE:</span> <span className="ml-1.5">{gerente}</span>
               </th>
               {tiendas.map(t => (
-                <th 
-                  key={t.codigo} 
+                <th
+                  key={t.codigo}
                   className="sticky top-0 z-40 px-2 py-3 text-center border-r border-white/10 bg-gradient-to-r from-red-600 to-red-700 text-xs font-bold leading-tight"
-                  style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}
                 >
                   {t.nombre.replace('KFC ', '')}
                 </th>
               ))}
-              <th 
-                className="sticky top-0 z-40 px-2 py-3 text-center text-sm font-bold bg-black/10 rounded-tr-3xl"
-                style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}
-              >
+              <th className="sticky top-0 z-40 px-2 py-3 text-center text-sm font-bold bg-black/10 rounded-tr-3xl">
                 TOTAL
               </th>
             </tr>
           </thead>
 
           <tbody>
-            {/* ===== VENTAS ===== */}
+            {/* VENTAS */}
             <tr className="bg-gradient-to-r from-red-500/10 to-red-600/5 text-red-800 border-y border-red-200/60">
-              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>
+              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" colSpan={n + 2}>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-current" />
                   Ventas
                 </div>
               </td>
-              <td colSpan={n + 1}></td>
             </tr>
             {[
               { key: 'ventaNeta' as keyof DatosTienda, label: 'Ventas Neta', bg: 'bg-red-50/30' },
               { key: 'presupuestoVentas' as keyof DatosTienda, label: 'Presupuesto Ventas', bg: 'bg-red-50/30' },
             ].map(({ key, label, bg }) => (
               <tr key={key} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
-                <td className={`sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 ${bg}`} style={{ width: COL_FIRST, minWidth: COL_FIRST }}>{label}</td>
+                <td className={`sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 ${bg}`}>{label}</td>
                 {tiendas.map((_, i) => (
-                  <td key={i} className="border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>
-                    <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} />
-                  </td>
+                  <td key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></td>
                 ))}
-                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
-                  {formatValor(key as string, calcularTotalesFila(datos, key))}
-                </td>
+                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50">{formatValor(key as string, calcularTotalesFila(datos, key))}</td>
               </tr>
             ))}
             <tr className="border-b border-gray-100">
-              <td className="sticky left-0 z-20 px-5 py-2.5 text-base font-medium text-gray-500 bg-gray-50/60 border-r border-gray-200" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>Variación vs PPTO</td>
+              <td className="sticky left-0 z-20 px-5 py-2.5 text-base font-medium text-gray-500 bg-gray-50/60 border-r border-gray-200">Variación vs PPTO</td>
               {tiendas.map((_, i) => {
                 const val = (datos[i]?.presupuestoVentas || 0) > 0 ? ((datos[i]?.ventaNeta || 0) / datos[i].presupuestoVentas) - 1 : 0
-                return <td key={i} className={`px-4 py-3 text-right text-base border-r border-gray-100 ${getColorVariacion(val)}`} style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>{(val * 100).toFixed(2)}%</td>
+                return <td key={i} className={`px-4 py-3 text-right text-base border-r border-gray-100 ${getColorVariacion(val)}`}>{(val * 100).toFixed(2)}%</td>
               })}
-              <td className={`px-4 py-2.5 text-right text-base font-bold bg-gray-50/60 ${getColorVariacion(calcularTotalesFila(datos, 'presupuestoVentas') > 0 ? (calcularTotalesFila(datos, 'ventaNeta') / calcularTotalesFila(datos, 'presupuestoVentas')) - 1 : 0)}`} style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
+              <td className={`px-4 py-2.5 text-right text-base font-bold bg-gray-50/60 ${getColorVariacion(calcularTotalesFila(datos, 'presupuestoVentas') > 0 ? (calcularTotalesFila(datos, 'ventaNeta') / calcularTotalesFila(datos, 'presupuestoVentas')) - 1 : 0)}`}>
                 {calcularTotalesFila(datos, 'presupuestoVentas') > 0 ? (((calcularTotalesFila(datos, 'ventaNeta') / calcularTotalesFila(datos, 'presupuestoVentas')) - 1) * 100).toFixed(2) : '0.00'}%
               </td>
             </tr>
@@ -155,61 +154,52 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
               { key: 'ventas2025' as keyof DatosTienda, label: 'Ventas 2025', bg: 'bg-red-50/30' },
             ].map(({ key, label, bg }) => (
               <tr key={key} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
-                <td className={`sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 ${bg}`} style={{ width: COL_FIRST, minWidth: COL_FIRST }}>{label}</td>
+                <td className={`sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 ${bg}`}>{label}</td>
                 {tiendas.map((_, i) => (
-                  <td key={i} className="border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>
-                    <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} />
-                  </td>
+                  <td key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></td>
                 ))}
-                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
-                  {formatValor(key as string, calcularTotalesFila(datos, key))}
-                </td>
+                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50">{formatValor(key as string, calcularTotalesFila(datos, key))}</td>
               </tr>
             ))}
             <tr className="border-b border-gray-100">
-              <td className="sticky left-0 z-20 px-5 py-2.5 text-base font-medium text-gray-500 bg-gray-50/60 border-r border-gray-200" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>Variación 2025 vs 2026</td>
+              <td className="sticky left-0 z-20 px-5 py-2.5 text-base font-medium text-gray-500 bg-gray-50/60 border-r border-gray-200">Variación 2025 vs 2026</td>
               {tiendas.map((_, i) => {
                 const val = (datos[i]?.ventas2025 || 0) > 0 ? ((datos[i]?.ventaNeta || 0) / datos[i].ventas2025) - 1 : 0
-                return <td key={i} className={`px-4 py-3 text-right text-base border-r border-gray-100 ${getColorVariacion(val)}`} style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>{(val * 100).toFixed(2)}%</td>
+                return <td key={i} className={`px-4 py-3 text-right text-base border-r border-gray-100 ${getColorVariacion(val)}`}>{(val * 100).toFixed(2)}%</td>
               })}
-              <td className={`px-4 py-2.5 text-right text-base font-bold bg-gray-50/60 ${getColorVariacion(calcularTotalesFila(datos, 'ventas2025') > 0 ? (calcularTotalesFila(datos, 'ventaNeta') / calcularTotalesFila(datos, 'ventas2025')) - 1 : 0)}`} style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
+              <td className={`px-4 py-2.5 text-right text-base font-bold bg-gray-50/60 ${getColorVariacion(calcularTotalesFila(datos, 'ventas2025') > 0 ? (calcularTotalesFila(datos, 'ventaNeta') / calcularTotalesFila(datos, 'ventas2025')) - 1 : 0)}`}>
                 {calcularTotalesFila(datos, 'ventas2025') > 0 ? (((calcularTotalesFila(datos, 'ventaNeta') / calcularTotalesFila(datos, 'ventas2025')) - 1) * 100).toFixed(2) : '0.00'}%
               </td>
             </tr>
 
-            {/* ===== TRANSACCIONES ===== */}
+            {/* TRANSACCIONES */}
             <tr className="bg-gradient-to-r from-blue-500/10 to-blue-600/5 text-blue-800 border-y border-blue-200/60">
-              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>
+              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" colSpan={n + 2}>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-current" />
                   Transacciones
                 </div>
               </td>
-              <td colSpan={n + 1}></td>
             </tr>
             {[
               { key: 'transaccionesActuales' as keyof DatosTienda, label: 'Transacciones Actuales', bg: 'bg-blue-50/30' },
               { key: 'presupuestoTransacciones' as keyof DatosTienda, label: 'Presupuesto Transacciones', bg: 'bg-blue-50/30' },
             ].map(({ key, label, bg }) => (
               <tr key={key} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
-                <td className={`sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 ${bg}`} style={{ width: COL_FIRST, minWidth: COL_FIRST }}>{label}</td>
+                <td className={`sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 ${bg}`}>{label}</td>
                 {tiendas.map((_, i) => (
-                  <td key={i} className="border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>
-                    <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} />
-                  </td>
+                  <td key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></td>
                 ))}
-                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
-                  {formatValor(key as string, calcularTotalesFila(datos, key), 0)}
-                </td>
+                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50">{formatValor(key as string, calcularTotalesFila(datos, key), 0)}</td>
               </tr>
             ))}
             <tr className="border-b border-gray-100">
-              <td className="sticky left-0 z-20 px-5 py-2.5 text-base font-medium text-gray-500 bg-gray-50/60 border-r border-gray-200" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>Variación vs PPTO</td>
+              <td className="sticky left-0 z-20 px-5 py-2.5 text-base font-medium text-gray-500 bg-gray-50/60 border-r border-gray-200">Variación vs PPTO</td>
               {tiendas.map((_, i) => {
                 const val = (datos[i]?.presupuestoTransacciones || 0) > 0 ? ((datos[i]?.transaccionesActuales || 0) / datos[i].presupuestoTransacciones) - 1 : 0
-                return <td key={i} className={`px-4 py-3 text-right text-base border-r border-gray-100 ${getColorVariacion(val)}`} style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>{(val * 100).toFixed(2)}%</td>
+                return <td key={i} className={`px-4 py-3 text-right text-base border-r border-gray-100 ${getColorVariacion(val)}`}>{(val * 100).toFixed(2)}%</td>
               })}
-              <td className={`px-4 py-2.5 text-right text-base font-bold bg-gray-50/60 ${getColorVariacion(calcularTotalesFila(datos, 'presupuestoTransacciones') > 0 ? (calcularTotalesFila(datos, 'transaccionesActuales') / calcularTotalesFila(datos, 'presupuestoTransacciones')) - 1 : 0)}`} style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
+              <td className={`px-4 py-2.5 text-right text-base font-bold bg-gray-50/60 ${getColorVariacion(calcularTotalesFila(datos, 'presupuestoTransacciones') > 0 ? (calcularTotalesFila(datos, 'transaccionesActuales') / calcularTotalesFila(datos, 'presupuestoTransacciones')) - 1 : 0)}`}>
                 {calcularTotalesFila(datos, 'presupuestoTransacciones') > 0 ? (((calcularTotalesFila(datos, 'transaccionesActuales') / calcularTotalesFila(datos, 'presupuestoTransacciones')) - 1) * 100).toFixed(2) : '0.00'}%
               </td>
             </tr>
@@ -217,80 +207,70 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
               { key: 'transacciones2025' as keyof DatosTienda, label: 'Transacciones 2025', bg: 'bg-blue-50/30' },
             ].map(({ key, label, bg }) => (
               <tr key={key} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
-                <td className={`sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 ${bg}`} style={{ width: COL_FIRST, minWidth: COL_FIRST }}>{label}</td>
+                <td className={`sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 ${bg}`}>{label}</td>
                 {tiendas.map((_, i) => (
-                  <td key={i} className="border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>
-                    <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} />
-                  </td>
+                  <td key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></td>
                 ))}
-                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
-                  {formatValor(key as string, calcularTotalesFila(datos, key), 0)}
-                </td>
+                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50">{formatValor(key as string, calcularTotalesFila(datos, key), 0)}</td>
               </tr>
             ))}
             <tr className="border-b border-gray-100">
-              <td className="sticky left-0 z-20 px-5 py-2.5 text-base font-medium text-gray-500 bg-gray-50/60 border-r border-gray-200" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>Variación 2025 vs 2026</td>
+              <td className="sticky left-0 z-20 px-5 py-2.5 text-base font-medium text-gray-500 bg-gray-50/60 border-r border-gray-200">Variación 2025 vs 2026</td>
               {tiendas.map((_, i) => {
                 const val = (datos[i]?.transacciones2025 || 0) > 0 ? ((datos[i]?.transaccionesActuales || 0) / datos[i].transacciones2025) - 1 : 0
-                return <td key={i} className={`px-4 py-3 text-right text-base border-r border-gray-100 ${getColorVariacion(val)}`} style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>{(val * 100).toFixed(2)}%</td>
+                return <td key={i} className={`px-4 py-3 text-right text-base border-r border-gray-100 ${getColorVariacion(val)}`}>{(val * 100).toFixed(2)}%</td>
               })}
-              <td className={`px-4 py-2.5 text-right text-base font-bold bg-gray-50/60 ${getColorVariacion(calcularTotalesFila(datos, 'transacciones2025') > 0 ? (calcularTotalesFila(datos, 'transaccionesActuales') / calcularTotalesFila(datos, 'transacciones2025')) - 1 : 0)}`} style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
+              <td className={`px-4 py-2.5 text-right text-base font-bold bg-gray-50/60 ${getColorVariacion(calcularTotalesFila(datos, 'transacciones2025') > 0 ? (calcularTotalesFila(datos, 'transaccionesActuales') / calcularTotalesFila(datos, 'transacciones2025')) - 1 : 0)}`}>
                 {calcularTotalesFila(datos, 'transacciones2025') > 0 ? (((calcularTotalesFila(datos, 'transaccionesActuales') / calcularTotalesFila(datos, 'transacciones2025')) - 1) * 100).toFixed(2) : '0.00'}%
               </td>
             </tr>
 
-            {/* ===== TICKET PROMEDIO ===== */}
+            {/* TICKET PROMEDIO */}
             <tr className="bg-gradient-to-r from-violet-500/10 to-violet-600/5 text-violet-800 border-y border-violet-200/60">
-              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>
+              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" colSpan={n + 2}>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-current" />
                   Ticket Promedio
                 </div>
               </td>
-              <td colSpan={n + 1}></td>
             </tr>
             <tr className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
-              <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-violet-50/30" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>Ticket Prom.</td>
+              <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-violet-50/30">Ticket Prom.</td>
               {tiendas.map((_, i) => {
                 const val = (datos[i]?.transaccionesActuales || 0) > 0 ? (datos[i]?.ventaNeta || 0) / datos[i].transaccionesActuales : 0
-                return <td key={i} className="px-4 py-3 text-right text-base bg-amber-50/40 border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>{formatValor('presupuestoTicket', val)}</td>
+                return <td key={i} className="px-4 py-3 text-right text-base bg-amber-50/40 border-r border-gray-100">{formatValor('presupuestoTicket', val)}</td>
               })}
-              <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-amber-50/60" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
+              <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-amber-50/60">
                 {(() => { const tv = calcularTotalesFila(datos, 'ventaNeta'); const tx = calcularTotalesFila(datos, 'transaccionesActuales'); return tx > 0 ? formatValor('presupuestoTicket', tv / tx) : '$0.00'; })()}
               </td>
             </tr>
             <tr className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
-              <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-violet-50/30" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>Presupuesto Ticket</td>
+              <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-violet-50/30">Presupuesto Ticket</td>
               {tiendas.map((_, i) => (
-                <td key={i} className="border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>
-                  <CeldaInput value={datos[i]?.presupuestoTicket || 0} onChange={(v) => updateDato(i, 'presupuestoTicket', v)} campo="presupuestoTicket" />
-                </td>
+                <td key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.presupuestoTicket || 0} onChange={(v) => updateDato(i, 'presupuestoTicket', v)} campo="presupuestoTicket" /></td>
               ))}
-              <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
-                {formatValor('presupuestoTicket', calcularTotalesFila(datos, 'presupuestoTicket'))}
-              </td>
+              <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50">{formatValor('presupuestoTicket', calcularTotalesFila(datos, 'presupuestoTicket'))}</td>
             </tr>
             <tr className="border-b border-gray-100">
-              <td className="sticky left-0 z-20 px-5 py-2.5 text-base font-medium text-gray-500 bg-gray-50/60 border-r border-gray-200" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>Variación vs PPTO</td>
+              <td className="sticky left-0 z-20 px-5 py-2.5 text-base font-medium text-gray-500 bg-gray-50/60 border-r border-gray-200">Variación vs PPTO</td>
               {tiendas.map((_, i) => {
                 const ticket = (datos[i]?.transaccionesActuales || 0) > 0 ? (datos[i]?.ventaNeta || 0) / datos[i].transaccionesActuales : 0
                 const val = (datos[i]?.presupuestoTicket || 0) > 0 ? (ticket / datos[i].presupuestoTicket) - 1 : 0
-                return <td key={i} className={`px-4 py-3 text-right text-base border-r border-gray-100 ${getColorVariacion(val)}`} style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>{(val * 100).toFixed(2)}%</td>
+                return <td key={i} className={`px-4 py-3 text-right text-base border-r border-gray-100 ${getColorVariacion(val)}`}>{(val * 100).toFixed(2)}%</td>
               })}
-              <td className={`px-4 py-2.5 text-right text-base font-bold bg-gray-50/60 ${getColorVariacion((() => { const tv = calcularTotalesFila(datos, 'ventaNeta'); const tx = calcularTotalesFila(datos, 'transaccionesActuales'); const tt = tx > 0 ? tv / tx : 0; const tp = calcularTotalesFila(datos, 'presupuestoTicket'); return tp > 0 ? (tt / tp) - 1 : 0; })())}`} style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
+              <td className={`px-4 py-2.5 text-right text-base font-bold bg-gray-50/60 ${getColorVariacion((() => { const tv = calcularTotalesFila(datos, 'ventaNeta'); const tx = calcularTotalesFila(datos, 'transaccionesActuales'); const tt = tx > 0 ? tv / tx : 0; const tp = calcularTotalesFila(datos, 'presupuestoTicket'); return tp > 0 ? (tt / tp) - 1 : 0; })())}`}>
                 {(() => { const tv = calcularTotalesFila(datos, 'ventaNeta'); const tx = calcularTotalesFila(datos, 'transaccionesActuales'); const tt = tx > 0 ? tv / tx : 0; const tp = calcularTotalesFila(datos, 'presupuestoTicket'); return tp > 0 ? (((tt / tp) - 1) * 100).toFixed(2) : '0.00'; })()}%
               </td>
             </tr>
 
-            {/* ===== CANALES ===== */}
+            {/* CANALES */}
             <tr className="bg-gradient-to-r from-emerald-500/10 to-emerald-600/5 text-emerald-800 border-y border-emerald-200/60">
-              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>
+              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" colSpan={n + 2}>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-current" />
                   Canales
                 </div>
               </td>
-              <td colSpan={n + 1}></td>
             </tr>
             {[
               { key: 'kioskos' as keyof DatosTienda, label: 'Kioskos ($)' },
@@ -304,40 +284,35 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
             ].map(({ key, label }) => (
               <div key={key}>
                 <tr className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
-                  <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-emerald-50/20" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>{label}</td>
+                  <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-emerald-50/20">{label}</td>
                   {tiendas.map((_, i) => (
-                    <td key={i} className="border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>
-                      <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} />
-                    </td>
+                    <td key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></td>
                   ))}
-                  <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
-                    {formatValor(key as string, calcularTotalesFila(datos, key))}
-                  </td>
+                  <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50">{formatValor(key as string, calcularTotalesFila(datos, key))}</td>
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="sticky left-0 z-20 px-5 py-2 text-sm text-gray-400 bg-gray-50/40 border-r border-gray-200" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>%</td>
+                  <td className="sticky left-0 z-20 px-5 py-2 text-sm text-gray-400 bg-gray-50/40 border-r border-gray-200">%</td>
                   {tiendas.map((_, i) => {
                     const totalVenta = datos[i]?.ventaNeta || 0
                     const totalTrx = datos[i]?.transaccionesActuales || 0
                     const val = (key as string).includes('Trx') ? (totalTrx > 0 ? ((datos[i]?.[key] as number) || 0) / totalTrx : 0) : (totalVenta > 0 ? ((datos[i]?.[key] as number) || 0) / totalVenta : 0)
-                    return <td key={i} className="px-4 py-2 text-right text-sm text-gray-500 border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>{(val * 100).toFixed(2)}%</td>
+                    return <td key={i} className="px-4 py-2 text-right text-sm text-gray-500 border-r border-gray-100">{(val * 100).toFixed(2)}%</td>
                   })}
-                  <td className="px-4 py-2 text-right text-sm font-bold text-gray-500 bg-gray-50/40" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
+                  <td className="px-4 py-2 text-right text-sm font-bold text-gray-500 bg-gray-50/40">
                     {(() => { const totalVenta = calcularTotalesFila(datos, 'ventaNeta'); const totalTrx = calcularTotalesFila(datos, 'transaccionesActuales'); const totalConcepto = calcularTotalesFila(datos, key); const val = (key as string).includes('Trx') ? (totalTrx > 0 ? totalConcepto / totalTrx : 0) : (totalVenta > 0 ? totalConcepto / totalVenta : 0); return (val * 100).toFixed(2) + '%'; })()}
                   </td>
                 </tr>
               </div>
             ))}
 
-            {/* ===== DAY PART ===== */}
+            {/* DAY PART */}
             <tr className="bg-gradient-to-r from-amber-500/10 to-amber-600/5 text-amber-800 border-y border-amber-200/60">
-              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>
+              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" colSpan={n + 2}>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-current" />
                   Ventas por Day Part
                 </div>
               </td>
-              <td colSpan={n + 1}></td>
             </tr>
             {[
               { key: 'dayPartApertura' as keyof DatosTienda, label: 'Apertura - 12 MD' },
@@ -347,27 +322,22 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
               { key: 'dayPart9aCierre' as keyof DatosTienda, label: '9 PM - Cierre' },
             ].map(({ key, label }) => (
               <tr key={key} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
-                <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-amber-50/20" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>{label}</td>
+                <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-amber-50/20">{label}</td>
                 {tiendas.map((_, i) => (
-                  <td key={i} className="border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>
-                    <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} />
-                  </td>
+                  <td key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></td>
                 ))}
-                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
-                  {formatValor(key as string, calcularTotalesFila(datos, key))}
-                </td>
+                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50">{formatValor(key as string, calcularTotalesFila(datos, key))}</td>
               </tr>
             ))}
 
-            {/* ===== INFO FINANCIERA ===== */}
+            {/* INFO FINANCIERA */}
             <tr className="bg-gradient-to-r from-orange-500/10 to-orange-600/5 text-orange-800 border-y border-orange-200/60">
-              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>
+              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" colSpan={n + 2}>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-current" />
                   Información Financiera
                 </div>
               </td>
-              <td colSpan={n + 1}></td>
             </tr>
             {[
               { key: 'borrantes' as keyof DatosTienda, label: 'Borrantes ($)' },
@@ -378,24 +348,20 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
             ].map(({ key, label }) => (
               <div key={key}>
                 <tr className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
-                  <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-orange-50/20" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>{label}</td>
+                  <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-orange-50/20">{label}</td>
                   {tiendas.map((_, i) => (
-                    <td key={i} className="border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>
-                      <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} />
-                    </td>
+                    <td key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></td>
                   ))}
-                  <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
-                    {formatValor(key as string, calcularTotalesFila(datos, key), key === 'notasCreditoCantidad' ? 0 : 2)}
-                  </td>
+                  <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50">{formatValor(key as string, calcularTotalesFila(datos, key), key === 'notasCreditoCantidad' ? 0 : 2)}</td>
                 </tr>
                 {key !== 'notasCreditoCantidad' && (
                   <tr className="border-b border-gray-100">
-                    <td className="sticky left-0 z-20 px-5 py-2 text-sm text-gray-400 bg-gray-50/40 border-r border-gray-200" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>%</td>
+                    <td className="sticky left-0 z-20 px-5 py-2 text-sm text-gray-400 bg-gray-50/40 border-r border-gray-200">%</td>
                     {tiendas.map((_, i) => {
                       const val = (datos[i]?.ventaNeta || 0) > 0 ? ((datos[i]?.[key] as number) || 0) / datos[i].ventaNeta : 0
-                      return <td key={i} className="px-4 py-2 text-right text-sm text-gray-500 border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>{(val * 100).toFixed(3)}%</td>
+                      return <td key={i} className="px-4 py-2 text-right text-sm text-gray-500 border-r border-gray-100">{(val * 100).toFixed(3)}%</td>
                     })}
-                    <td className="px-4 py-2 text-right text-sm font-bold text-gray-500 bg-gray-50/40" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
+                    <td className="px-4 py-2 text-right text-sm font-bold text-gray-500 bg-gray-50/40">
                       {(() => { const totalVenta = calcularTotalesFila(datos, 'ventaNeta'); const totalConcepto = calcularTotalesFila(datos, key); return totalVenta > 0 ? ((totalConcepto / totalVenta) * 100).toFixed(3) + '%' : '0.000%'; })()}
                     </td>
                   </tr>
@@ -403,42 +369,36 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
               </div>
             ))}
 
-            {/* ===== ENTRENAMIENTO ===== */}
+            {/* ENTRENAMIENTO */}
             <tr className="bg-gradient-to-r from-cyan-500/10 to-cyan-600/5 text-cyan-800 border-y border-cyan-200/60">
-              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>
+              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" colSpan={n + 2}>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-current" />
                   Entrenamiento
                 </div>
               </td>
-              <td colSpan={n + 1}></td>
             </tr>
             {[
               { key: 'personalEntrenamiento' as keyof DatosTienda, label: 'Personal en entrenamiento' },
               { key: 'theVault' as keyof DatosTienda, label: '% The Vault' },
             ].map(({ key, label }) => (
               <tr key={key} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
-                <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-cyan-50/20" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>{label}</td>
+                <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-cyan-50/20">{label}</td>
                 {tiendas.map((_, i) => (
-                  <td key={i} className="border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>
-                    <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} type={key === 'theVault' ? 'percentage' : 'number'} campo={key} />
-                  </td>
+                  <td key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} type={key === 'theVault' ? 'percentage' : 'number'} campo={key} /></td>
                 ))}
-                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
-                  {formatValor(key as string, calcularTotalesFila(datos, key), key === 'theVault' ? 2 : 0)}
-                </td>
+                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50">{formatValor(key as string, calcularTotalesFila(datos, key), key === 'theVault' ? 2 : 0)}</td>
               </tr>
             ))}
 
-            {/* ===== MANO DE OBRA ===== */}
+            {/* MANO DE OBRA */}
             <tr className="bg-gradient-to-r from-indigo-500/10 to-indigo-600/5 text-indigo-800 border-y border-indigo-200/60">
-              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>
+              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" colSpan={n + 2}>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-current" />
                   Mano de Obra
                 </div>
               </td>
-              <td colSpan={n + 1}></td>
             </tr>
             {[
               { key: 'manpowerAprobado' as keyof DatosTienda, label: 'Manpower aprobado' },
@@ -452,36 +412,32 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
             ].map(({ key, label }) => (
               <div key={key}>
                 <tr className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
-                  <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-indigo-50/20" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>{label}</td>
+                  <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-indigo-50/20">{label}</td>
                   {tiendas.map((_, i) => (
-                    <td key={i} className="border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>
-                      <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} />
-                    </td>
+                    <td key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></td>
                   ))}
-                  <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
-                    {formatValor(key as string, calcularTotalesFila(datos, key))}
-                  </td>
+                  <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50">{formatValor(key as string, calcularTotalesFila(datos, key))}</td>
                 </tr>
                 {key === 'costoManoObra' && (
                   <tr className="border-b border-gray-100">
-                    <td className="sticky left-0 z-20 px-5 py-2 text-sm text-gray-400 bg-gray-50/40 border-r border-gray-200" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>% Mano de Obra</td>
+                    <td className="sticky left-0 z-20 px-5 py-2 text-sm text-gray-400 bg-gray-50/40 border-r border-gray-200">% Mano de Obra</td>
                     {tiendas.map((_, i) => {
                       const val = (datos[i]?.ventaNeta || 0) > 0 ? (datos[i]?.costoManoObra || 0) / datos[i].ventaNeta : 0
-                      return <td key={i} className="px-4 py-2 text-right text-sm text-gray-500 border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>{(val * 100).toFixed(2)}%</td>
+                      return <td key={i} className="px-4 py-2 text-right text-sm text-gray-500 border-r border-gray-100">{(val * 100).toFixed(2)}%</td>
                     })}
-                    <td className="px-4 py-2 text-right text-sm font-bold text-gray-500 bg-gray-50/40" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
+                    <td className="px-4 py-2 text-right text-sm font-bold text-gray-500 bg-gray-50/40">
                       {(() => { const totalVenta = calcularTotalesFila(datos, 'ventaNeta'); const totalMO = calcularTotalesFila(datos, 'costoManoObra'); return totalVenta > 0 ? ((totalMO / totalVenta) * 100).toFixed(2) + '%' : '0.00%'; })()}
                     </td>
                   </tr>
                 )}
                 {key === 'empleadosActivos' && (
                   <tr className="border-b border-gray-100">
-                    <td className="sticky left-0 z-20 px-5 py-2 text-sm text-gray-400 bg-gray-50/40 border-r border-gray-200" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>Productividad</td>
+                    <td className="sticky left-0 z-20 px-5 py-2 text-sm text-gray-400 bg-gray-50/40 border-r border-gray-200">Productividad</td>
                     {tiendas.map((_, i) => {
                       const val = (datos[i]?.empleadosActivos || 0) > 0 ? (datos[i]?.ventaNeta || 0) / datos[i].empleadosActivos : 0
-                      return <td key={i} className="px-4 py-2 text-right text-sm text-gray-500 border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>{val.toFixed(2)}</td>
+                      return <td key={i} className="px-4 py-2 text-right text-sm text-gray-500 border-r border-gray-100">{val.toFixed(2)}</td>
                     })}
-                    <td className="px-4 py-2 text-right text-sm font-bold text-gray-500 bg-gray-50/40" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
+                    <td className="px-4 py-2 text-right text-sm font-bold text-gray-500 bg-gray-50/40">
                       {(() => { const totalVenta = calcularTotalesFila(datos, 'ventaNeta'); const totalEmp = calcularTotalesFila(datos, 'empleadosActivos'); return totalEmp > 0 ? (totalVenta / totalEmp).toFixed(2) : '0.00'; })()}
                     </td>
                   </tr>
@@ -489,39 +445,34 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
               </div>
             ))}
 
-            {/* ===== COSTOS ===== */}
+            {/* COSTOS */}
             <tr className="bg-gradient-to-r from-rose-500/10 to-rose-600/5 text-rose-800 border-y border-rose-200/60">
-              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>
+              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" colSpan={n + 2}>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-current" />
                   Costos
                 </div>
               </td>
-              <td colSpan={n + 1}></td>
             </tr>
             {[
               { key: 'costoSemanal' as keyof DatosTienda, label: 'Costo Semanal %' },
               { key: 'costoTeorico' as keyof DatosTienda, label: 'Costo Teórico %' },
             ].map(({ key, label }) => (
               <tr key={key} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
-                <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-rose-50/20" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>{label}</td>
+                <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-rose-50/20">{label}</td>
                 {tiendas.map((_, i) => (
-                  <td key={i} className="border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>
-                    <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} type="percentage" campo={key} />
-                  </td>
+                  <td key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} type="percentage" campo={key} /></td>
                 ))}
-                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
-                  {calcularTotalesFila(datos, key).toFixed(2)}%
-                </td>
+                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toFixed(2)}%</td>
               </tr>
             ))}
             <tr className="border-b border-gray-100">
-              <td className="sticky left-0 z-20 px-5 py-2.5 text-base font-medium text-gray-500 bg-gray-50/60 border-r border-gray-200" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>Variación %</td>
+              <td className="sticky left-0 z-20 px-5 py-2.5 text-base font-medium text-gray-500 bg-gray-50/60 border-r border-gray-200">Variación %</td>
               {tiendas.map((_, i) => {
                 const val = (datos[i]?.costoSemanal || 0) - (datos[i]?.costoTeorico || 0)
-                return <td key={i} className={`px-4 py-3 text-right text-base border-r border-gray-100 ${getColorVariacion(val)}`} style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>{(val * 100).toFixed(2)}%</td>
+                return <td key={i} className={`px-4 py-3 text-right text-base border-r border-gray-100 ${getColorVariacion(val)}`}>{(val * 100).toFixed(2)}%</td>
               })}
-              <td className={`px-4 py-2.5 text-right text-base font-bold bg-gray-50/60 ${getColorVariacion(calcularTotalesFila(datos, 'costoSemanal') - calcularTotalesFila(datos, 'costoTeorico'))}`} style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
+              <td className={`px-4 py-2.5 text-right text-base font-bold bg-gray-50/60 ${getColorVariacion(calcularTotalesFila(datos, 'costoSemanal') - calcularTotalesFila(datos, 'costoTeorico'))}`}>
                 {((calcularTotalesFila(datos, 'costoSemanal') - calcularTotalesFila(datos, 'costoTeorico')) * 100).toFixed(2)}%
               </td>
             </tr>
@@ -531,38 +482,33 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
             ].map(({ key, label }) => (
               <div key={key}>
                 <tr className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
-                  <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-rose-50/20" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>{label}</td>
+                  <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-rose-50/20">{label}</td>
                   {tiendas.map((_, i) => (
-                    <td key={i} className="border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>
-                      <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} />
-                    </td>
+                    <td key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></td>
                   ))}
-                  <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
-                    {formatValor(key as string, calcularTotalesFila(datos, key))}
-                  </td>
+                  <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50">{formatValor(key as string, calcularTotalesFila(datos, key))}</td>
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="sticky left-0 z-20 px-5 py-2 text-sm text-gray-400 bg-gray-50/40 border-r border-gray-200" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>%</td>
+                  <td className="sticky left-0 z-20 px-5 py-2 text-sm text-gray-400 bg-gray-50/40 border-r border-gray-200">%</td>
                   {tiendas.map((_, i) => {
                     const val = (datos[i]?.ventaNeta || 0) > 0 ? ((datos[i]?.[key] as number) || 0) / datos[i].ventaNeta : 0
-                    return <td key={i} className="px-4 py-2 text-right text-sm text-gray-500 border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>{(val * 100).toFixed(3)}%</td>
+                    return <td key={i} className="px-4 py-2 text-right text-sm text-gray-500 border-r border-gray-100">{(val * 100).toFixed(3)}%</td>
                   })}
-                  <td className="px-4 py-2 text-right text-sm font-bold text-gray-500 bg-gray-50/40" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
+                  <td className="px-4 py-2 text-right text-sm font-bold text-gray-500 bg-gray-50/40">
                     {(() => { const totalVenta = calcularTotalesFila(datos, 'ventaNeta'); const totalConcepto = calcularTotalesFila(datos, key); return totalVenta > 0 ? ((totalConcepto / totalVenta) * 100).toFixed(3) + '%' : '0.000%'; })()}
                   </td>
                 </tr>
               </div>
             ))}
 
-            {/* ===== CLIENTES ===== */}
+            {/* CLIENTES */}
             <tr className="bg-gradient-to-r from-teal-500/10 to-teal-600/5 text-teal-800 border-y border-teal-200/60">
-              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>
+              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" colSpan={n + 2}>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-current" />
                   Clientes
                 </div>
               </td>
-              <td colSpan={n + 1}></td>
             </tr>
             {[
               { key: 'tiempoAutoSegundos' as keyof DatosTienda, label: 'Tiempo Auto (seg)' },
@@ -574,54 +520,44 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
               { key: 'dp5' as keyof DatosTienda, label: 'DP#5 9PM-Cierre' },
             ].map(({ key, label }) => (
               <tr key={key} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
-                <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-teal-50/20" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>{label}</td>
+                <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-teal-50/20">{label}</td>
                 {tiendas.map((_, i) => (
-                  <td key={i} className="border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>
-                    <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} />
-                  </td>
+                  <td key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></td>
                 ))}
-                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
-                  {calcularTotalesFila(datos, key).toFixed(2)}
-                </td>
+                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toFixed(2)}</td>
               </tr>
             ))}
 
-            {/* ===== ROCC ===== */}
+            {/* ROCC */}
             <tr className="bg-gradient-to-r from-gray-500/10 to-gray-600/5 text-gray-800 border-y border-gray-200/60">
-              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>
+              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" colSpan={n + 2}>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-current" />
                   ROCC
                 </div>
               </td>
-              <td colSpan={n + 1}></td>
             </tr>
             {[
               { key: 'roccL1' as keyof DatosTienda, label: 'L1' },
               { key: 'roccL3' as keyof DatosTienda, label: 'L3' },
             ].map(({ key, label }) => (
               <tr key={key} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
-                <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-gray-50/40" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>{label}</td>
+                <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-gray-50/40">{label}</td>
                 {tiendas.map((_, i) => (
-                  <td key={i} className="border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>
-                    <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} />
-                  </td>
+                  <td key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} /></td>
                 ))}
-                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
-                  {calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 0 })}
-                </td>
+                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50">{calcularTotalesFila(datos, key).toLocaleString('en-US', { minimumFractionDigits: 0 })}</td>
               </tr>
             ))}
 
-            {/* ===== DOMICILIO ===== */}
+            {/* DOMICILIO */}
             <tr className="bg-gradient-to-r from-fuchsia-500/10 to-fuchsia-600/5 text-fuchsia-800 border-y border-fuchsia-200/60">
-              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>
+              <td className="sticky left-0 z-20 px-5 py-3 text-base font-bold uppercase tracking-wider" colSpan={n + 2}>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-current" />
                   Domicilio
                 </div>
               </td>
-              <td colSpan={n + 1}></td>
             </tr>
             {[
               { key: 'penalizacionesPct' as keyof DatosTienda, label: '% Penalizaciones' },
@@ -629,15 +565,11 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
               { key: 'tiempoCocina' as keyof DatosTienda, label: 'Tiempo cocina (min)' },
             ].map(({ key, label }) => (
               <tr key={key} className="hover:bg-gray-50/50 transition-colors border-b border-gray-100">
-                <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-fuchsia-50/20" style={{ width: COL_FIRST, minWidth: COL_FIRST }}>{label}</td>
+                <td className="sticky left-0 z-20 px-5 py-3 text-base font-semibold text-gray-700 border-r border-gray-200 bg-fuchsia-50/20">{label}</td>
                 {tiendas.map((_, i) => (
-                  <td key={i} className="border-r border-gray-100" style={{ width: COL_TIENDA, minWidth: COL_TIENDA }}>
-                    <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} type={key === 'penalizacionesPct' ? 'percentage' : 'number'} campo={key} />
-                  </td>
+                  <td key={i} className="border-r border-gray-100"><CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} type={key === 'penalizacionesPct' ? 'percentage' : 'number'} campo={key} /></td>
                 ))}
-                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50" style={{ width: COL_TOTAL, minWidth: COL_TOTAL }}>
-                  {formatValor(key as string, calcularTotalesFila(datos, key), key === 'penalizacionesPct' ? 2 : 0)}
-                </td>
+                <td className="px-4 py-2.5 text-right text-base font-bold text-gray-800 bg-gray-50/50">{formatValor(key as string, calcularTotalesFila(datos, key), key === 'penalizacionesPct' ? 2 : 0)}</td>
               </tr>
             ))}
 
