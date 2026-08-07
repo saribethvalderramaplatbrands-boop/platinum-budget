@@ -99,27 +99,29 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
   }, [onUpdateDato])
 
   const n = tiendas.length
-  const gridCols = "minmax(240px, 1.2fr) repeat(" + n + ", minmax(130px, 1fr)) minmax(130px, 1fr)"
+  // Columnas más anchas para que quepan los nombres completos
+  const gridCols = "minmax(240px, 1.2fr) repeat(" + n + ", minmax(150px, 1fr)) minmax(140px, 1fr)"
 
   return (
-    <div className="rounded-3xl border border-gray-200/60 shadow-[0_8px_40px_rgba(0,0,0,0.06)] bg-white">
-      <div className="overflow-x-auto">
+    <div className="rounded-3xl border border-gray-200/60 shadow-[0_8px_40px_rgba(0,0,0,0.06)] bg-white overflow-hidden">
+      {/* FIX: overflow-auto + max-h para que el scroll sea DENTRO de la tabla y el header se quede pegado */}
+      <div className="overflow-auto max-h-[calc(100vh-260px)]">
         <div className="min-w-full" style={{ ['--grid-cols' as any]: gridCols }}>
 
-          {/* HEADER ROJO KFC — STICKY + NOMBRES SIN CÓDIGO DUPLICADO */}
-          <div className="grid sticky top-0 z-30 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-t-3xl" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
-            <div className="px-4 py-4 text-sm font-bold border-r border-white/10 flex items-center rounded-tl-3xl">
+          {/* HEADER ROJO KFC — STICKY DENTRO DEL SCROLL DE LA TABLA */}
+          <div className="grid sticky top-0 z-30 bg-gradient-to-r from-red-600 to-red-700 text-white" style={{ gridTemplateColumns: 'var(--grid-cols)' }}>
+            <div className="px-4 py-4 text-sm font-bold border-r border-white/10 flex items-center">
               <span className="opacity-90">GERENTE:</span> <span className="ml-1.5">{gerente}</span>
             </div>
             {tiendas.map(t => (
               <div key={t.codigo} className="px-2 py-3 text-center border-r border-white/10 flex flex-col items-center justify-center">
-                {/* Solo nombre, sin código duplicado. Texto pequeño con wrap permitido */}
-                <div className="text-xs font-bold leading-tight whitespace-normal">
+                {/* Nombre completo, sin código duplicado, texto pequeño con wrap */}
+                <div className="text-[11px] font-bold leading-tight whitespace-normal">
                   {t.nombre.replace('KFC ', '')}
                 </div>
               </div>
             ))}
-            <div className="px-2 py-3 text-center text-sm font-bold bg-black/10 flex items-center justify-center rounded-tr-3xl">TOTAL</div>
+            <div className="px-2 py-3 text-center text-sm font-bold bg-black/10 flex items-center justify-center">TOTAL</div>
           </div>
 
           {/* VENTAS */}
