@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Save, FileSpreadsheet, ChevronLeft, ChevronRight, CalendarDays, Store } from 'lucide-react'
 import { getTiendasPorGerente, GERENTES } from '../data/tiendas'
 import { useAvanceSemanal } from '../hooks/useAvanceSemanal'
@@ -45,6 +45,9 @@ export default function AvanceFormulario() {
   const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
   const [mostrarToast, setMostrarToast] = useState(false)
 
+  // FIX: Flag para evitar que se recarguen los datos mientras editas
+  const [datosCargados, setDatosCargados] = useState(false)
+
   const tiendas = getTiendasPorGerente(gerenteSeleccionado)
 
   const {
@@ -55,12 +58,19 @@ export default function AvanceFormulario() {
     cargarDatosGuardados,
   } = useAvanceSemanal(semana?.value || '', gerenteSeleccionado, tiendas)
 
+  // FIX: Solo cargar datos UNA VEZ por combinación semana+gerente
   useEffect(() => {
-    if (tiendas.length > 0) {
+    if (tiendas.length > 0 && !datosCargados) {
       const guardados = cargarDatosGuardados()
       setDatos(guardados.length > 0 ? guardados : tiendas.map(() => ({ ...EMPTY_DATOS })))
+      setDatosCargados(true)
     }
-  }, [tiendas, cargarDatosGuardados])
+  }, [tiendas, cargarDatosGuardados, datosCargados])
+
+  // FIX: Resetear el flag cuando cambia la semana o el gerente
+  useEffect(() => {
+    setDatosCargados(false)
+  }, [semana?.value, gerenteSeleccionado])
 
   const handleGuardar = async () => {
     if (!semana) {
@@ -124,7 +134,6 @@ export default function AvanceFormulario() {
             {/* Izquierda: Logo + Título */}
             <div className="flex items-center gap-4">
               <div className="relative">
-                {/* LOGO KFC - fondo blanco para que se vea bien */}
                 <div className="w-14 h-14 rounded-2xl bg-white border border-gray-200 flex items-center justify-center shadow-lg overflow-hidden">
                   <img src="/kfc-logo.png" alt="KFC" className="h-10 w-auto object-contain" />
                 </div>
