@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import type { DatosTienda } from '../types'
 
 const CAMPOS_DINERO: string[] = [
@@ -19,7 +19,6 @@ interface CeldaInputProps {
   type?: 'number' | 'percentage'
   readonly?: boolean
   isCalculated?: boolean
-  className?: string
 }
 
 export default function CeldaInput({
@@ -29,53 +28,52 @@ export default function CeldaInput({
   type = 'number',
   readonly = false,
   isCalculated = false,
-  className = '',
 }: CeldaInputProps) {
   const [localValue, setLocalValue] = useState(value.toString())
   const [hasFocus, setHasFocus] = useState(false)
   const isMoney = campo ? CAMPOS_DINERO.includes(campo as string) : false
-  const prevValueRef = useRef(value)
+  const committedRef = useRef(value)
 
-  // Solo sincronizar desde props cuando NO tenemos el foco
-  // y el valor realmente cambió desde fuera
-  useEffect(() => {
-    if (!hasFocus && value !== prevValueRef.current) {
-      setLocalValue(value.toString())
-      prevValueRef.current = value
-    }
-  }, [value, hasFocus])
-
-  const handleFocus = () => {
-    setHasFocus(true)
-    // Al hacer focus, mostramos el número limpio sin formato
+  // Solo sincronizar cuando el valor prop cambia REALMENTE desde fuera
+  // y NO tenemos el foco (evita sobrescribir mientras escribe)
+  if (value !== committedRef.current && !hasFocus) {
     setLocalValue(value.toString())
+    committedRef.current = value
   }
 
-  const handleBlur = () => {
+  const handleFocus = useCallback(() => {
+    setHasFocus(true)
+    // Al hacer focus, mostrar número limpio sin formato
+    setLocalValue(value.toString())
+  }, [value])
+
+  const handleBlur = useCallback(() => {
     setHasFocus(false)
-    const num = parseFloat(localValue.replace(/,/g, '').replace(/\$/g, ''))
-    if (!isNaN(num)) {
+    const cleaned = localValue.replace(/,/g, '').replace(/\$/g, '').trim()
+    const num = parseFloat(cleaned)
+    if (!isNaN(num) && cleaned !== '') {
       onChange(num)
+      committedRef.current = num
       setLocalValue(num.toString())
-      prevValueRef.current = num
     } else {
+      // Si escribió algo inválido, volver al valor anterior
       setLocalValue(value.toString())
     }
-  }
+  }, [localValue, onChange, value])
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === 'Tab') {
       (e.target as HTMLInputElement).blur()
     }
-  }
+  }, [])
 
-  // Formato para mostrar cuando NO tiene foco
+  // Formato de visualización cuando NO tiene foco
   const formatDisplay = (val: number): string => {
     if (type === 'percentage') {
       return (val * 100).toFixed(2) + '%'
     }
     const formatted = val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    if (isMoney && !hasFocus) {
+    if (isMoney) {
       return '$' + formatted
     }
     return formatted
@@ -83,31 +81,30 @@ export default function CeldaInput({
 
   if (readonly || isCalculated) {
     return (
-      <div
-        className={`px-4 py-3 text-right text-base font-mono ${className} ${
-          isCalculated ? 'bg-yellow-50/60 text-yellow-900' : 'bg-gray-50 text-gray-600'
-        }`}
-      >
+      <div className={`px-4 py-3 text-right text-base ${
+        isCalculated ? 'bg-yellow-50/60 text-yellow-900' : 'bg-gray-50 text-gray-700'
+      }`}>
         {formatDisplay(value)}
       </div>
     )
   }
 
   return (
-    <div className="relative">
+    <div className="relative h-full">
       {isMoney && hasFocus && (
-        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-base text-gray-400 font-mono pointer-events-none">$</span>
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base text-gray-400 pointer-events-none select-none">$</span>
       )}
       <input
         type="text"
+        inputMode="decimal"
         value={hasFocus ? localValue : formatDisplay(value)}
         onChange={(e) => setLocalValue(e.target.value)}
         onFocus={handleFocus}
         onBlur={handleBlur}
         onKeyDown={handleKeyDown}
-        className={`w-full px-4 py-3 text-right text-base font-mono border-0 outline-none focus:bg-blue-50 focus:ring-1 focus:ring-blue-300 transition-colors ${
-          isMoney && hasFocus ? 'pl-6' : ''
-        } ${className}`}
+        className={`w-full h-full px-4 py-3 text-right text-base border-0 outline-none focus:bg-blue-50 focus:ring-1 focus:ring-blue-300 transition-colors bg-transparent ${
+          isMoney && hasFocus ? 'pl-7' : ''
+        }`}
       />
     </div>
   )
