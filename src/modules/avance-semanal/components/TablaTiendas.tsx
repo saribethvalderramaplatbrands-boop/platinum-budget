@@ -70,8 +70,8 @@ const formatValor = (campo: string, val: number, digits: number = 2): string => 
 
 // ===== CONSTANTES DE ANCHO =====
 const W_FIRST = 260
-const W_TIENDA = 140
 const W_TOTAL = 120
+const W_TIENDA_MIN = 130
 
 export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: TablaTiendasProps) {
   const updateDato = useCallback((tiendaIndex: number, campo: keyof DatosTienda, valor: number) => {
@@ -79,10 +79,11 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
   }, [onUpdateDato])
 
   const n = tiendas.length
+  // Ancho por tienda: si hay pocas, se expanden; si hay muchas, scroll
+  const tiendaWidth = n > 0 ? `calc((100% - ${W_FIRST + W_TOTAL}px) / ${n})` : 'auto'
 
   // ---- Helpers de filas ----
 
-  // Celda primera columna sticky (reutilizable)
   const StickyLabel = ({ children, className = '' }: { children: React.ReactNode, className?: string }) => (
     <td
       className={`sticky left-0 z-20 border-r border-gray-200 whitespace-nowrap ${className}`}
@@ -100,20 +101,19 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
         {titulo}
       </StickyLabel>
       {tiendas.map((_, i) => (
-        <td key={i} className={`${bg} ${border} border-y`} style={{ minWidth: W_TIENDA, width: W_TIENDA }} />
+        <td key={i} className={`${bg} ${border} border-y`} style={{ minWidth: W_TIENDA_MIN, width: tiendaWidth }} />
       ))}
       <td className={`${bg} ${border} border-y`} style={{ minWidth: W_TOTAL, width: W_TOTAL }} />
     </tr>
   )
 
-  // Fila con celdas editables
   const FilaEditable = ({ label, campo, bgClass = '', digits = 2, type }: { label: string, campo: keyof DatosTienda, bgClass?: string, digits?: number, type?: 'number' | 'percentage' }) => (
     <tr className={bgClass}>
       <StickyLabel className="px-5 py-3 text-sm font-semibold text-gray-700 bg-white">
         {label}
       </StickyLabel>
       {tiendas.map((_, i) => (
-        <td key={i} className="border-r border-gray-200 bg-white" style={{ minWidth: W_TIENDA, width: W_TIENDA }}>
+        <td key={i} className="border-r border-gray-200 bg-white" style={{ minWidth: W_TIENDA_MIN, width: tiendaWidth }}>
           <CeldaInput value={datos[i]?.[campo] as number || 0} onChange={(v) => updateDato(i, campo, v)} campo={campo} type={type} />
         </td>
       ))}
@@ -123,14 +123,13 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
     </tr>
   )
 
-  // Fila de variación porcentual
   const FilaVariacion = ({ label, valores, totalVal }: { label: string, valores: number[], totalVal: number }) => (
     <tr className="bg-gray-50/60">
       <StickyLabel className="px-5 py-2.5 text-sm font-medium text-gray-500 bg-gray-50/60">
         {label}
       </StickyLabel>
       {valores.map((val, i) => (
-        <td key={i} className="px-4 py-2.5 text-right text-sm border-r border-gray-200" style={{ minWidth: W_TIENDA, width: W_TIENDA }}>
+        <td key={i} className="px-4 py-2.5 text-right text-sm border-r border-gray-200" style={{ minWidth: W_TIENDA_MIN, width: tiendaWidth }}>
           <span className={getColorVariacion(val)}>{(val * 100).toFixed(2)}%</span>
         </td>
       ))}
@@ -140,14 +139,13 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
     </tr>
   )
 
-  // Fila de porcentaje calculado
   const FilaPorcentaje = ({ label, valores, totalVal, digits = 2 }: { label: string, valores: number[], totalVal: number, digits?: number }) => (
     <tr className="bg-gray-50/40">
       <StickyLabel className="px-5 py-2 text-sm text-gray-400 bg-gray-50/40">
         {label}
       </StickyLabel>
       {valores.map((val, i) => (
-        <td key={i} className="px-4 py-2 text-right text-sm text-gray-500 border-r border-gray-200" style={{ minWidth: W_TIENDA, width: W_TIENDA }}>
+        <td key={i} className="px-4 py-2 text-right text-sm text-gray-500 border-r border-gray-200" style={{ minWidth: W_TIENDA_MIN, width: tiendaWidth }}>
           {(val * 100).toFixed(digits)}%
         </td>
       ))}
@@ -157,14 +155,13 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
     </tr>
   )
 
-  // Fila de valor calculado (no editable)
   const FilaValor = ({ label, valores, totalVal }: { label: string, valores: string[], totalVal: string }) => (
     <tr>
       <StickyLabel className="px-5 py-3 text-sm font-semibold text-gray-700 bg-white">
         {label}
       </StickyLabel>
       {valores.map((val, i) => (
-        <td key={i} className="px-4 py-2.5 text-right text-sm bg-amber-50/40 border-r border-gray-200" style={{ minWidth: W_TIENDA, width: W_TIENDA }}>
+        <td key={i} className="px-4 py-2.5 text-right text-sm bg-amber-50/40 border-r border-gray-200" style={{ minWidth: W_TIENDA_MIN, width: tiendaWidth }}>
           {val}
         </td>
       ))}
@@ -177,10 +174,9 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
   return (
     <div className="rounded-2xl border border-gray-200/60 shadow-[0_8px_40px_rgba(0,0,0,0.06)] bg-white overflow-hidden">
       <div className="overflow-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
-        <table className="border-separate border-spacing-0">
+        <table className="border-separate border-spacing-0 w-full" style={{ tableLayout: 'fixed' }}>
           <thead>
             <tr>
-              {/* z-30 para que NO pase por encima del sidebar (que suele ser z-40/z-50) */}
               <th
                 className="sticky top-0 left-0 z-30 px-4 py-3 text-xs font-bold text-white text-left bg-gradient-to-r from-red-600 to-red-700 border-r border-red-400/30 rounded-tl-2xl whitespace-nowrap"
                 style={{ minWidth: W_FIRST, width: W_FIRST, position: 'sticky', top: 0, left: 0 }}
@@ -191,7 +187,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
                 <th
                   key={t.codigo}
                   className="sticky top-0 z-20 px-2 py-3 text-center text-[11px] font-bold text-white bg-gradient-to-r from-red-600 to-red-700 border-r border-red-400/30 align-middle"
-                  style={{ minWidth: W_TIENDA, width: W_TIENDA, position: 'sticky', top: 0 }}
+                  style={{ minWidth: W_TIENDA_MIN, width: tiendaWidth, position: 'sticky', top: 0 }}
                 >
                   {t.nombre.replace('KFC ', '')}
                 </th>
@@ -348,7 +344,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
                 % The Vault
               </StickyLabel>
               {tiendas.map((_, i) => (
-                <td key={i} className="border-r border-gray-200 bg-white" style={{ minWidth: W_TIENDA, width: W_TIENDA }}>
+                <td key={i} className="border-r border-gray-200 bg-white" style={{ minWidth: W_TIENDA_MIN, width: tiendaWidth }}>
                   <CeldaInput value={datos[i]?.theVault || 0} onChange={(v) => updateDato(i, 'theVault', v)} campo="theVault" type="percentage" />
                 </td>
               ))}
@@ -390,7 +386,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
                     {tiendas.map((_, i) => {
                       const val = (datos[i]?.empleadosActivos || 0) > 0 ? (datos[i]?.ventaNeta || 0) / datos[i].empleadosActivos : 0
                       return (
-                        <td key={i} className="px-4 py-2 text-right text-sm text-gray-500 border-r border-gray-200" style={{ minWidth: W_TIENDA, width: W_TIENDA }}>
+                        <td key={i} className="px-4 py-2 text-right text-sm text-gray-500 border-r border-gray-200" style={{ minWidth: W_TIENDA_MIN, width: tiendaWidth }}>
                           {val.toFixed(2)}
                         </td>
                       )
@@ -451,7 +447,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
                   {label}
                 </StickyLabel>
                 {tiendas.map((_, i) => (
-                  <td key={i} className="border-r border-gray-200 bg-white" style={{ minWidth: W_TIENDA, width: W_TIENDA }}>
+                  <td key={i} className="border-r border-gray-200 bg-white" style={{ minWidth: W_TIENDA_MIN, width: tiendaWidth }}>
                     <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} />
                   </td>
                 ))}
@@ -472,7 +468,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
                   {label}
                 </StickyLabel>
                 {tiendas.map((_, i) => (
-                  <td key={i} className="border-r border-gray-200 bg-white" style={{ minWidth: W_TIENDA, width: W_TIENDA }}>
+                  <td key={i} className="border-r border-gray-200 bg-white" style={{ minWidth: W_TIENDA_MIN, width: tiendaWidth }}>
                     <CeldaInput value={datos[i]?.[key] as number || 0} onChange={(v) => updateDato(i, key, v)} campo={key} />
                   </td>
                 ))}
@@ -489,7 +485,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
                 % Penalizaciones
               </StickyLabel>
               {tiendas.map((_, i) => (
-                <td key={i} className="border-r border-gray-200 bg-white" style={{ minWidth: W_TIENDA, width: W_TIENDA }}>
+                <td key={i} className="border-r border-gray-200 bg-white" style={{ minWidth: W_TIENDA_MIN, width: tiendaWidth }}>
                   <CeldaInput value={datos[i]?.penalizacionesPct || 0} onChange={(v) => updateDato(i, 'penalizacionesPct', v)} campo="penalizacionesPct" type="percentage" />
                 </td>
               ))}
@@ -503,7 +499,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
                 Tiempo cocina (min)
               </StickyLabel>
               {tiendas.map((_, i) => (
-                <td key={i} className="border-r border-gray-200 bg-white" style={{ minWidth: W_TIENDA, width: W_TIENDA }}>
+                <td key={i} className="border-r border-gray-200 bg-white" style={{ minWidth: W_TIENDA_MIN, width: tiendaWidth }}>
                   <CeldaInput value={datos[i]?.tiempoCocina || 0} onChange={(v) => updateDato(i, 'tiempoCocina', v)} campo="tiempoCocina" />
                 </td>
               ))}
