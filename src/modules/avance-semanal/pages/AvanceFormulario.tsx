@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
-import { Save, FileSpreadsheet, ChevronLeft, ChevronRight, CalendarDays, Store } from 'lucide-react'
+import { useState, useEffect, useMemo } from 'react'
+import { Save, FileSpreadsheet, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
 import { getTiendasPorGerente, GERENTES } from '../data/tiendas'
 import { useAvanceSemanal } from '../hooks/useAvanceSemanal'
 import { getSemanasMartesLunes, getSemanaActualMartesLunes } from '../hooks/useSemanaMartesLunes'
@@ -45,7 +45,6 @@ export default function AvanceFormulario() {
   const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
   const [mostrarToast, setMostrarToast] = useState(false)
 
-  // FIX: Flag para evitar que se recarguen los datos mientras editas
   const [datosCargados, setDatosCargados] = useState(false)
 
   const tiendas = getTiendasPorGerente(gerenteSeleccionado)
@@ -58,7 +57,6 @@ export default function AvanceFormulario() {
     cargarDatosGuardados,
   } = useAvanceSemanal(semana?.value || '', gerenteSeleccionado, tiendas)
 
-  // FIX: Solo cargar datos UNA VEZ por combinación semana+gerente
   useEffect(() => {
     if (tiendas.length > 0 && !datosCargados) {
       const guardados = cargarDatosGuardados()
@@ -67,7 +65,6 @@ export default function AvanceFormulario() {
     }
   }, [tiendas, cargarDatosGuardados, datosCargados])
 
-  // FIX: Resetear el flag cuando cambia la semana o el gerente
   useEffect(() => {
     setDatosCargados(false)
   }, [semana?.value, gerenteSeleccionado])
@@ -202,42 +199,6 @@ export default function AvanceFormulario() {
                 <FileSpreadsheet className="w-4 h-4" />
                 Excel
               </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Info card iOS */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 border border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
-              <Store className="w-5 h-5 text-red-600" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Tiendas asignadas</p>
-              <p className="text-lg font-bold text-gray-900">{tiendas.length}</p>
-            </div>
-          </div>
-
-          <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 border border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-              <CalendarDays className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Semana actual</p>
-              <p className="text-lg font-bold text-gray-900">#{semana?.numero || '-'}</p>
-            </div>
-          </div>
-
-          <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-4 border border-white/60 shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
-              <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">Regional</p>
-              <p className="text-lg font-bold text-gray-900">{tiendas[0]?.regional?.split(' ')[0] || '-'}</p>
             </div>
           </div>
         </div>
