@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Save, FileSpreadsheet, ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
 import { getTiendasPorGerente, GERENTES } from '../data/tiendas'
 import { useAvanceSemanal } from '../hooks/useAvanceSemanal'
@@ -45,9 +45,10 @@ export default function AvanceFormulario() {
   const [mensaje, setMensaje] = useState<{ tipo: 'ok' | 'error'; texto: string } | null>(null)
   const [mostrarToast, setMostrarToast] = useState(false)
 
-  const [datosCargados, setDatosCargados] = useState(false)
+  // Usamos useRef para evitar re-renders infinitos al cargar datos
+  const datosInicializados = useRef(false)
 
-  const tiendas = getTiendasPorGerente(gerenteSeleccionado)
+  const tiendas = useMemo(() => getTiendasPorGerente(gerenteSeleccionado), [gerenteSeleccionado])
 
   const {
     cargando,
@@ -57,17 +58,18 @@ export default function AvanceFormulario() {
     cargarDatosGuardados,
   } = useAvanceSemanal(semana?.value || '', gerenteSeleccionado, tiendas)
 
+  // Cargar datos una sola vez cuando cambia la semana o el gerente
   useEffect(() => {
-    if (tiendas.length > 0 && !datosCargados) {
-      const guardados = cargarDatosGuardados()
-      setDatos(guardados.length > 0 ? guardados : tiendas.map(() => ({ ...EMPTY_DATOS })))
-      setDatosCargados(true)
-    }
-  }, [tiendas, cargarDatosGuardados, datosCargados])
+    datosInicializados.current = false
+  }, [semana?.value, gerenteSeleccionado])
 
   useEffect(() => {
-    setDatosCargados(false)
-  }, [semana?.value, gerenteSeleccionado])
+    if (tiendas.length > 0 && !datosInicializados.current) {
+      const guardados = cargarDatosGuardados()
+      setDatos(guardados.length > 0 ? guardados : tiendas.map(() => ({ ...EMPTY_DATOS })))
+      datosInicializados.current = true
+    }
+  }, [tiendas, cargarDatosGuardados])
 
   const handleGuardar = async () => {
     if (!semana) {
