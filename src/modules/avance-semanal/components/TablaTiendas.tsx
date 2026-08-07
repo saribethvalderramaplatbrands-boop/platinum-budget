@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, Fragment } from 'react'
 import type { DatosTienda } from '../types'
 import type { Tienda } from '../data/tiendas'
 import CeldaInput from './CeldaInput'
@@ -145,7 +145,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
   )
 
   // Fila de valor calculado (no editable)
-  const FilaValor = ({ label, valores, totalVal, formato }: { label: string, valores: (string | number)[], totalVal: string | number, formato?: (v: number) => string }) => (
+  const FilaValor = ({ label, valores, totalVal }: { label: string, valores: string[], totalVal: string }) => (
     <tr>
       <td className="sticky left-0 z-20 px-5 py-3 text-sm font-semibold text-gray-700 bg-white border-r border-gray-200 whitespace-nowrap" style={{ minWidth: W_FIRST, width: W_FIRST }}>
         {label}
@@ -255,7 +255,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
               { key: 'domicilio' as keyof DatosTienda, label: 'Domicilio ($)' },
               { key: 'domicilioTrx' as keyof DatosTienda, label: 'TRX Domicilio' },
             ].map(({ key, label }) => (
-              <React.Fragment key={key as string}>
+              <Fragment key={key as string}>
                 <FilaEditable label={label} campo={key} bgClass="bg-emerald-50/20" digits={(key as string).includes('Trx') ? 0 : 2} />
                 <FilaPorcentaje
                   label="%"
@@ -275,7 +275,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
                       : (totalVenta > 0 ? totalConcepto / totalVenta : 0)
                   })()}
                 />
-              </React.Fragment>
+              </Fragment>
             ))}
 
             {/* ===== DAY PART ===== */}
@@ -299,7 +299,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
               { key: 'descuentosEmpleados' as keyof DatosTienda, label: 'Desc. empleados ($)' },
               { key: 'descuentosJubilados' as keyof DatosTienda, label: 'Desc. jubilados ($)' },
             ].map(({ key, label }) => (
-              <React.Fragment key={key as string}>
+              <Fragment key={key as string}>
                 <FilaEditable label={label} campo={key} bgClass="bg-orange-50/20" digits={key === 'notasCreditoCantidad' ? 0 : 2} />
                 {key !== 'notasCreditoCantidad' && (
                   <FilaPorcentaje
@@ -313,7 +313,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
                     digits={3}
                   />
                 )}
-              </React.Fragment>
+              </Fragment>
             ))}
 
             {/* ===== ENTRENAMIENTO ===== */}
@@ -345,7 +345,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
               { key: 'horasInasistencia' as keyof DatosTienda, label: 'Hrs inasis/incapac' },
               { key: 'horasExtras' as keyof DatosTienda, label: 'Horas extras' },
             ].map(({ key, label }) => (
-              <React.Fragment key={key as string}>
+              <Fragment key={key as string}>
                 <FilaEditable label={label} campo={key} bgClass="bg-indigo-50/20" />
                 {key === 'costoManoObra' && (
                   <FilaPorcentaje
@@ -380,7 +380,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
                     </td>
                   </tr>
                 )}
-              </React.Fragment>
+              </Fragment>
             ))}
 
             {/* ===== COSTOS ===== */}
@@ -396,7 +396,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
               { key: 'merma' as keyof DatosTienda, label: 'Merma Semanal' },
               { key: 'gap' as keyof DatosTienda, label: 'Diferencias Negativas (GAP)' },
             ].map(({ key, label }) => (
-              <React.Fragment key={key as string}>
+              <Fragment key={key as string}>
                 <FilaEditable label={label} campo={key} bgClass="bg-rose-50/20" />
                 <FilaPorcentaje
                   label="%"
@@ -408,7 +408,7 @@ export default function TablaTiendas({ gerente, tiendas, datos, onUpdateDato }: 
                   })()}
                   digits={3}
                 />
-              </React.Fragment>
+              </Fragment>
             ))}
 
             {/* ===== CLIENTES ===== */}
