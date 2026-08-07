@@ -1,105 +1,95 @@
-import { useState, useCallback } from 'react'
-import type { DatosTienda } from '../types'
-
-const CAMPOS_DINERO: string[] = [
-  'ventaNeta', 'presupuestoVentas', 'ventas2025',
-  'kioskos', 'localLlevar', 'autoservicio', 'domicilio',
-  'dayPartApertura', 'dayPart12a3', 'dayPart3a6', 'dayPart6a9', 'dayPart9aCierre',
-  'borrantes', 'notasCredito',
-  'descuentosEmpleados', 'descuentosJubilados',
-  'costoManoObra',
-  'merma', 'gap',
-  'montoPenalizado',
-]
+import { useState, useEffect, useRef } from 'react'
 
 interface CeldaInputProps {
   value: number
   onChange: (val: number) => void
-  campo?: keyof DatosTienda
+  campo?: string
   type?: 'number' | 'percentage'
-  readonly?: boolean
-  isCalculated?: boolean
 }
 
-export default function CeldaInput({
-  value,
-  onChange,
-  campo,
-  type = 'number',
-  readonly = false,
-  isCalculated = false,
-}: CeldaInputProps) {
-  // null = no tiene foco, muestra el valor formateado del padre
-  // string = tiene foco, muestra el valor editable limpio
-  const [editValue, setEditValue] = useState<string | null>(null)
-  const isMoney = campo ? CAMPOS_DINERO.includes(campo as string) : false
+export default function CeldaInput({ value, onChange, campo, type }: CeldaInputProps) {
+  const [editValue, setEditValue] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
-  const formatDisplay = (val: number): string => {
-    if (type === 'percentage') {
-      return (val * 100).toFixed(2) + '%'
-    }
-    const formatted = val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-    if (isMoney) {
-      return '$' + formatted
-    }
-    return formatted
+  const esMonto = (c?: string): boolean => {
+    if (!c) return false
+    const montos = [
+      'ventaNeta','presupuestoVentas','ventas2025',
+      'kioskos','localLlevar','autoservicio','domicilio',
+      'borrantes','notasCredito','descuentosEmpleados','descuentosJubilados',
+      'costoManoObra','merma','gap','montoPenalizado',
+      'dayPartApertura','dayPart12a3','dayPart3a6','dayPart6a9','dayPart9aCierre',
+      'presupuestoTicket',
+    ]
+    return montos.includes(c)
   }
 
-  const handleFocus = useCallback(() => {
-    // Al hacer foco: mostrar número limpio sin formato para editar
+  const isPct = type === 'percentage'
+  const isMoney = esMonto(campo)
+
+  const formatDisplay = (v: number): string => {
+    if (isPct) return v.toFixed(2) + '%'
+    if (isMoney) return '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    return v.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+  }
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [isEditing])
+
+  const handleClick = () => {
+    setIsEditing(true)
     setEditValue(value.toString())
-  }, [value])
+  }
 
-  const handleBlur = useCallback(() => {
-    if (editValue !== null) {
-      const cleaned = editValue.replace(/,/g, '').replace(/\$/g, '').trim()
-      const num = parseFloat(cleaned)
-      if (!isNaN(num) && cleaned !== '') {
-        onChange(num)
-      }
+  const handleBlur = () => {
+    setIsEditing(false)
+    const parsed = parseFloat(editValue.replace(/,/g, ''))
+    if (!isNaN(parsed)) {
+      onChange(parsed)
     }
-    // Al perder foco: volver a mostrar el valor formateado del padre
-    setEditValue(null)
-  }, [editValue, onChange])
+  }
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === 'Tab') {
-      e.currentTarget.blur()
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      (e.target as HTMLInputElement).blur()
     }
-  }, [])
+  }
 
-  // Cuando tiene foco => editValue (número limpio)
-  // Cuando NO tiene foco => formatDisplay(value) (formateado con $ y comas)
-  const displayValue = editValue !== null ? editValue : formatDisplay(value)
-  const isEditing = editValue !== null
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value
+    if (/^-?\d*\.?\d*$/.test(val) || val === '') {
+      setEditValue(val)
+    }
+  }
 
-  if (readonly || isCalculated) {
+  if (isEditing) {
     return (
-      <div className={`px-4 py-3 text-right text-base ${
-        isCalculated ? 'bg-yellow-50/60 text-yellow-900' : 'bg-gray-50 text-gray-700'
-      }`}>
-        {formatDisplay(value)}
+      <div className="relative w-full h-full">
+        <input
+          ref={inputRef}
+          type="text"
+          inputMode="decimal"
+          value={editValue}
+          onChange={handleChange}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          className="w-full h-full px-2 py-2 text-right text-sm bg-white border-2 border-red-500 rounded outline-none"
+        />
       </div>
     )
   }
 
   return (
-    <div className="relative h-full">
-      {isMoney && isEditing && (
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-base text-gray-400 pointer-events-none select-none">$</span>
-      )}
-      <input
-        type="text"
-        inputMode="decimal"
-        value={displayValue}
-        onChange={(e) => setEditValue(e.target.value)}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onKeyDown={handleKeyDown}
-        className={`w-full h-full px-4 py-3 text-right text-base border-0 outline-none focus:bg-blue-50 focus:ring-1 focus:ring-blue-300 transition-colors bg-transparent ${
-          isMoney && isEditing ? 'pl-7' : ''
-        }`}
-      />
+    <div
+      onClick={handleClick}
+      className="w-full h-full px-2 py-2 text-right text-sm cursor-pointer hover:bg-red-50 transition-colors select-none"
+    >
+      {formatDisplay(value)}
     </div>
   )
 }
